@@ -32,7 +32,13 @@
       "Bash(dir \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\\frontend\")",
       "Bash(dir \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\\backend\")",
       "Bash(git add .)",
-      "Bash(git commit -m \"Initial commit: Current backend structure before refactoring\n\nThis is the baseline commit containing:\n- Current api/ folder structure (agencies, auth, workflows)\n- Current services/ folder structure (hubspot, aircall, search, workflows)\n- Config files and utilities\n- All existing functionality working as-is\n\nNext: Migrate to new src/ structure with SOLID principles\")"
+      "Bash(git commit -m \"Initial commit: Current backend structure before refactoring\n\nThis is the baseline commit containing:\n- Current api/ folder structure (agencies, auth, workflows)\n- Current services/ folder structure (hubspot, aircall, search, workflows)\n- Config files and utilities\n- All existing functionality working as-is\n\nNext: Migrate to new src/ structure with SOLID principles\")",
+      "Bash(git branch -M main)",
+      "Bash(git remote add origin https://github.com/StanfordCorporation/Conveyancing-Portal-Hubspot.git)",
+      "Bash(git push -u origin main)",
+      "Bash(git add backend/src)",
+      "Bash(git commit -m \"refactor: Create src/ structure and migrate integrations layer\n\nMigrated layers:\n- integrations/hubspot/: client, contacts, companies, deals, associations\n- integrations/aircall/: client\n- config/: hubspot.js, aircall.js, constants.js (centralized HubSpot IDs)\n- utils/: otp.js, scoring.js\n\nNo breaking changes - old api/ folder still present\nNext: Create domain services layer (agency, agent, client, deal)\")",
+      "Bash(git commit -m \"refactor: Complete src/ migration with domain services and routes\n\nNew structure:\n- services/domain/: agency, agent, client, deal (business logic wrappers)\n- services/auth/: OTP service (unified auth logic)\n- routes/: auth, agencies, workflows (thin HTTP handlers)\n- middleware/: auth, errorHandler, logging (cross-cutting concerns)\n- config/: constants, hubspot, aircall (centralized configuration)\n\nKey improvements:\n- Unified OTP endpoint (POST /api/auth/send-otp?type=client|agent)\n- Domain services hide HubSpot implementation details\n- Clean separation of concerns (SOLID principles)\n- Consistent error handling\n- Proper middleware stack\n\nBackward compatibility:\n- Legacy endpoints still work (auth/agent/*)\n- All functionality preserved\n- No breaking changes to API contracts\n\nNext: Delete old api/ folder and test\")"
     ],
     "deny": [],
     "ask": []
