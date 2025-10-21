@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot)",
+      "Bash(tree -L 3 -I 'node_modules')",
+      "Read(//c/Users/PrathamManochaStanfo/OneDrive/**)",
+      "Bash(npm install)",
+      "Bash(cat \"/c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot/frontend/public/index.html\")",
+      "Bash(cd /c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot/backend)",
+      "Bash(cd /c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot/backend/api/auth/agent)",
+      "Bash(dir /s \"C:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\")",
+      "Read(//c/**)",
+      "Bash(cd /c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot/frontend)",
+      "Bash(curl -s http://localhost:3001/)",
+      "Bash(tree -L 3 -I 'node_modules' frontend/)",
+      "Bash(curl -X POST http://localhost:3001/api/auth/send-otp -H \"Content-Type: application/json\" -d '{\"\"\"\"identifier\"\"\"\":\"\"\"\"pratham369@yahoo.com\"\"\"\",\"\"\"\"method\"\"\"\":\"\"\"\"email\"\"\"\"}')",
+      "Bash(curl -X POST http://localhost:3001/api/auth/send-otp )",
+      "Bash(curl -X POST http://localhost:3001/api/auth/verify-otp )",
+      "Bash(curl -X POST http://localhost:3001/api/auth/agent/send-otp )",
+      "Bash(curl -s http://localhost:3000/client/login)",
+      "Bash(npm run dev)",
+      "Bash(curl -X POST https://api.emailjs.com/api/v1.0/email/send -H \"Content-Type: application/json\" -d \"{ \"\"service_id\"\": \"\"service_ze4cw7u\"\", \"\"template_id\"\": \"\"template_ydbrjbr\"\", \"\"user_id\"\": \"\"5WkbWyagEXIonE8kOZBiT\"\", \"\"template_params\"\": { \"\"to_email\"\": \"\"test@example.com\"\", \"\"passcode\"\": \"\"123456\"\", \"\"time\"\": \"\"14:30:45\"\" } }\")",
+      "Bash(curl -k -X POST https://api.emailjs.com/api/v1.0/email/send -H \"Content-Type: application/json\" -d \"{\"\"service_id\"\":\"\"service_ze4cw7u\"\",\"\"template_id\"\":\"\"template_ydbrjbr\"\",\"\"user_id\"\":\"\"3wv3ens5I8cCARiC6\"\",\"\"template_params\"\":{\"\"to_email\"\":\"\"test@example.com\"\",\"\"passcode\"\":\"\"123456\"\",\"\"time\"\":\"\"14:30:45\"\"}}\")",
+      "Bash(npm ls @emailjs/nodejs)",
+      "Bash(cat package.json)",
+      "Bash(findstr -A 5 \"\"\"main\"\"\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/send-otp -H \"Content-Type: application/json\" -d \"{\"\"identifier\"\":\"\"pratham369@yahoo.com\"\",\"\"method\"\":\"\"email\"\"}\")",
+      "Bash(npm uninstall @emailjs/nodejs nodemailer)",
+      "Bash(node -c api/auth/agent/send-otp.js)",
+      "Bash(node -c api/auth/agent/verify-otp.js)",
+      "Bash(dir \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\")",
+      "Bash(dir \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\\frontend\")",
+      "Bash(dir \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\\backend\")",
+      "Bash(git add .)",
+      "Bash(git commit -m \"Initial commit: Current backend structure before refactoring\n\nThis is the baseline commit containing:\n- Current api/ folder structure (agencies, auth, workflows)\n- Current services/ folder structure (hubspot, aircall, search, workflows)\n- Config files and utilities\n- All existing functionality working as-is\n\nNext: Migrate to new src/ structure with SOLID principles\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

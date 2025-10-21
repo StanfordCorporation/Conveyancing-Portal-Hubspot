@@ -1,0 +1,153 @@
+import hubspotClient from './client.js';
+
+/**
+ * Create a new deal
+ * Valid stage IDs from your HubSpot pipeline: 1923713518, 1923713520, 1923682791, 1923682792, 1924069846, 1904359900, 1904359901, 1904359902, closedwon, closedlost
+ * Using 1923713518 (first stage) as default for new deals
+ */
+export const createDeal = async (dealData, associations = []) => {
+  console.log(`[HubSpot Deals] ➕ Creating new deal: ${dealData.dealname}`);
+  console.log(`[HubSpot Deals] 🏠 Property: ${dealData.property_address || 'N/A'}`);
+  console.log(`[HubSpot Deals] 📊 Stage: ${dealData.dealstage || '1923713518'}`);
+  console.log(`[HubSpot Deals] 🔗 Associations: ${associations.length} object(s)`);
+
+  const payload = {
+    properties: {
+      dealname: dealData.dealname,
+      dealstage: dealData.dealstage || '1923713518', // Use valid stage ID instead of custom name
+      pipeline: dealData.pipeline || 'default',
+      property_address: dealData.property_address || '',
+      number_of_owners: dealData.number_of_owners || 1,
+
+      // Section 1: Title Details & Encumbrances
+      body_corporate: dealData.body_corporate || '',
+      registered_encumbrances: dealData.registered_encumbrances || '',
+      registered_encumbrance_details: dealData.registered_encumbrance_details || '',
+      unregistered_encumbrances: dealData.unregistered_encumbrances || '',
+      unregistered_encumbrance_details: dealData.unregistered_encumbrance_details || '',
+
+      // Section 2: Rental Agreement/Tenancy
+      tenancy_agreement: dealData.tenancy_agreement || '',
+      informal_rental: dealData.informal_rental || '',
+      tenancy_agreement_last_rental_increase: dealData.tenancy_agreement_last_rental_increase || '',
+      tenancy_agreement_lease_start_date: dealData.tenancy_agreement_lease_start_date || '',
+      tenancy_agreement_lease_end_date: dealData.tenancy_agreement_lease_end_date || '',
+      tenancy_agreement_rent_and_bond_payable: dealData.tenancy_agreement_rent_and_bond_payable || '',
+      tenancy_agreement_upload: dealData.tenancy_agreement_upload || '',
+
+      // Section 3: Land Use, Planning & Environment
+      resume_notice: dealData.resume_notice || '',
+      environmental_register: dealData.environmental_register || '',
+      environmental_register_details: dealData.environmental_register_details || '',
+      government_notice: dealData.government_notice || '',
+      government_notice_details: dealData.government_notice_details || '',
+      tree_order: dealData.tree_order || '',
+      tree_order_details: dealData.tree_order_details || '',
+      heritage_act: dealData.heritage_act || '',
+      heritage_act_details: dealData.heritage_act_details || '',
+
+      // Section 4: Buildings & Structures
+      swimming_pool: dealData.swimming_pool || '',
+      owner_builder: dealData.owner_builder || '',
+      owner_builder_uploads: dealData.owner_builder_uploads || '',
+      enforcement_notice: dealData.enforcement_notice || '',
+      enforcement_notice_details: dealData.enforcement_notice_details || '',
+      enforcement_notice_uploads: dealData.enforcement_notice_uploads || ''
+    }
+  };
+
+  // Add associations if provided
+  if (associations.length > 0) {
+    payload.associations = associations;
+    console.log(`[HubSpot Deals] 🔗 Association details:`);
+    associations.forEach((assoc, index) => {
+      console.log(`[HubSpot Deals]    ${index + 1}. To Object ID: ${assoc.to.id}, Type: ${assoc.types[0].associationTypeId}`);
+    });
+  }
+
+  const response = await hubspotClient.post('/crm/v3/objects/deals', payload);
+  console.log(`[HubSpot Deals] ✅ Deal created successfully: ID ${response.data.id}`);
+  return response.data;
+};
+
+/**
+ * Get deal by ID
+ */
+export const getDeal = async (dealId) => {
+  const response = await hubspotClient.get(`/crm/v3/objects/deals/${dealId}`, {
+    params: {
+      properties: 'dealname,dealstage,pipeline,property_address,number_of_owners'
+    }
+  });
+  return response.data;
+};
+
+/**
+ * Update deal
+ */
+export const updateDeal = async (dealId, updates) => {
+  const response = await hubspotClient.patch(`/crm/v3/objects/deals/${dealId}`, {
+    properties: updates
+  });
+  return response.data;
+};
+
+/**
+ * Update deal stage
+ */
+export const updateDealStage = async (dealId, stage) => {
+  return updateDeal(dealId, { dealstage: stage });
+};
+
+/**
+ * Create deal with associations (flexible - accepts associations array or individual IDs)
+ */
+export const createDealWithAssociations = async (dealData, contactIdOrAssociations, agencyId = null) => {
+  console.log(`[HubSpot Deals] 🔄 Creating deal with flexible associations...`);
+
+  let associations;
+
+  // Check if first parameter is an array of associations
+  if (Array.isArray(contactIdOrAssociations)) {
+    console.log(`[HubSpot Deals] 📦 Using provided associations array (${contactIdOrAssociations.length} associations)`);
+    associations = contactIdOrAssociations;
+  } else {
+    console.log(`[HubSpot Deals] 🔧 Building associations from individual IDs (legacy mode)`);
+    // Legacy support: build associations from contact ID and agency ID
+    associations = [
+      {
+        to: { id: contactIdOrAssociations },
+        types: [
+          {
+            associationCategory: 'HUBSPOT_DEFINED',
+            associationTypeId: 3 // Contact to Deal
+          }
+        ]
+      }
+    ];
+
+    // Add agency association if provided
+    if (agencyId) {
+      console.log(`[HubSpot Deals] 🏢 Adding agency association: ${agencyId}`);
+      associations.push({
+        to: { id: agencyId },
+        types: [
+          {
+            associationCategory: 'HUBSPOT_DEFINED',
+            associationTypeId: 341 // Deal to Company
+          }
+        ]
+      });
+    }
+  }
+
+  return createDeal(dealData, associations);
+};
+
+export default {
+  createDeal,
+  getDeal,
+  updateDeal,
+  updateDealStage,
+  createDealWithAssociations
+};
