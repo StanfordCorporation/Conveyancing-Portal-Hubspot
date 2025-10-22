@@ -197,7 +197,7 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
     console.log(`[HubSpot Contacts]    - Email: ${email}`);
     console.log(`[HubSpot Contacts]    - Phone: ${phone}`);
 
-    // Build filter groups only for provided values
+    // Build filter groups for email and phone (OR logic - separate filter groups)
     const filterGroups = [];
 
     if (email) {
@@ -212,113 +212,35 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
       });
     }
 
-    // If phone provided, try multiple phone formats to find a match
-    let results = [];
-
     if (phone) {
-      console.log(`[HubSpot Contacts] 📞 Searching by phone with multiple format attempts...`);
-
-      // Generate different phone formats to try
-      const phoneFormats = [
-        phone,  // Original format
-        phone.replace(/\s/g, ''),  // Without spaces
-        phone.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')  // With spaces
-      ];
-
-      // Try each phone format
-      for (const phoneFormat of phoneFormats) {
-        if (!phoneFormat || phoneFormat === results[0]) continue; // Skip empty or duplicates
-
-        try {
-          const phoneFilterGroups = [
-            {
-              filters: [
-                {
-                  propertyName: 'phone',
-                  operator: 'EQ',
-                  value: phoneFormat
-                }
-              ]
-            }
-          ];
-
-          const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
-            filterGroups: phoneFilterGroups,
-            limit: 10
-          }, {
-            params: {
-              properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
-            }
-          });
-
-          results = response.data.results || [];
-          if (results.length > 0) {
-            console.log(`[HubSpot Contacts] ✅ Found match with phone format: ${phoneFormat}`);
-            break;
-          }
-        } catch (err) {
-          console.log(`[HubSpot Contacts] ℹ️ No match for phone format: ${phoneFormat}`);
-          continue;
-        }
-      }
-
-      if (results.length === 0 && email) {
-        console.log(`[HubSpot Contacts] ℹ️ Phone search failed, trying email fallback...`);
-        // Fallback to email search if phone didn't work
-        const emailFilterGroups = [
+      // Normalize phone to international format for HubSpot search
+      const normalizedPhone = phone.replace(/\s/g, '');
+      filterGroups.push({
+        filters: [
           {
-            filters: [
-              {
-                propertyName: 'email',
-                operator: 'EQ',
-                value: email
-              }
-            ]
+            propertyName: 'phone',
+            operator: 'EQ',
+            value: normalizedPhone
           }
-        ];
-
-        const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
-          filterGroups: emailFilterGroups,
-          limit: 10
-        }, {
-          params: {
-            properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
-          }
-        });
-
-        results = response.data.results || [];
-      }
-    } else if (email) {
-      // If only email provided, search by email
-      const emailFilterGroups = [
-        {
-          filters: [
-            {
-              propertyName: 'email',
-              operator: 'EQ',
-              value: email
-            }
-          ]
-        }
-      ];
-
-      const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
-        filterGroups: emailFilterGroups,
-        limit: 10
-      }, {
-        params: {
-          properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
-        }
+        ]
       });
-
-      results = response.data.results || [];
     }
 
-    if (!email && !phone) {
+    if (filterGroups.length === 0) {
       console.log(`[HubSpot Contacts] ⚠️ No valid search criteria provided`);
       return null;
     }
 
+    const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
+      filterGroups,
+      limit: 10
+    }, {
+      params: {
+        properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
+      }
+    });
+
+    const results = response.data.results || [];
     console.log(`[HubSpot Contacts] 📊 Found ${results.length} matching contacts`);
 
     if (results.length > 0) {
