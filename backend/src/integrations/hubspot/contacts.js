@@ -213,12 +213,17 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
     }
 
     if (phone) {
+      // HubSpot might store phone with spaces (+61 434 681 036) or without (+61434681036)
+      // Try both formats by adding to filter groups with OR logic
+      const phoneWithoutSpaces = phone.replace(/\s/g, '');
+      const phoneWithSpaces = phone.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
+
       filterGroups.push({
         filters: [
           {
             propertyName: 'phone',
-            operator: 'EQ',
-            value: phone
+            operator: 'IN',
+            value: [phone, phoneWithoutSpaces, phoneWithSpaces].filter((p, i, a) => a.indexOf(p) === i) // Remove duplicates
           }
         ]
       });
