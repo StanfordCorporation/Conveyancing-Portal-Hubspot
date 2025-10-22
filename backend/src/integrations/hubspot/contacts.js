@@ -6,12 +6,12 @@ import hubspotClient from './client.js';
 export const searchContactByEmail = async (email) => {
   try {
     console.log(`[HubSpot Contacts] 🔍 Searching for contact by email: ${email}`);
-    // Try multiple variants of contact_type field names
+    // Properties must be passed as comma-separated string in query parameters
     const propertiesRequested = ['firstname','lastname','email','phone','address','contact_type'];
     console.log(`[HubSpot Contacts] 📋 Requesting properties:`, propertiesRequested);
     const response = await hubspotClient.get(`/crm/v3/objects/contacts/${email}`, {
       params: {
-        properties: propertiesRequested,
+        properties: propertiesRequested.join(','),
         idProperty: 'email'
       }
     });
@@ -88,7 +88,7 @@ export const createContact = async (contactData) => {
 export const getContact = async (contactId) => {
   const response = await hubspotClient.get(`/crm/v3/objects/contacts/${contactId}`, {
     params: {
-      properties: ['firstname','lastname','email','phone','address','contact_type']
+      properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
     }
   });
   return response.data;
@@ -165,8 +165,11 @@ export const searchContactsByCompany = async (companyId) => {
           ]
         }
       ],
-      properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type'],
       limit: 100
+    }, {
+      params: {
+        properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type'].join(',')
+      }
     });
 
     const results = response.data.results || [];
@@ -228,9 +231,11 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
 
     const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
       filterGroups,
-      // Try multiple variants of contact_type field names
-      properties: ['firstname','lastname','email','phone','address','contact_type', 'contact_type__c', 'contact_type_c'],
       limit: 10
+    }, {
+      params: {
+        properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
+      }
     });
 
     const results = response.data.results || [];
