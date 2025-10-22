@@ -71,25 +71,26 @@ const AgentLogin = () => {
     setIsLoading(true);
 
     try {
-      const identifier = loginMethod === "email" ? email : mobile;
+      // Strip spaces from mobile numbers before sending
+      const cleanIdentifier = loginMethod === "email" ? email : mobile.replace(/\s/g, '');
 
-      if (!identifier) {
+      if (!cleanIdentifier) {
         setError(`Please enter your ${loginMethod}`);
         setIsLoading(false);
         return;
       }
 
       // Additional validation for mobile
-      if (loginMethod === "mobile" && !isValidPhoneNumber(identifier)) {
+      if (loginMethod === "mobile" && !isValidPhoneNumber(cleanIdentifier)) {
         setError("Please enter a valid 10-digit Australian mobile number (starting with 0)");
         setIsLoading(false);
         return;
       }
 
-      console.log(`📤 Sending OTP to agent ${loginMethod}: ${identifier}`);
+      console.log(`📤 Sending OTP to agent ${loginMethod}: ${cleanIdentifier}`);
 
       const response = await api.post('/auth/send-otp?type=agent', {
-        identifier,
+        identifier: cleanIdentifier,
         method: loginMethod
       });
 
@@ -130,7 +131,8 @@ const AgentLogin = () => {
     setIsLoading(true);
 
     try {
-      const identifier = loginMethod === "email" ? email : mobile;
+      // Strip spaces from mobile numbers before sending
+      const cleanIdentifier = loginMethod === "email" ? email : mobile.replace(/\s/g, '');
       const otpCode = otp.join("");
 
       if (!otpCode || otpCode.length !== 6) {
@@ -139,10 +141,10 @@ const AgentLogin = () => {
         return;
       }
 
-      console.log(`🔐 Verifying OTP for agent ${loginMethod}: ${identifier}`);
+      console.log(`🔐 Verifying OTP for agent ${loginMethod}: ${cleanIdentifier}`);
 
       const response = await api.post('/auth/verify-otp?type=agent', {
-        identifier,
+        identifier: cleanIdentifier,
         otp: otpCode,
         method: loginMethod
       });

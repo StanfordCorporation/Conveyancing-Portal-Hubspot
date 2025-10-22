@@ -120,13 +120,16 @@ export default function DisclosureForm() {
 
       const primarySellerNames = splitName(primarySeller.fullName);
 
+      // Helper function to clean phone numbers (remove spaces)
+      const cleanPhoneNumber = (phone) => phone ? phone.replace(/\s/g, '') : '';
+
       // Format data for API
       const formData = {
         seller: {
           email: primarySeller.email,
           firstname: primarySellerNames.firstname,
           lastname: primarySellerNames.lastname,
-          phone: primarySeller.mobile
+          phone: cleanPhoneNumber(primarySeller.mobile)
         },
         additionalSellers: additionalSellers.map(seller => {
           const names = splitName(seller.fullName);
@@ -134,7 +137,7 @@ export default function DisclosureForm() {
             email: seller.email,
             firstname: names.firstname,
             lastname: names.lastname,
-            phone: seller.mobile
+            phone: cleanPhoneNumber(seller.mobile)
           };
         }),
         agency: {
@@ -145,7 +148,7 @@ export default function DisclosureForm() {
           email: selectedAgency?.agentEmail || '',
           firstname: selectedAgency?.agentFirstName || 'Agent',
           lastname: selectedAgency?.agentLastName || 'Default',
-          phone: selectedAgency?.agentPhone || ''
+          phone: cleanPhoneNumber(selectedAgency?.agentPhone || '')
         },
         property: {
           address: propertyAddress

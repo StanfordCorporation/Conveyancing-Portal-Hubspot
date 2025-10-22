@@ -295,13 +295,16 @@ export function CreateAgencyForm({
     return { firstName, lastName };
   };
 
+  // Helper function to clean phone numbers (remove spaces)
+  const cleanPhoneNumber = (phone) => phone ? phone.replace(/\s/g, '') : '';
+
   // Search for duplicate agent before creating
   const searchForDuplicateAgent = async () => {
     try {
       console.log('🔍 Searching for duplicate agent...');
       const response = await api.post('/agencies/search-agent', {
         email: formData.salespersonEmail,
-        phone: formData.salespersonPhone
+        phone: cleanPhoneNumber(formData.salespersonPhone)
       });
 
       if (response.data.agent) {
@@ -331,7 +334,7 @@ export function CreateAgencyForm({
         name: formData.businessName,
         address: formData.suburb,
         email: formData.email,
-        phone: formData.salespersonPhone,
+        phone: cleanPhoneNumber(formData.salespersonPhone),
         agentFirstName: duplicateAgent.firstname,
         agentLastName: duplicateAgent.lastname,
         agentEmail: duplicateAgent.email,
@@ -387,11 +390,11 @@ export function CreateAgencyForm({
         name: formData.businessName,
         address: formData.suburb,
         email: formData.email,
-        phone: formData.salespersonPhone,
+        phone: cleanPhoneNumber(formData.salespersonPhone),
         agentFirstName: agentNames.firstName,
         agentLastName: agentNames.lastName,
         agentEmail: formData.salespersonEmail,
-        agentPhone: formData.salespersonPhone
+        agentPhone: cleanPhoneNumber(formData.salespersonPhone)
       });
 
       if (onSuccess) {
