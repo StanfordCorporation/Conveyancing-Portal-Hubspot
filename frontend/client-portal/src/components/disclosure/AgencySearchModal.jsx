@@ -48,7 +48,7 @@ export function AgencySearchModal({
         suburb
       });
 
-      const agencies = response.data.results || [];
+      const agencies = response.data.agencies || [];
       setResults(agencies);
 
       if (agencies.length === 0) {

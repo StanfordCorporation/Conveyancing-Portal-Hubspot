@@ -88,7 +88,7 @@ const AgentLogin = () => {
 
       console.log(`📤 Sending OTP to agent ${loginMethod}: ${identifier}`);
 
-      const response = await api.post('/auth/agent/send-otp', {
+      const response = await api.post('/auth/send-otp?type=agent', {
         identifier,
         method: loginMethod
       });
@@ -141,7 +141,7 @@ const AgentLogin = () => {
 
       console.log(`🔐 Verifying OTP for agent ${loginMethod}: ${identifier}`);
 
-      const response = await api.post('/auth/agent/verify-otp', {
+      const response = await api.post('/auth/verify-otp?type=agent', {
         identifier,
         otp: otpCode,
         method: loginMethod
