@@ -9,11 +9,12 @@ export const requestLogger = (req, res, next) => {
   const path = req.path;
   const ip = req.ip || req.connection.remoteAddress;
 
-  console.log(`\n================================================================================`);
+  console.log(`\n${'='.repeat(80)}`);
   console.log(`[${timestamp}] ${method} ${path}`);
   console.log(`[Request] IP: ${ip}`);
 
-  if (method !== 'GET' && Object.keys(req.body).length > 0) {
+  // Safely check req.body
+  if (method !== 'GET' && req.body && Object.keys(req.body).length > 0) {
     console.log(`[Request Body]:`, JSON.stringify(req.body, null, 2));
   }
 
@@ -30,7 +31,7 @@ export const requestLogger = (req, res, next) => {
       console.log(`[Response] Success`);
     }
 
-    console.log(`================================================================================\n`);
+    console.log(`${'='.repeat(80)}\n`);
     return originalSend.call(this, data);
   };
 
