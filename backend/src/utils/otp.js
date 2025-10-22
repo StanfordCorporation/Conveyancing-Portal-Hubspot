@@ -144,7 +144,7 @@ export const sendOTPEmail = async (email, otp) => {
 export const sendOTPSMS = async (mobile, otp) => {
   try {
     // Import Aircall service dynamically to avoid circular dependencies
-    const { sendOTPSMS: aircallSendOTP } = await import('../services/aircall/client.js');
+    const { sendOTPSMS: aircallSendOTP } = await import('../integrations/aircall/client.js');
 
     console.log(`[OTP SMS] Sending OTP ${otp} to ${mobile} via Aircall`);
 

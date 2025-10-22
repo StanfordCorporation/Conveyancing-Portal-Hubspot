@@ -6,6 +6,7 @@
 
 import { generateOTP, storeOTP, verifyOTP, sendOTPEmail, sendOTPSMS } from '../../utils/otp.js';
 import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
+import { normalizePhoneForSearch } from '../../utils/phone.js';
 import { HUBSPOT } from '../../config/constants.js';
 
 /**
@@ -16,7 +17,9 @@ export const sendOTPForClient = async (identifier, method = 'email') => {
   // Find contact by email or phone based on method
   let contact;
   if (method === 'mobile') {
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+    // Normalize phone number to international format for HubSpot search
+    const normalizedPhone = normalizePhoneForSearch(identifier);
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -67,7 +70,9 @@ export const sendOTPForAgent = async (identifier, method = 'email') => {
   // Find contact by email or phone based on method
   let contact;
   if (method === 'mobile') {
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+    // Normalize phone number to international format for HubSpot search
+    const normalizedPhone = normalizePhoneForSearch(identifier);
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -129,7 +134,9 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
   // Get contact details by email or phone based on method
   let contact;
   if (method === 'mobile') {
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+    // Normalize phone number to international format for HubSpot search
+    const normalizedPhone = normalizePhoneForSearch(identifier);
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -174,7 +181,9 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
   // Get contact details by email or phone based on method
   let contact;
   if (method === 'mobile') {
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+    // Normalize phone number to international format for HubSpot search
+    const normalizedPhone = normalizePhoneForSearch(identifier);
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
