@@ -26,14 +26,16 @@ const PORT = process.env.PORT || 3001;
 // MIDDLEWARE
 // ============================================================================
 
-// Request logging
-app.use(requestLogger);
-
-// CORS
+// CORS - MUST be first before logging to handle preflight
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Request logging
+app.use(requestLogger);
 
 // Body parsing
 app.use(express.json());
