@@ -1,7 +1,7 @@
-import { findOrCreateContact, searchContactByEmailOrPhone } from '../hubspot/contacts.service.js';
-import { searchCompaniesByName, createCompany, searchCompaniesByNameAndEmail } from '../hubspot/companies.service.js';
-import { createDealWithAssociations } from '../hubspot/deals.service.js';
-import hubspotClient from '../hubspot/client.js';
+import { findOrCreateContact, searchContactByEmailOrPhone } from '../../integrations/hubspot/contacts.js';
+import { searchCompaniesByName, createCompany, searchCompaniesByNameAndEmail } from '../../integrations/hubspot/companies.js';
+import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
+import hubspotClient from '../../integrations/hubspot/client.js';
 
 /**
  * Workflow: Client-Initiated Disclosure Form

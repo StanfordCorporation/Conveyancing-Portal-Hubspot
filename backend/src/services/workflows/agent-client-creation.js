@@ -1,5 +1,5 @@
-import { createContact } from '../hubspot/contacts.service.js';
-import { createDealWithAssociations } from '../hubspot/deals.service.js';
+import { createContact } from '../../integrations/hubspot/contacts.js';
+import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
 
 /**
  * Workflow 2: Agent-Initiated Client Creation

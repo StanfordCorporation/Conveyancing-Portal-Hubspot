@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { aircallConfig } from '../../config/aircall.config.js';
+import { aircallConfig } from '../../config/aircall.js';
 
 /**
  * Format phone number to E.164 international format

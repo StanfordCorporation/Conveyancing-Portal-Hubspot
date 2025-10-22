@@ -1,5 +1,5 @@
 import hubspotClient from './client.js';
-import { generateTokenFilterGroups, searchAndScore, extractTokens } from '../search/scoring.js';
+import { generateTokenFilterGroups, searchAndScore, extractTokens } from '../../utils/scoring.js';
 
 /**
  * Create a new company (agency)
