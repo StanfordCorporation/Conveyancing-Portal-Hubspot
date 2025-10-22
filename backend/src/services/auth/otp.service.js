@@ -13,8 +13,13 @@ import { HUBSPOT } from '../../config/constants.js';
  * Validates contact exists and sends OTP
  */
 export const sendOTPForClient = async (identifier, method = 'email') => {
-  // Find contact by email or phone
-  const contact = await contactsIntegration.searchContactByEmail(identifier);
+  // Find contact by email or phone based on method
+  let contact;
+  if (method === 'mobile') {
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+  } else {
+    contact = await contactsIntegration.searchContactByEmail(identifier);
+  }
 
   if (!contact) {
     throw {
@@ -59,8 +64,13 @@ export const sendOTPForClient = async (identifier, method = 'email') => {
  * Validates contact is an agent and sends OTP
  */
 export const sendOTPForAgent = async (identifier, method = 'email') => {
-  // Find contact by email or phone
-  const contact = await contactsIntegration.searchContactByEmail(identifier);
+  // Find contact by email or phone based on method
+  let contact;
+  if (method === 'mobile') {
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+  } else {
+    contact = await contactsIntegration.searchContactByEmail(identifier);
+  }
 
   if (!contact) {
     throw {
@@ -104,7 +114,7 @@ export const sendOTPForAgent = async (identifier, method = 'email') => {
  * Verify OTP for client
  * Returns user data and JWT token on success
  */
-export const verifyOTPForClient = async (identifier, otp) => {
+export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
   // Verify OTP
   const isValid = verifyOTP(identifier, otp);
 
@@ -116,8 +126,13 @@ export const verifyOTPForClient = async (identifier, otp) => {
     };
   }
 
-  // Get contact details
-  const contact = await contactsIntegration.searchContactByEmail(identifier);
+  // Get contact details by email or phone based on method
+  let contact;
+  if (method === 'mobile') {
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+  } else {
+    contact = await contactsIntegration.searchContactByEmail(identifier);
+  }
 
   if (!contact) {
     throw {
@@ -144,7 +159,7 @@ export const verifyOTPForClient = async (identifier, otp) => {
  * Verify OTP for agent
  * Returns user data and JWT token on success
  */
-export const verifyOTPForAgent = async (identifier, otp) => {
+export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
   // Verify OTP
   const isValid = verifyOTP(identifier, otp);
 
@@ -156,8 +171,13 @@ export const verifyOTPForAgent = async (identifier, otp) => {
     };
   }
 
-  // Get contact details
-  const contact = await contactsIntegration.searchContactByEmail(identifier);
+  // Get contact details by email or phone based on method
+  let contact;
+  if (method === 'mobile') {
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, identifier);
+  } else {
+    contact = await contactsIntegration.searchContactByEmail(identifier);
+  }
 
   if (!contact) {
     throw {

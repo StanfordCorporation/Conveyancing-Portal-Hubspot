@@ -65,7 +65,7 @@ export const sendOTP = async (req, res) => {
  */
 export const verifyOTP = async (req, res) => {
   try {
-    const { identifier, otp } = req.body;
+    const { identifier, otp, method } = req.body;
     const type = req.query.type || 'client'; // client or agent
 
     // Validate input
@@ -76,14 +76,14 @@ export const verifyOTP = async (req, res) => {
       });
     }
 
-    console.log(`[Auth] ✅ OTP verification: ${type} portal, identifier: ${identifier}`);
+    console.log(`[Auth] ✅ OTP verification: ${type} portal, ${method || 'email'} to ${identifier}`);
 
     // Verify OTP based on type
     let result;
     if (type === 'agent') {
-      result = await otpService.verifyOTPForAgent(identifier, otp);
+      result = await otpService.verifyOTPForAgent(identifier, otp, method);
     } else {
-      result = await otpService.verifyOTPForClient(identifier, otp);
+      result = await otpService.verifyOTPForClient(identifier, otp, method);
     }
 
     // Generate JWT token
