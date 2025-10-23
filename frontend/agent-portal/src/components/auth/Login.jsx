@@ -184,8 +184,15 @@ const AgentLogin = () => {
         <ThemeToggle />
       </div>
 
-      {/* Particle Wave background */}
-      <ParticleWaves isTransitioning={isTransitioning} />
+      {/* Background with Particle Waves */}
+      <div className="absolute inset-0 overflow-hidden">
+        <img
+          src="/images/property-law-bg.png"
+          alt="Property Law Background"
+          className="absolute inset-0 w-full h-full object-cover opacity-50"
+        />
+        <ParticleWaves isTransitioning={isTransitioning} />
+      </div>
 
       {/* Transition overlay */}
       <div

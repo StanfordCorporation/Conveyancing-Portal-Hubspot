@@ -19,6 +19,7 @@ export const sendOTPForClient = async (identifier, method = 'email') => {
   if (method === 'mobile') {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
+    // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
     contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
@@ -72,6 +73,7 @@ export const sendOTPForAgent = async (identifier, method = 'email') => {
   if (method === 'mobile') {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
+    // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
     contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
@@ -136,6 +138,7 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
   if (method === 'mobile') {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
+    // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
     contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
@@ -183,6 +186,7 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
   if (method === 'mobile') {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
+    // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
     contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);

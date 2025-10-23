@@ -165,11 +165,8 @@ export const searchContactsByCompany = async (companyId) => {
           ]
         }
       ],
-      limit: 100
-    }, {
-      params: {
-        properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type'].join(',')
-      }
+      limit: 100,
+      properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type']
     });
 
     const results = response.data.results || [];
@@ -188,18 +185,30 @@ export const searchContactsByCompany = async (companyId) => {
   }
 };
 
+
 /**
- * Search for contact by email OR phone
+ * Search for contacts by email OR phone using POST request with filters
+ *
+ * Uses HubSpot's POST search endpoint with filterGroups for flexible multi-criteria searching.
+ * This method searches using multiple filter groups (OR logic) - returns contacts matching
+ * either email OR phone. Properties are passed in the request BODY, not query parameters.
+ * Use this when you need flexible filtering or want to search by multiple criteria at once.
+ *
+ * @param {string} email - Optional: Contact email to search for
+ * @param {string} phone - Optional: Contact phone to search for
+ * @returns {Object|null} First matching contact object with all requested properties or null
+ * @throws {Error} If API request fails
  */
 export const searchContactByEmailOrPhone = async (email, phone) => {
   try {
-    console.log(`[HubSpot Contacts] 🔍 Searching for contact by email or phone:`);
+    console.log(`[HubSpot Contacts] 🔍 Searching for contact by email or phone (POST):`);
     console.log(`[HubSpot Contacts]    - Email: ${email}`);
     console.log(`[HubSpot Contacts]    - Phone: ${phone}`);
 
-    // Build filter groups for email and phone (OR logic - separate filter groups)
+    // Build filter groups for flexible OR-based searching
     const filterGroups = [];
 
+    // Filter group 1: Search by email if provided
     if (email) {
       filterGroups.push({
         filters: [
@@ -212,8 +221,8 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
       });
     }
 
+    // Filter group 2: Search by phone if provided (normalize by removing spaces)
     if (phone) {
-      // Normalize phone to international format for HubSpot search
       const normalizedPhone = phone.replace(/\s/g, '');
       filterGroups.push({
         filters: [
@@ -227,17 +236,15 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
     }
 
     if (filterGroups.length === 0) {
-      console.log(`[HubSpot Contacts] ⚠️ No valid search criteria provided`);
+      console.log(`[HubSpot Contacts] ⚠️ No valid search criteria provided (email and phone both missing)`);
       return null;
     }
 
+    // POST request: properties go in request BODY, not query parameters
     const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
-      filterGroups,
-      limit: 10
-    }, {
-      params: {
-        properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
-      }
+      filterGroups,       // Filter groups implement OR logic: match any filter group
+      limit: 10,
+      properties: ['firstname','lastname','email','phone','address','contact_type']  // BODY
     });
 
     const results = response.data.results || [];
@@ -248,7 +255,7 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
         console.log(`[HubSpot Contacts]    ${index + 1}. ${contact.properties.firstname} ${contact.properties.lastname} (ID: ${contact.id})`);
       });
 
-      // Prioritize exact email match if provided
+      // Prioritize exact email match if email was provided
       if (email) {
         const emailMatch = results.find(
           contact => contact.properties.email && contact.properties.email.toLowerCase() === email.toLowerCase()

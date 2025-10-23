@@ -156,6 +156,18 @@ export const createAgent = async (req, res) => {
 
     console.log(`[Agencies] ➕ Creating agent for agency: ${agencyId}`);
 
+    // Check if agent already exists before attempting to create
+    const existingAgent = await agentService.findByEmailOrPhone(email, phone);
+    if (existingAgent) {
+      console.log(`[Agencies] ⚠️ Agent already exists - Field: ${existingAgent.duplicateField}`);
+      return res.status(409).json({
+        error: 'Duplicate Agent',
+        message: 'Please enter a unique value',
+        duplicateField: existingAgent.duplicateField || 'email',
+        agent: existingAgent
+      });
+    }
+
     const agent = await agentService.createForAgency(agencyId, firstname, lastname, email, phone);
 
     return res.status(201).json({
@@ -164,6 +176,15 @@ export const createAgent = async (req, res) => {
     });
   } catch (error) {
     console.error('[Agencies] ❌ Error creating agent:', error);
+
+    // Handle HubSpot 409 conflicts (duplicate)
+    if (error.response?.status === 409) {
+      return res.status(409).json({
+        error: 'Duplicate Agent',
+        message: 'Please enter a unique value',
+        duplicateField: 'email'
+      });
+    }
 
     res.status(500).json({
       error: 'Server Error',

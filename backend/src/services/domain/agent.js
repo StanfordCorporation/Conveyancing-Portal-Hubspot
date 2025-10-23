@@ -31,18 +31,33 @@ export const findByEmail = async (email) => {
 
 /**
  * Find agent by email or phone
+ * Returns { agent, duplicateField } where duplicateField is 'email' or 'phone'
  */
 export const findByEmailOrPhone = async (email, phone) => {
   const contact = await contactsIntegration.searchContactByEmailOrPhone(email, phone);
 
   if (!contact) return null;
 
+  // Determine which field matched (email or phone)
+  let duplicateField = null;
+  if (email && contact.properties.email?.toLowerCase() === email.toLowerCase()) {
+    duplicateField = 'email';
+  } else if (phone && contact.properties.phone) {
+    // Normalize phone for comparison (remove spaces and special chars)
+    const normalizedSearchPhone = phone.replace(/\s/g, '').replace(/[^\d+]/g, '');
+    const normalizedContactPhone = contact.properties.phone.replace(/\s/g, '').replace(/[^\d+]/g, '');
+    if (normalizedSearchPhone === normalizedContactPhone) {
+      duplicateField = 'phone';
+    }
+  }
+
   return {
     id: contact.id,
     firstname: contact.properties.firstname,
     lastname: contact.properties.lastname,
     email: contact.properties.email,
-    phone: contact.properties.phone
+    phone: contact.properties.phone,
+    duplicateField
   };
 };
 

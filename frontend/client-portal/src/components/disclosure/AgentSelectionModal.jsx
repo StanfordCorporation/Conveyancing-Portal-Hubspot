@@ -226,10 +226,19 @@ export function CreateAgentForm({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [highlightedFields, setHighlightedFields] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear highlighted error for this field when user starts typing
+    if (highlightedFields[name]) {
+      setHighlightedFields((prev) => ({ ...prev, [name]: false }));
+    }
+    // Clear error message when user starts typing
+    if (error) {
+      setError('');
+    }
   };
 
   const isFormValid = () => {
@@ -249,6 +258,7 @@ export function CreateAgentForm({
 
     setIsLoading(true);
     setError('');
+    setHighlightedFields({});
 
     try {
       const response = await api.post(`/agencies/${agency.id}/agents/create`, {
@@ -272,7 +282,15 @@ export function CreateAgentForm({
       }
     } catch (err) {
       console.error('Agent creation error:', err);
-      setError(err.response?.data?.message || 'Failed to create agent. Please try again.');
+
+      // Handle duplicate agent error (409)
+      if (err.response?.status === 409 && err.response?.data?.duplicateField) {
+        const duplicateField = err.response.data.duplicateField;
+        setHighlightedFields({ [duplicateField]: true });
+        setError('Please enter a unique value');
+      } else {
+        setError(err.response?.data?.message || 'Failed to create agent. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -336,8 +354,15 @@ export function CreateAgentForm({
               value={formData.email}
               onChange={handleChange}
               placeholder="john.smith@agency.com"
-              className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+              className={`w-full px-4 py-3 border-2 rounded-lg focus:border-blue-600 focus:ring-4 outline-none transition-all ${
+                highlightedFields.email
+                  ? 'border-red-500 focus:ring-red-100'
+                  : 'border-slate-200 focus:ring-blue-100'
+              }`}
             />
+            {highlightedFields.email && (
+              <p className="text-sm text-red-600 mt-1">Please enter a unique value</p>
+            )}
           </div>
 
           <div>
@@ -350,8 +375,15 @@ export function CreateAgentForm({
               value={formData.phone}
               onChange={handleChange}
               placeholder="0412 345 678"
-              className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+              className={`w-full px-4 py-3 border-2 rounded-lg focus:border-blue-600 focus:ring-4 outline-none transition-all ${
+                highlightedFields.phone
+                  ? 'border-red-500 focus:ring-red-100'
+                  : 'border-slate-200 focus:ring-blue-100'
+              }`}
             />
+            {highlightedFields.phone && (
+              <p className="text-sm text-red-600 mt-1">Please enter a unique value</p>
+            )}
           </div>
         </div>
       </DialogContent>
