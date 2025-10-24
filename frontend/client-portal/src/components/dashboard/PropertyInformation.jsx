@@ -74,82 +74,93 @@ export default function PropertyInformation({ dealId }) {
     <div className="property-info-container">
       {/* Section 1: Seller Information */}
       <div className="property-info-section">
-        <h2 className="section-title">Seller Information</h2>
-        <div className="section-divider"></div>
+        <div className="section-header">
+          <h2 className="section-title">Seller Information</h2>
+        </div>
 
-        <div className="info-grid">
-          {/* Primary Seller */}
-          <div className="info-group">
-            <h3 className="group-title">Primary Seller</h3>
-            <div className="info-fields">
-              <div className="info-field">
-                <label className="field-label">Full Name</label>
-                <p className="field-value">{propertyData.primarySeller?.fullName || 'N/A'}</p>
-              </div>
-              <div className="info-field">
-                <label className="field-label">Email Address</label>
-                <p className="field-value">{propertyData.primarySeller?.email || 'N/A'}</p>
-              </div>
-              <div className="info-field">
-                <label className="field-label">Mobile</label>
-                <p className="field-value">{propertyData.primarySeller?.phone || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Seller - Only show if data exists */}
-          {hasAdditionalSellerData() && (
-            <div className="info-group">
-              <h3 className="group-title">Additional Seller</h3>
-              <div className="info-fields">
+        {/* Single Card for Seller Info */}
+        <div className="info-card">
+          <div className="sellers-container">
+            {/* Primary Seller */}
+            <div className="seller-block">
+              <h3 className="seller-label">PRIMARY SELLER</h3>
+              <div className="seller-fields">
                 <div className="info-field">
                   <label className="field-label">Full Name</label>
-                  <p className="field-value">{propertyData.additionalSeller?.fullName || 'N/A'}</p>
+                  <p className="field-value">{propertyData.primarySeller?.fullName || 'N/A'}</p>
                 </div>
                 <div className="info-field">
                   <label className="field-label">Email Address</label>
-                  <p className="field-value">{propertyData.additionalSeller?.email || 'N/A'}</p>
+                  <p className="field-value">{propertyData.primarySeller?.email || 'N/A'}</p>
                 </div>
                 <div className="info-field">
                   <label className="field-label">Mobile</label>
-                  <p className="field-value">{propertyData.additionalSeller?.phone || 'N/A'}</p>
+                  <p className="field-value">{propertyData.primarySeller?.phone || 'N/A'}</p>
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Additional Seller - Only show if data exists */}
+            {hasAdditionalSellerData() && (
+              <>
+                <div className="seller-divider"></div>
+                <div className="seller-block">
+                  <h3 className="seller-label">ADDITIONAL SELLER</h3>
+                  <div className="seller-fields">
+                    <div className="info-field">
+                      <label className="field-label">Full Name</label>
+                      <p className="field-value">{propertyData.additionalSeller?.fullName || 'N/A'}</p>
+                    </div>
+                    <div className="info-field">
+                      <label className="field-label">Email Address</label>
+                      <p className="field-value">{propertyData.additionalSeller?.email || 'N/A'}</p>
+                    </div>
+                    <div className="info-field">
+                      <label className="field-label">Mobile</label>
+                      <p className="field-value">{propertyData.additionalSeller?.phone || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Section 2: Property Details */}
       <div className="property-info-section">
-        <h2 className="section-title">Property Details</h2>
-        <div className="section-divider"></div>
+        <div className="section-header">
+          <h2 className="section-title">Property Details</h2>
+        </div>
 
-        <div className="info-grid">
-          <div className="info-field full-width">
-            <label className="field-label">Property Address</label>
-            <p className="field-value">{propertyData.propertyAddress || 'N/A'}</p>
-          </div>
-          <div className="info-field">
-            <label className="field-label">Deal Stage</label>
-            <p className="field-value">{propertyData.dealStage || 'N/A'}</p>
-          </div>
-          <div className="info-field">
-            <label className="field-label">Next Step</label>
-            <p className="field-value">{propertyData.nextStep || 'N/A'}</p>
+        <div className="info-card">
+          <div className="info-grid-2col">
+            <div className="info-field full-width">
+              <label className="field-label">Property Address</label>
+              <p className="field-value">{propertyData.propertyAddress || 'N/A'}</p>
+            </div>
+            <div className="info-field">
+              <label className="field-label">Deal Stage</label>
+              <p className="field-value">{propertyData.dealStage || 'N/A'}</p>
+            </div>
+            <div className="info-field">
+              <label className="field-label">Next Step</label>
+              <p className="field-value">{propertyData.nextStep || 'N/A'}</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Section 3: Agency Details */}
       <div className="property-info-section">
-        <h2 className="section-title">Agency Details</h2>
-        <div className="section-divider"></div>
+        <div className="section-header">
+          <h2 className="section-title">Agency Details</h2>
+        </div>
 
-        <div className="info-grid">
-          {/* Agency Information */}
-          <div className="info-group">
-            <h3 className="group-title">Agency</h3>
+        <div className="info-grid-2col-section">
+          {/* Agency Information Card */}
+          <div className="info-card">
+            <h3 className="card-title">Agency</h3>
             <div className="info-fields">
               <div className="info-field">
                 <label className="field-label">Agency Name</label>
@@ -162,9 +173,9 @@ export default function PropertyInformation({ dealId }) {
             </div>
           </div>
 
-          {/* Agent Information */}
-          <div className="info-group">
-            <h3 className="group-title">Listing Agent</h3>
+          {/* Agent Information Card */}
+          <div className="info-card">
+            <h3 className="card-title">Listing Agent</h3>
             <div className="info-fields">
               <div className="info-field">
                 <label className="field-label">Agent Full Name</label>
@@ -202,108 +213,185 @@ export default function PropertyInformation({ dealId }) {
           color: var(--error-color, #dc3545);
           background: rgba(220, 53, 69, 0.1);
           border-left: 4px solid var(--error-color, #dc3545);
+          border-radius: 6px;
         }
 
+        /* Section Structure */
         .property-info-section {
-          margin-bottom: 32px;
+          margin-bottom: 40px;
         }
 
         .property-info-section:last-child {
           margin-bottom: 0;
         }
 
+        .section-header {
+          margin-bottom: 20px;
+        }
+
         .section-title {
-          font-size: 18px;
-          font-weight: 600;
+          font-size: 20px;
+          font-weight: 700;
           color: var(--gray-900);
-          margin: 0 0 12px 0;
+          margin: 0;
           letter-spacing: -0.3px;
+          position: relative;
+          padding-left: 0;
         }
 
-        .section-divider {
-          height: 2px;
-          background: linear-gradient(90deg, var(--primary, #3b82f6) 0%, transparent 100%);
-          margin-bottom: 20px;
+        .section-title::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          bottom: -8px;
+          width: 40px;
+          height: 3px;
+          background: var(--primary-blue, #0E6DFF);
+          border-radius: 2px;
         }
 
-        .info-grid {
+        /* Card Styling */
+        .info-card {
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          padding: 24px;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .info-card:hover {
+          border-color: var(--primary-blue, #0E6DFF);
+          box-shadow: 0 4px 12px rgba(14, 109, 255, 0.12);
+        }
+
+        .card-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--primary-blue, #0E6DFF);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin: 0 0 16px 0;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #F3F4F6;
+        }
+
+        /* Seller Block Styling */
+        .sellers-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .seller-block {
+          padding: 0;
+        }
+
+        .seller-block:first-child {
+          padding-bottom: 20px;
+        }
+
+        .seller-block:last-child {
+          padding-top: 20px;
+        }
+
+        .seller-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--primary-blue, #0E6DFF);
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+          margin: 0 0 14px 0;
+        }
+
+        .seller-divider {
+          height: 1px;
+          background: #F3F4F6;
+          margin: 0;
+          width: 100%;
+        }
+
+        .seller-fields {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 24px;
-          margin-bottom: 20px;
+          grid-template-columns: 1fr;
+          gap: 14px;
         }
 
-        .info-field.full-width {
+        /* Two Column Grid Section */
+        .info-grid-2col-section {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 24px;
+        }
+
+        .info-grid-2col {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 24px;
+        }
+
+        .info-grid-2col .info-field.full-width {
           grid-column: 1 / -1;
         }
 
-        .info-group {
-          background: var(--card-bg, #f9fafb);
-          border: 1px solid var(--border-color, #e5e7eb);
-          border-radius: 8px;
-          padding: 16px;
-          transition: all 0.2s ease;
-        }
-
-        .info-group:hover {
-          border-color: var(--primary, #3b82f6);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-        }
-
-        .group-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--primary, #3b82f6);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin: 0 0 12px 0;
-        }
-
+        /* Field Styling */
         .info-fields {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 18px;
         }
 
         .info-field {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
 
         .field-label {
-          font-size: 12px;
-          font-weight: 500;
-          color: var(--gray-600);
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--gray-600, #4B5563);
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.4px;
         }
 
         .field-value {
-          font-size: 15px;
-          color: var(--gray-900);
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--gray-900, #1F2937);
           margin: 0;
           word-break: break-word;
-          font-weight: 500;
+          line-height: 1.5;
         }
 
         .field-value:empty::before {
           content: 'N/A';
-          color: var(--gray-400);
+          color: var(--gray-400, #9CA3AF);
           font-weight: 400;
           font-style: italic;
         }
 
-        /* Responsive Design */
+        /* Responsive Design - Tablet */
         @media (max-width: 1024px) {
-          .info-grid {
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          .info-grid-2col-section,
+          .info-grid-2col {
+            grid-template-columns: 1fr;
             gap: 20px;
+          }
+
+          .section-title {
+            font-size: 18px;
+          }
+
+          .property-info-section {
+            margin-bottom: 32px;
           }
         }
 
+        /* Responsive Design - Mobile */
         @media (max-width: 768px) {
-          .info-grid {
+          .info-grid-2col-section,
+          .info-grid-2col {
             grid-template-columns: 1fr;
             gap: 16px;
           }
@@ -312,8 +400,47 @@ export default function PropertyInformation({ dealId }) {
             font-size: 16px;
           }
 
+          .section-title::before {
+            width: 30px;
+            height: 2px;
+          }
+
+          .info-card {
+            padding: 16px;
+          }
+
+          .card-title {
+            font-size: 13px;
+            margin: 0 0 12px 0;
+            padding-bottom: 10px;
+          }
+
+          .info-fields {
+            gap: 14px;
+          }
+
+          .field-label {
+            font-size: 10px;
+          }
+
+          .field-value {
+            font-size: 13px;
+          }
+
           .property-info-section {
-            margin-bottom: 24px;
+            margin-bottom: 28px;
+          }
+
+          .seller-label {
+            font-size: 11px;
+          }
+
+          .seller-block:first-child {
+            padding-bottom: 16px;
+          }
+
+          .seller-block:last-child {
+            padding-top: 16px;
           }
         }
       `}</style>
