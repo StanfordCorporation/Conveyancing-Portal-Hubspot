@@ -110,17 +110,8 @@ export default function ClientDashboard() {
       <header className="header">
         <div className="header-left">
           <div className="logo">
-            <div className="logo-icon">Home</div>
+            <img src="/logo (1).webp" alt="Property Logo" className="logo-image" />
             <div className="logo-text">Property Workspace</div>
-          </div>
-
-          <div className="property-selector">
-            <span>Loc</span>
-            <select id="propertySelect" defaultValue="5 Windsor Court, Deebing Heights QLD">
-              <option>5 Windsor Court, Deebing Heights QLD</option>
-              <option>88 Philip Street, Sydney NSW</option>
-              <option>42 Collins Street, Melbourne VIC</option>
-            </select>
           </div>
         </div>
 
