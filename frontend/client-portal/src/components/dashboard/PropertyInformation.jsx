@@ -76,18 +76,25 @@ export default function PropertyInformation({ dealId }) {
 
   return (
     <div className="property-info-container">
-      <SellerInformation
-        primarySeller={propertyData.primarySeller}
-        additionalSeller={propertyData.additionalSeller}
-        hasAdditional={hasAdditionalSellerData()}
-      />
-      <PropertyDetails
-        propertyAddress={propertyData.propertyAddress}
-        dealStage={propertyData.dealStage}
-        nextStep={propertyData.nextStep}
-      />
-      <AgencyDetails agency={propertyData.agency} />
-      <ListingAgent agent={propertyData.agent} />
+      {/* Top Row: Seller Information & Property Details */}
+      <div className="info-grid-row">
+        <SellerInformation
+          primarySeller={propertyData.primarySeller}
+          additionalSeller={propertyData.additionalSeller}
+          hasAdditional={hasAdditionalSellerData()}
+        />
+        <PropertyDetails
+          propertyAddress={propertyData.propertyAddress}
+          dealStage={propertyData.dealStage}
+          nextStep={propertyData.nextStep}
+        />
+      </div>
+
+      {/* Bottom Row: Agency & Listing Agent */}
+      <div className="info-grid-row">
+        <AgencyDetails agency={propertyData.agency} />
+        <ListingAgent agent={propertyData.agent} />
+      </div>
     </div>
   );
 }
