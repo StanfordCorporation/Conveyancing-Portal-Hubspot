@@ -465,6 +465,108 @@ body {
   flex-shrink: 0;
 }
 
+/* Stage Items - Clickable Stages */
+.stage-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 12px;
+  border-radius: 6px;
+  border-left: 4px solid;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+
+.stage-item:hover:not(.stage-locked) {
+  transform: translateX(4px);
+}
+
+/* Completed Stage - Green */
+.stage-item.stage-completed {
+  background: var(--success-light);
+  border-left-color: var(--success);
+  color: #065F46;
+}
+
+.stage-item.stage-completed:hover {
+  background: rgba(17, 163, 96, 0.12);
+}
+
+/* Current Stage - Blue */
+.stage-item.stage-current {
+  background: var(--primary-blue-light);
+  border-left-color: var(--primary-blue);
+  color: var(--primary-blue);
+  font-weight: 500;
+}
+
+.stage-item.stage-current:hover {
+  background: rgba(14, 109, 255, 0.12);
+}
+
+/* Locked Stage - Red/Gray */
+.stage-item.stage-locked {
+  background: #F3F4F6;
+  border-left-color: #EF4444;
+  color: #6B7280;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.stage-item.stage-locked:hover {
+  background: #F3F4F6;
+  transform: none;
+}
+
+.stage-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.stage-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-content h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+}
+
+.stage-content p {
+  font-size: 12px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.stage-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.stage-indicator svg {
+  width: 18px;
+  height: 18px;
+}
+
 .sidebar-toggle {
   width: 36px;
   height: 36px;

@@ -13,8 +13,9 @@ export default function ClientDashboard() {
   const storedUser = JSON.parse(localStorage.getItem('user'));
 
   const [expandedProperty, setExpandedProperty] = useState(0);
-  const [activeSection, setActiveSection] = useState('questionnaire');
+  const [activeSection, setActiveSection] = useState('information');
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
+  const [propertyStages, setPropertyStages] = useState({});
 
   // Client data from login
   const [clientData, setClientData] = useState({
@@ -55,6 +56,13 @@ export default function ClientDashboard() {
           console.log(`[Dashboard] ✅ Loaded ${response.data.deals.length} deals`);
           setProperties(response.data.deals);
           setCurrentProperty(response.data.deals[0]); // Auto-select first property
+
+          // Initialize stages for each property (start at stage 1)
+          const initialStages = {};
+          response.data.deals.forEach((deal) => {
+            initialStages[deal.id] = 1;
+          });
+          setPropertyStages(initialStages);
         } else {
           console.log('[Dashboard] ℹ️ No deals found');
           setProperties([]);
@@ -81,6 +89,48 @@ export default function ClientDashboard() {
 
   const switchProperty = (property) => {
     setCurrentProperty(property);
+  };
+
+  // Determine if a stage is accessible based on dependencies
+  const isStageAccessible = (stageNumber, currentPropertyId) => {
+    if (stageNumber === 1) return true; // Stage 1 always accessible
+    if (stageNumber === 2) return true; // Stage 2 always accessible
+    if (stageNumber === 3) return propertyStages[currentPropertyId] >= 2; // Requires stage 2
+    if (stageNumber === 4) return propertyStages[currentPropertyId] >= 3; // Requires stage 3
+    if (stageNumber === 5) return propertyStages[currentPropertyId] >= 4; // Requires stage 4
+    return false;
+  };
+
+  // Get stage status (completed, current, locked)
+  const getStageStatus = (stageNumber, currentPropertyId) => {
+    const currentStage = propertyStages[currentPropertyId] || 1;
+    if (stageNumber < currentStage) return 'completed';
+    if (stageNumber === currentStage) return 'current';
+    return 'locked';
+  };
+
+  // Handle stage click
+  const handleStageClick = (stageNumber, currentPropertyId) => {
+    if (!isStageAccessible(stageNumber, currentPropertyId)) {
+      console.log(`Stage ${stageNumber} is locked`);
+      return;
+    }
+
+    // Update current stage
+    setPropertyStages(prev => ({
+      ...prev,
+      [currentPropertyId]: stageNumber
+    }));
+
+    // Switch to appropriate section based on stage
+    const sectionMap = {
+      1: 'information',
+      2: 'questionnaire',
+      3: 'quote',
+      4: 'signature',
+      5: 'payment'
+    };
+    setActiveSection(sectionMap[stageNumber]);
   };
 
   const switchSection = (section) => {
@@ -188,38 +238,150 @@ export default function ClientDashboard() {
 
                   {expandedProperty === idx && (
                     <div className="property-card-details">
-                      <div className="details-item completed">
-                        <div className="item-icon">P</div>
-                        <div className="item-content">
-                          <h4>Property Information</h4>
-                          <p>Completed</p>
+                      {/* Stage 1: Review Property Information */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(1, prop.id)} ${!isStageAccessible(1, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(1, prop.id)}
+                      >
+                        <div className="stage-number">1</div>
+                        <div className="stage-content">
+                          <h4>Review Property Information</h4>
+                          <p>Prefilled by us</p>
                         </div>
-                        <svg className="item-check" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                        </svg>
-                      </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(1, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(1, prop.id) === 'current' && (
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
+                          {getStageStatus(1, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
 
-                      <div className="details-item in-progress">
-                        <div className="item-icon">Q</div>
-                        <div className="item-content">
-                          <h4>Property Questionnaire</h4>
-                          <p>8 of 13 questions</p>
+                      {/* Stage 2: Fill in Property Details */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(2, prop.id)} ${!isStageAccessible(2, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(2, prop.id)}
+                      >
+                        <div className="stage-number">2</div>
+                        <div className="stage-content">
+                          <h4>Fill in Property Details</h4>
+                          <p>Answer questionnaire</p>
                         </div>
-                        <svg className="item-clock" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(2, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(2, prop.id) === 'current' && (
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
+                          {getStageStatus(2, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
 
-                      <div className="details-item available">
-                        <div className="item-icon">$</div>
-                        <div className="item-content">
-                          <h4>Quote Review</h4>
-                          <p>Ready for review</p>
+                      {/* Stage 3: Review Your Quote */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(3, prop.id)} ${!isStageAccessible(3, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(3, prop.id)}
+                      >
+                        <div className="stage-number">3</div>
+                        <div className="stage-content">
+                          <h4>Review Your Quote</h4>
+                          <p>Review fees and charges</p>
                         </div>
-                        <svg className="item-more" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 8c1.1 0 2-0.9 2-2s-0.9-2-2-2-2 0.9-2 2 0.9 2 2 2zm0 2c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2zm0 6c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2z" />
-                        </svg>
-                      </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(3, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(3, prop.id) === 'current' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(3, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Stage 4: Awaiting Signature */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(4, prop.id)} ${!isStageAccessible(4, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(4, prop.id)}
+                      >
+                        <div className="stage-number">4</div>
+                        <div className="stage-content">
+                          <h4>Awaiting Signature</h4>
+                          <p>Sign documents</p>
+                        </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(4, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(4, prop.id) === 'current' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(4, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Stage 5: Payment Instructions */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(5, prop.id)} ${!isStageAccessible(5, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(5, prop.id)}
+                      >
+                        <div className="stage-number">5</div>
+                        <div className="stage-content">
+                          <h4>Payment Instructions</h4>
+                          <p>Complete payment</p>
+                        </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(5, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(5, prop.id) === 'current' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(5, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
