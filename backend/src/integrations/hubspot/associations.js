@@ -128,9 +128,77 @@ export const batchGetDealProperties = async (dealIds, properties = []) => {
   }
 };
 
+/**
+ * Get all contacts associated with a deal
+ * Returns array of contact objects with ID and properties
+ */
+export const getDealContacts = async (dealId) => {
+  try {
+    console.log(`[HubSpot Associations] 👥 Fetching all contacts for deal: ${dealId}`);
+
+    const response = await hubspotClient.get(
+      `/crm/v3/objects/deals/${dealId}/associations/contacts`,
+      {
+        params: { limit: 100 }
+      }
+    );
+
+    const contacts = response.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Found ${contacts.length} contacts for deal`);
+
+    // Return formatted contact details
+    return contacts.map(contact => ({
+      id: contact.id,
+      properties: contact.properties || {}
+    }));
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.log(`[HubSpot Associations] ℹ️ No contacts found for deal`);
+      return [];
+    }
+    console.error(`[HubSpot Associations] ❌ Error fetching deal contacts:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Get all companies (agencies) associated with a deal
+ * Returns array of company objects with ID and properties
+ */
+export const getDealCompanies = async (dealId) => {
+  try {
+    console.log(`[HubSpot Associations] 🏢 Fetching all companies for deal: ${dealId}`);
+
+    const response = await hubspotClient.get(
+      `/crm/v3/objects/deals/${dealId}/associations/companies`,
+      {
+        params: { limit: 100 }
+      }
+    );
+
+    const companies = response.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Found ${companies.length} companies for deal`);
+
+    // Return formatted company details
+    return companies.map(company => ({
+      id: company.id,
+      properties: company.properties || {}
+    }));
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.log(`[HubSpot Associations] ℹ️ No companies found for deal`);
+      return [];
+    }
+    console.error(`[HubSpot Associations] ❌ Error fetching deal companies:`, error.message);
+    throw error;
+  }
+};
+
 export default {
   getAssociations,
   createAssociation,
   getContactDeals,
-  batchGetDealProperties
+  batchGetDealProperties,
+  getDealContacts,
+  getDealCompanies
 };

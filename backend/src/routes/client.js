@@ -127,34 +127,121 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
     const deal = dealResponse[0];
 
     // Step 2: Get deal associations (primary seller, agency, agent, additional seller)
-    let associations = { primary_seller: null, agency: null, agent: null, additional_seller: null };
+    let associations = {
+      primary_seller: null,
+      agency: null,
+      agent: null,
+      additional_seller: null
+    };
 
     try {
-      // Get associations for this deal
-      const dealAssociationsResponse = await associationsIntegration.getContactDeals(contactId);
+      // Fetch all contacts associated with this deal
+      const dealContacts = await associationsIntegration.getDealContacts(dealId);
+      console.log(`[Client Dashboard] 👥 Found ${dealContacts.length} contacts for deal`);
 
-      // For now, we'll use the authenticated contact as primary seller
-      const primarySellerContact = await contactsIntegration.getContact(contactId);
+      // Fetch all companies (agencies) associated with this deal
+      const dealCompanies = await associationsIntegration.getDealCompanies(dealId);
+      console.log(`[Client Dashboard] 🏢 Found ${dealCompanies.length} companies for deal`);
 
-      if (primarySellerContact) {
-        associations.primary_seller = {
-          id: primarySellerContact.id,
-          firstname: primarySellerContact.properties.firstname || '',
-          lastname: primarySellerContact.properties.lastname || '',
-          email: primarySellerContact.properties.email || '',
-          phone: primarySellerContact.properties.phone || ''
-        };
+      // Process contacts: primary seller, additional sellers, and agent
+      let primarySeller = null;
+      let additionalSellers = [];
+      let agent = null;
+
+      for (const contact of dealContacts) {
+        const props = contact.properties;
+        if (!primarySeller && props.firstname && props.lastname) {
+          // First valid contact is primary seller
+          primarySeller = {
+            id: contact.id,
+            firstname: props.firstname || '',
+            lastname: props.lastname || '',
+            email: props.email || '',
+            phone: props.phone || ''
+          };
+        } else if (props.firstname && props.lastname) {
+          // Additional contacts could be additional sellers or agent
+          additionalSellers.push({
+            id: contact.id,
+            firstname: props.firstname || '',
+            lastname: props.lastname || '',
+            email: props.email || '',
+            phone: props.phone || ''
+          });
+        }
       }
 
-      // Try to get agency and agent associations from the deal
-      // This would require querying deal associations, which needs additional implementation
-      // For now, we'll set defaults
-      associations.agency = { name: 'N/A', phone: 'N/A', agent_name: 'N/A', agent_phone: 'N/A', agent_email: 'N/A' };
-      associations.additional_seller = { firstname: 'N/A', lastname: 'N/A', email: 'N/A', phone: 'N/A' };
+      // If we have no primary seller, use authenticated contact
+      if (!primarySeller) {
+        const primarySellerContact = await contactsIntegration.getContact(contactId);
+        if (primarySellerContact) {
+          primarySeller = {
+            id: primarySellerContact.id,
+            firstname: primarySellerContact.properties.firstname || '',
+            lastname: primarySellerContact.properties.lastname || '',
+            email: primarySellerContact.properties.email || '',
+            phone: primarySellerContact.properties.phone || ''
+          };
+        }
+      }
 
+      // Process companies (agencies)
+      let agencyData = null;
+      if (dealCompanies.length > 0) {
+        const firstCompany = dealCompanies[0];
+        agencyData = {
+          id: firstCompany.id,
+          name: firstCompany.properties.name || 'N/A',
+          email: firstCompany.properties.email || '',
+          phone: firstCompany.properties.phone || 'N/A'
+        };
+
+        // Try to fetch agent from company's contacts
+        try {
+          const agencyContacts = await associationsIntegration.getAssociations(
+            firstCompany.id,
+            'contacts'
+          );
+          if (agencyContacts.associations && agencyContacts.associations.length > 0) {
+            const agentContact = agencyContacts.associations[0];
+            agent = {
+              id: agentContact.id,
+              firstname: agentContact.properties.firstname || '',
+              lastname: agentContact.properties.lastname || '',
+              email: agentContact.properties.email || '',
+              phone: agentContact.properties.phone || ''
+            };
+            console.log(`[Client Dashboard] 👤 Found agent for agency`);
+          }
+        } catch (err) {
+          console.log(`[Client Dashboard] ℹ️ Could not fetch agent from agency`);
+        }
+      }
+
+      // Set associations
+      associations.primary_seller = primarySeller;
+      associations.agency = agencyData;
+      associations.agent = agent;
+      associations.additional_seller = additionalSellers.length > 0 ? additionalSellers[0] : null;
+
+      console.log(`[Client Dashboard] ✅ Deal associations processed`);
     } catch (error) {
       console.error(`[Client Dashboard] ⚠️ Error fetching associations:`, error.message);
-      // Continue with what we have
+      // Fallback: use authenticated contact as primary seller
+      try {
+        const primarySellerContact = await contactsIntegration.getContact(contactId);
+        if (primarySellerContact) {
+          associations.primary_seller = {
+            id: primarySellerContact.id,
+            firstname: primarySellerContact.properties.firstname || '',
+            lastname: primarySellerContact.properties.lastname || '',
+            email: primarySellerContact.properties.email || '',
+            phone: primarySellerContact.properties.phone || ''
+          };
+        }
+      } catch (fallbackErr) {
+        console.error(`[Client Dashboard] ❌ Fallback contact fetch failed`);
+      }
     }
 
     // Step 3: Transform response
@@ -185,9 +272,9 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
 
       // Agent Information
       agent: {
-        fullName: associations.agency?.agent_name || 'N/A',
-        phone: associations.agency?.agent_phone || 'N/A',
-        email: associations.agency?.agent_email || 'N/A'
+        fullName: associations.agent ? `${associations.agent.firstname} ${associations.agent.lastname}`.trim() : 'N/A',
+        phone: associations.agent?.phone || 'N/A',
+        email: associations.agent?.email || 'N/A'
       },
 
       // Next steps (placeholder)
