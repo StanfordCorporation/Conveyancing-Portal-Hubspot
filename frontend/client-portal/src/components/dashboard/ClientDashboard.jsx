@@ -13,6 +13,7 @@ export default function ClientDashboard() {
   const storedUser = JSON.parse(localStorage.getItem('user'));
 
   const [sidebarPropertySwitcherOpen, setSidebarPropertySwitcherOpen] = useState(false);
+  const [expandedProperty, setExpandedProperty] = useState(0);
   const [activeSection, setActiveSection] = useState('questionnaire');
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
 
@@ -154,41 +155,82 @@ export default function ClientDashboard() {
 
       <aside className={`sidebar ${sidebarPropertySwitcherOpen ? 'property-switcher-open' : ''}`} id="sidebar">
         <div className="property-header">
-          <div className="property-title-row">
-            <div className="property-title">
-              <h3>{currentProperty?.title || 'Select a Property'}</h3>
-              <p>{currentProperty?.subtitle || 'No property selected'}</p>
+          <div className="properties-section">
+            <div className="properties-header">
+              <h2>Properties</h2>
+              <p>Select a property to view details</p>
             </div>
-            <button className="sidebar-toggle" onClick={toggleSidebarPropertySwitcher}>v</button>
-          </div>
 
-          <div className={`property-switcher ${sidebarPropertySwitcherOpen ? 'show' : ''}`} id="propertySwitcher">
-            <button className="property-toggle-btn" onClick={toggleSidebarPropertySwitcher}>
-              <span>Hide Properties</span>
-              <span>^</span>
-            </button>
-
-            <div id="propertyList">
-              {properties.map((prop) => (
+            <div className="properties-list">
+              {properties.map((prop, idx) => (
                 <div
                   key={prop.index}
-                  className={`property-item ${currentProperty?.index === prop.index ? 'active' : ''}`}
-                  onClick={() => switchProperty(prop)}
+                  className={`property-card ${currentProperty?.index === prop.index ? 'active' : ''}`}
                 >
-                  <div className="property-item-title">{prop.title}</div>
-                  <div className="property-item-subtitle">{prop.subtitle}</div>
+                  <button
+                    className="property-card-header"
+                    onClick={() => {
+                      switchProperty(prop);
+                      setExpandedProperty(expandedProperty === idx ? -1 : idx);
+                    }}
+                  >
+                    <div className="property-card-content">
+                      <h3 className="property-card-title">{prop.title}</h3>
+                      <p className="property-card-address">{prop.subtitle}</p>
+                      <div className="property-card-status">
+                        <span className="status-badge">In Progress</span>
+                      </div>
+                      <div className="property-progress">
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${prop.progressPercentage || 60}%` }}></div>
+                        </div>
+                        <span className="progress-label">{prop.progressPercentage || 60}%</span>
+                      </div>
+                    </div>
+                    <svg className={`chevron-icon ${expandedProperty === idx ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedProperty === idx && (
+                    <div className="property-card-details">
+                      <div className="details-item completed">
+                        <div className="item-icon">P</div>
+                        <div className="item-content">
+                          <h4>Property Information</h4>
+                          <p>Completed</p>
+                        </div>
+                        <svg className="item-check" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                        </svg>
+                      </div>
+
+                      <div className="details-item in-progress">
+                        <div className="item-icon">Q</div>
+                        <div className="item-content">
+                          <h4>Property Questionnaire</h4>
+                          <p>8 of 13 questions</p>
+                        </div>
+                        <svg className="item-clock" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+
+                      <div className="details-item available">
+                        <div className="item-icon">$</div>
+                        <div className="item-content">
+                          <h4>Quote Review</h4>
+                          <p>Ready for review</p>
+                        </div>
+                        <svg className="item-more" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 8c1.1 0 2-0.9 2-2s-0.9-2-2-2-2 0.9-2 2 0.9 2 2 2zm0 2c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2zm0 6c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2z" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-
-            <button className="add-property-btn" onClick={() => console.log('Add property')}>
-              + Add New Property
-            </button>
-          </div>
-
-          <div className="property-status-chip">
-            <div className="status-dot"></div>
-            In Progress
           </div>
         </div>
 
