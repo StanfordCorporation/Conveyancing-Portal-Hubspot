@@ -63,7 +63,74 @@ export const createAssociation = async (fromObjectId, toObjectId, associationTyp
   }
 };
 
+/**
+ * Get deals associated with a contact (association type 4 = contact_to_deal)
+ * Returns array of deal IDs
+ */
+export const getContactDeals = async (contactId) => {
+  try {
+    console.log(`[HubSpot Associations] 🔗 Fetching deals for contact: ${contactId}`);
+
+    const response = await hubspotClient.get(
+      `/crm/v3/objects/contacts/${contactId}/associations/deals`,
+      {
+        params: { limit: 100 }
+      }
+    );
+
+    const dealIds = response.data.results?.map(result => result.id) || [];
+    console.log(`[HubSpot Associations] ✅ Found ${dealIds.length} associated deals`);
+    return dealIds;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.log(`[HubSpot Associations] ℹ️ No deals found for contact`);
+      return [];
+    }
+    console.error(`[HubSpot Associations] ❌ Error fetching deals:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Batch fetch properties for multiple deals
+ * Fetches all properties for up to 100 deals in a single API call
+ */
+export const batchGetDealProperties = async (dealIds, properties = []) => {
+  try {
+    if (!dealIds || dealIds.length === 0) {
+      console.log(`[HubSpot Associations] ℹ️ No deal IDs provided for batch fetch`);
+      return [];
+    }
+
+    console.log(`[HubSpot Associations] 📦 Batch fetching ${dealIds.length} deals`);
+
+    const requestBody = {
+      inputs: dealIds.map(id => ({ id })),
+      properties: properties.length > 0 ? properties : [
+        'dealname',
+        'property_address',
+        'dealstage',
+        'number_of_owners'
+      ]
+    };
+
+    const response = await hubspotClient.post(
+      `/crm/v3/objects/deals/batch/read`,
+      requestBody
+    );
+
+    const deals = response.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Batch fetch returned ${deals.length} deals`);
+    return deals;
+  } catch (error) {
+    console.error(`[HubSpot Associations] ❌ Batch fetch error:`, error.message);
+    throw error;
+  }
+};
+
 export default {
   getAssociations,
-  createAssociation
+  createAssociation,
+  getContactDeals,
+  batchGetDealProperties
 };

@@ -187,7 +187,7 @@ const AgentLogin = () => {
       {/* Background with Particle Waves */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="/images/property-law-bg.png"
+          src="/images/property-law.png"
           alt="Property Law Background"
           className="absolute inset-0 w-full h-full object-cover opacity-50"
         />

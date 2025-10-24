@@ -16,6 +16,7 @@ import { authenticateJWT, authorizeRole } from './middleware/auth.js';
 import * as authRoutes from './routes/auth.js';
 import * as agenciesRoutes from './routes/agencies.js';
 import * as workflowsRoutes from './routes/workflows.js';
+import clientRoutes from './routes/client.js';
 
 dotenv.config();
 
@@ -78,6 +79,11 @@ app.post('/api/agencies/search-agent', agenciesRoutes.searchAgent);
 app.post('/api/workflows/agent-client-creation', workflowsRoutes.agentClientCreation);
 app.post('/api/workflows/client-disclosure', workflowsRoutes.clientDisclosure);
 app.post('/api/workflows/property-intake', workflowsRoutes.propertyIntake);
+
+/**
+ * Client Portal Routes (Protected)
+ */
+app.use('/api/client', clientRoutes);
 
 // ============================================================================
 // HEALTH CHECK & INFO ROUTES

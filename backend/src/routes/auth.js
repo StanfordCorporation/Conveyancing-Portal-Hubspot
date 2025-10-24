@@ -86,10 +86,11 @@ export const verifyOTP = async (req, res) => {
       result = await otpService.verifyOTPForClient(identifier, otp, method);
     }
 
-    // Generate JWT token
+    // Generate JWT token with contactId for dashboard access
     const token = jwt.sign(
       {
         userId: result.user.id,
+        contactId: result.user.id,
         email: result.user.email,
         role: result.user.role
       },
@@ -100,7 +101,15 @@ export const verifyOTP = async (req, res) => {
     return res.json({
       success: true,
       token,
-      user: result.user
+      user: {
+        id: result.user.id,
+        contactId: result.user.id,
+        firstname: result.user.firstname,
+        lastname: result.user.lastname,
+        email: result.user.email,
+        phone: result.user.phone,
+        role: result.user.role
+      }
     });
   } catch (error) {
     console.error('[Auth] ❌ Error verifying OTP:', error);

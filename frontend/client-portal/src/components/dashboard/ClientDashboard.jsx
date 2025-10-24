@@ -1,12 +1,76 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, CheckCircle, FileText, Users, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import api from '../../services/api.js';
+import './dashboard.css';
 
 export default function ClientDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const dealId = location.state?.dealId;
-  const message = location.state?.message;
+
+  // Get stored user data from localStorage
+  const storedUser = JSON.parse(localStorage.getItem('user'));
+
+  const [sidebarPropertySwitcherOpen, setSidebarPropertySwitcherOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('questionnaire');
+  const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
+
+  // Client data from login
+  const [clientData, setClientData] = useState({
+    fullName: storedUser ? `${storedUser.firstname} ${storedUser.lastname}`.trim() : 'Client',
+    email: storedUser?.email || '',
+    phone: storedUser?.phone || ''
+  });
+
+  // Dynamically loaded properties
+  const [properties, setProperties] = useState([]);
+  const [currentProperty, setCurrentProperty] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [formData, setFormData] = useState({
+    q1_1: '',
+    q1_2: '',
+    q1_2_details: '',
+    q1_3: '',
+    q1_3_details: '',
+  });
+
+  const [conditionalFields, setConditionalFields] = useState({
+    q1_2_details: false,
+    q1_3_details: false,
+  });
+
+  // Fetch dashboard data on component mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        console.log('[Dashboard] 📊 Fetching dashboard data...');
+
+        const response = await api.get('/client/dashboard-data');
+
+        if (response.data.deals && response.data.deals.length > 0) {
+          console.log(`[Dashboard] ✅ Loaded ${response.data.deals.length} deals`);
+          setProperties(response.data.deals);
+          setCurrentProperty(response.data.deals[0]); // Auto-select first property
+        } else {
+          console.log('[Dashboard] ℹ️ No deals found');
+          setProperties([]);
+          setError('No properties found');
+        }
+      } catch (err) {
+        console.error('[Dashboard] ❌ Error fetching data:', err.message);
+        setError(err.message || 'Failed to load dashboard data');
+        // Fallback: show empty state
+        setProperties([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -14,157 +78,386 @@ export default function ClientDashboard() {
     navigate('/login');
   };
 
+  const toggleSidebarPropertySwitcher = () => {
+    setSidebarPropertySwitcherOpen(!sidebarPropertySwitcherOpen);
+  };
+
+  const switchProperty = (index, title, subtitle) => {
+    setCurrentProperty({ index, title, subtitle });
+    setSidebarPropertySwitcherOpen(false);
+  };
+
+  const switchSection = (section) => {
+    setActiveSection(section);
+  };
+
+  const switchQuestionnaireTab = (tabId) => {
+    setActiveQuestionnaireTab(tabId);
+  };
+
+  const toggleConditional = (fieldId, value) => {
+    setConditionalFields(prev => ({ ...prev, [fieldId]: value === 'yes' }));
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Conveyancing Portal</h1>
-                <p className="text-sm text-slate-600">Client Dashboard</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </button>
+    <div className="app-container" id="appContainer">
+      <header className="header">
+        <div className="header-left">
+          <div className="logo">
+            <div className="logo-icon">Home</div>
+            <div className="logo-text">Property Workspace</div>
           </div>
+
+          <div className="property-selector">
+            <span>Loc</span>
+            <select id="propertySelect" defaultValue="5 Windsor Court, Deebing Heights QLD">
+              <option>5 Windsor Court, Deebing Heights QLD</option>
+              <option>88 Philip Street, Sydney NSW</option>
+              <option>42 Collins Street, Melbourne VIC</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="header-actions">
+          <div className="search-bar">
+            <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input type="text" placeholder="Search documents, questions..." />
+          </div>
+
+          <button className="notification-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+            </svg>
+            <span className="notification-badge">3</span>
+          </button>
+
+          <div className="user-menu" onClick={toggleSidebarPropertySwitcher}>
+            <div className="user-avatar">
+              {clientData.fullName
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)}
+            </div>
+            <div className="user-info">
+              <h4>{clientData.fullName}</h4>
+              <p>Client Account</p>
+            </div>
+          </div>
+
+          <button onClick={handleLogout} className="notification-btn" title="Logout">
+            <LogOut size={20} />
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Success Message */}
-        {message && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3 animate-slide-down">
-            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-green-900">{message}</h3>
-              {dealId && (
-                <p className="text-sm text-green-700 mt-1">Deal ID: {dealId}</p>
-              )}
+      <aside className={`sidebar ${sidebarPropertySwitcherOpen ? 'property-switcher-open' : ''}`} id="sidebar">
+        <div className="property-header">
+          <div className="property-title-row">
+            <div className="property-title">
+              <h3>{currentProperty?.title || 'Select a Property'}</h3>
+              <p>{currentProperty?.subtitle || 'No property selected'}</p>
+            </div>
+            <button className="sidebar-toggle" onClick={toggleSidebarPropertySwitcher}>v</button>
+          </div>
+
+          <div className={`property-switcher ${sidebarPropertySwitcherOpen ? 'show' : ''}`} id="propertySwitcher">
+            <button className="property-toggle-btn" onClick={toggleSidebarPropertySwitcher}>
+              <span>Hide Properties</span>
+              <span>^</span>
+            </button>
+
+            <div id="propertyList">
+              {properties.map((prop) => (
+                <div
+                  key={prop.index}
+                  className={`property-item ${currentProperty.index === prop.index ? 'active' : ''}`}
+                  onClick={() => switchProperty(prop.index, prop.title, prop.subtitle)}
+                >
+                  <div className="property-item-title">{prop.title}</div>
+                  <div className="property-item-subtitle">{prop.subtitle}</div>
+                </div>
+              ))}
+            </div>
+
+            <button className="add-property-btn" onClick={() => console.log('Add property')}>
+              + Add New Property
+            </button>
+          </div>
+
+          <div className="property-status-chip">
+            <div className="status-dot"></div>
+            In Progress
+          </div>
+        </div>
+
+        <div className="progress-overview">
+          <div className="progress-ring">
+            <svg className="progress-svg" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" className="progress-bg" />
+              <circle cx="50" cy="50" r="45" className="progress-fill" style={{ strokeDasharray: 283, strokeDashoffset: 113 }} />
+            </svg>
+            <div className="progress-center">
+              <span className="progress-percentage">60%</span>
+              <span className="progress-label">Complete</span>
             </div>
           </div>
+        </div>
+
+        <nav className="sidebar-navigation">
+          <div className="nav-section">
+            <button className="nav-item completed" onClick={() => switchSection('information')}>
+              <div className="nav-icon">P</div>
+              <div className="nav-content">
+                <h4>Property Information</h4>
+                <p className="nav-status completed">Completed</p>
+              </div>
+              <div className="nav-indicator">V</div>
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <button className={`nav-item in-progress ${activeSection === 'questionnaire' ? 'active' : ''}`} onClick={() => switchSection('questionnaire')}>
+              <div className="nav-icon">Q</div>
+              <div className="nav-content">
+                <h4>Property Questionnaire</h4>
+                <p className="nav-status in-progress">8 of 13 questions</p>
+              </div>
+              <div className="nav-indicator">8/13</div>
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <button className={`nav-item available ${activeSection === 'quote' ? 'active' : ''}`} onClick={() => switchSection('quote')}>
+              <div className="nav-icon">$</div>
+              <div className="nav-content">
+                <h4>Quote Review</h4>
+                <p className="nav-status pending">Ready for review</p>
+              </div>
+              <div className="nav-indicator">...</div>
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <button className={`nav-item available ${activeSection === 'documents' ? 'active' : ''}`} onClick={() => switchSection('documents')}>
+              <div className="nav-icon">D</div>
+              <div className="nav-content">
+                <h4>Documents</h4>
+                <p className="nav-status available">3 uploaded, 2 pending</p>
+              </div>
+              <div className="nav-indicator"><span className="badge">5</span></div>
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <button className="nav-item locked">
+              <div className="nav-icon">L</div>
+              <div className="nav-content">
+                <h4>Payment Instructions</h4>
+                <p className="nav-status locked">Complete quote first</p>
+              </div>
+              <div className="nav-indicator">X</div>
+            </button>
+          </div>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="quick-actions">
+            <button className="action-btn primary">
+              <span className="btn-icon">M</span>
+              Contact Agent
+            </button>
+            <button className="action-btn secondary">
+              <span className="btn-icon">T</span>
+              View Timeline
+            </button>
+          </div>
+
+          <div className="property-meta">
+            <div className="meta-item">
+              <span className="label">Last Updated:</span>
+              <span className="value">2 hours ago</span>
+            </div>
+            <div className="meta-item">
+              <span className="label">Agent:</span>
+              <span className="value">Stanford Legal</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        {activeSection === 'information' && (
+          <section id="information" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Property Information</h1>
+              <p className="content-subtitle">Review and update your property and personal details</p>
+            </div>
+            <div className="content-card">
+              <div className="section-tabs">
+                <button className="tab active">Basic Information</button>
+                <button className="tab">Property Details</button>
+                <button className="tab">Additional Owners</button>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Full Name *</label>
+                  <input type="text" className="form-input" value={clientData.fullName} readOnly />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address *</label>
+                  <input type="email" className="form-input" value={clientData.email} readOnly />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone Number *</label>
+                  <input type="tel" className="form-input" value={clientData.phone} readOnly />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Property Address *</label>
+                  <input type="text" className="form-input" value={currentProperty ? `${currentProperty.title}, ${currentProperty.subtitle}` : ''} readOnly />
+                </div>
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* Welcome Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome to Your Dashboard</h2>
-          <p className="text-slate-600">
-            Track your property settlement progress and access all your conveyancing documents in one place.
-          </p>
-        </div>
+        {activeSection === 'questionnaire' && (
+          <section id="questionnaire" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Property Questionnaire</h1>
+              <p className="content-subtitle">Answer comprehensive disclosure questions about your property</p>
+            </div>
 
-        {/* Dashboard Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Property Details Card */}
-          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-100">
-                <Home className="w-6 h-6 text-blue-600" />
+            <div className="content-card">
+              <div className="questionnaire-tabs">
+                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section1' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section1')}>
+                  Title & Encumbrances (3)
+                </button>
+                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section2' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section2')}>
+                  Rental Agreement (1)
+                </button>
+                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section3' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section3')}>
+                  Land Use & Planning (4)
+                </button>
+                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section4' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section4')}>
+                  Buildings & Structures (4)
+                </button>
+                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section5' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section5')}>
+                  Rates & Services (5)
+                </button>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">Property Details</h3>
-            </div>
-            <p className="text-slate-600 text-sm mb-4">
-              View and update your property information and disclosure details.
-            </p>
-            <button className="text-blue-600 font-medium text-sm hover:text-blue-700 transition-colors">
-              View Details →
-            </button>
-          </div>
 
-          {/* Documents Card */}
-          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-100">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">Documents</h3>
-            </div>
-            <p className="text-slate-600 text-sm mb-4">
-              Access contracts, forms, and other important documents.
-            </p>
-            <button className="text-purple-600 font-medium text-sm hover:text-purple-700 transition-colors">
-              View Documents →
-            </button>
-          </div>
+              {activeQuestionnaireTab === 'q-section1' && (
+                <div className="questionnaire-subsection active">
+                  <h3 style={{ marginBottom: '20px', color: 'var(--gray-900)' }}>Title Details & Encumbrances</h3>
 
-          {/* Team Card */}
-          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-green-100">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">Your Team</h3>
-            </div>
-            <p className="text-slate-600 text-sm mb-4">
-              Contact your conveyancer, agent, and other parties involved.
-            </p>
-            <button className="text-green-600 font-medium text-sm hover:text-green-700 transition-colors">
-              View Team →
-            </button>
-          </div>
-        </div>
+                  <div className="form-group">
+                    <label className="form-label required">Is the property part of a body corporate?</label>
+                    <div className="radio-group">
+                      <label className="radio-item">
+                        <input type="radio" name="q1_1" value="yes" checked={formData.q1_1 === 'yes'} onChange={handleFormChange} />
+                        <span className="radio-label">Yes</span>
+                      </label>
+                      <label className="radio-item">
+                        <input type="radio" name="q1_1" value="no" checked={formData.q1_1 === 'no'} onChange={handleFormChange} />
+                        <span className="radio-label">No</span>
+                      </label>
+                    </div>
+                  </div>
 
-        {/* Progress Timeline (Placeholder) */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mt-6">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Settlement Progress</h2>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900">Disclosure Form Submitted</h4>
-                <p className="text-sm text-slate-600">Form received and under review</p>
-              </div>
+                  <div className="form-group">
+                    <label className="form-label required">Are there any Non-Statutory Encumbrances?</label>
+                    <div className="radio-group">
+                      <label className="radio-item">
+                        <input type="radio" name="q1_2" value="yes" checked={formData.q1_2 === 'yes'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
+                        <span className="radio-label">Yes</span>
+                      </label>
+                      <label className="radio-item">
+                        <input type="radio" name="q1_2" value="no" checked={formData.q1_2 === 'no'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
+                        <span className="radio-label">No</span>
+                      </label>
+                      <label className="radio-item">
+                        <input type="radio" name="q1_2" value="unsure" checked={formData.q1_2 === 'unsure'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
+                        <span className="radio-label">Unsure</span>
+                      </label>
+                    </div>
+                    {conditionalFields.q1_2_details && (
+                      <div className="conditional-field show">
+                        <label className="form-label">If Yes, Give Details</label>
+                        <textarea className="form-textarea" name="q1_2_details" value={formData.q1_2_details} onChange={handleFormChange} placeholder="Please detail any agreements"></textarea>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label required">Are there any Statutory Encumbrances?</label>
+                    <div className="radio-group">
+                      <label className="radio-item">
+                        <input type="radio" name="q1_3" value="yes" checked={formData.q1_3 === 'yes'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
+                        <span className="radio-label">Yes</span>
+                      </label>
+                      <label className="radio-item">
+                        <input type="radio" name="q1_3" value="no" checked={formData.q1_3 === 'no'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
+                        <span className="radio-label">No</span>
+                      </label>
+                      <label className="radio-item">
+                        <input type="radio" name="q1_3" value="unsure" checked={formData.q1_3 === 'unsure'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
+                        <span className="radio-label">Unsure</span>
+                      </label>
+                    </div>
+                    {conditionalFields.q1_3_details && (
+                      <div className="conditional-field show">
+                        <label className="form-label">If Yes, Give Details</label>
+                        <textarea className="form-textarea" name="q1_3_details" value={formData.q1_3_details} onChange={handleFormChange} placeholder="Please detail any agencies"></textarea>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeQuestionnaireTab === 'q-section2' && <div className="questionnaire-subsection active"><h3>Rental Agreement</h3><p>Coming soon...</p></div>}
+              {activeQuestionnaireTab === 'q-section3' && <div className="questionnaire-subsection active"><h3>Land Use & Planning</h3><p>Coming soon...</p></div>}
+              {activeQuestionnaireTab === 'q-section4' && <div className="questionnaire-subsection active"><h3>Buildings & Structures</h3><p>Coming soon...</p></div>}
+              {activeQuestionnaireTab === 'q-section5' && <div className="questionnaire-subsection active"><h3>Rates & Services</h3><p>Coming soon...</p></div>}
             </div>
-            <div className="flex items-center gap-3 opacity-50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-300">
-                <div className="w-3 h-3 rounded-full bg-slate-300"></div>
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900">Conveyancer Assigned</h4>
-                <p className="text-sm text-slate-600">Awaiting assignment</p>
-              </div>
+          </section>
+        )}
+
+        {activeSection === 'quote' && (
+          <section id="quote" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Quote Review</h1>
+              <p className="content-subtitle">Review your conveyancing quote</p>
             </div>
-            <div className="flex items-center gap-3 opacity-50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-300">
-                <div className="w-3 h-3 rounded-full bg-slate-300"></div>
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900">Contracts Prepared</h4>
-                <p className="text-sm text-slate-600">Not started</p>
-              </div>
+            <div className="content-card"><p>Quote details coming soon...</p></div>
+          </section>
+        )}
+
+        {activeSection === 'documents' && (
+          <section id="documents" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Documents</h1>
+              <p className="content-subtitle">View and manage your documents</p>
             </div>
-          </div>
+            <div className="content-card"><p>Your documents will appear here...</p></div>
+          </section>
+        )}
+
+        <div className="floating-actions">
+          <button className="fab primary"><span className="fab-icon">S</span> Save Progress</button>
+          <button className="fab secondary"><span className="fab-icon">?</span> Help</button>
         </div>
       </main>
-
-      <style>{`
-        @keyframes slide-down {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-slide-down {
-          animation: slide-down 0.4s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

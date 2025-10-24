@@ -4,7 +4,6 @@ import { Mail, Phone, ArrowRight, Shield, Clock, CheckCircle } from "lucide-reac
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
-import { ParticleWaves } from "../ui/ParticleWaves";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import api from "../../services/api";
 
@@ -122,9 +121,17 @@ const Index = () => {
 
       console.log('✅ OTP verified successfully:', response.data);
 
-      // Store auth token and user data
+      // Store auth token and user data (including contactId, firstname, lastname)
       localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('user', JSON.stringify({
+        id: response.data.user.id,
+        contactId: response.data.user.contactId,
+        firstname: response.data.user.firstname,
+        lastname: response.data.user.lastname,
+        email: response.data.user.email,
+        phone: response.data.user.phone,
+        role: response.data.user.role
+      }));
 
       setError("");
       setIsTransitioning(true);
@@ -197,14 +204,18 @@ const Index = () => {
         <ThemeToggle />
       </div>
 
-      {/* Background with Particle Waves */}
-      <div className="absolute inset-0 overflow-hidden">
-        <img
-          src="/images/property-law.png"
-          alt="Property Law Background"
-          className="absolute inset-0 w-full h-full object-cover opacity-25"
-        />
-        <ParticleWaves isTransitioning={isTransitioning} />
+      {/* Background with Looping Video */}
+      <div className="absolute inset-0 overflow-hidden opacity-50">
+        <video
+          autoPlay
+          loop
+          muted
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/looping-background.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        <div className="absolute inset-0 bg-black/30"></div>
       </div>
 
       {/* Transition overlay */}
