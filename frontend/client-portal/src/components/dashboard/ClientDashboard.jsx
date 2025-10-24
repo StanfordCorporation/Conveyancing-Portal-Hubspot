@@ -234,20 +234,22 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="progress-overview">
-          <div className="progress-ring">
-            <svg className="progress-svg" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="45" className="progress-bg" />
-              <circle cx="50" cy="50" r="45" className="progress-fill" style={{ strokeDasharray: 283, strokeDashoffset: 113 }} />
-            </svg>
-            <div className="progress-center">
-              <span className="progress-percentage">60%</span>
-              <span className="progress-label">Complete</span>
+        {expandedProperty !== -1 && (
+          <>
+            <div className="progress-overview">
+              <div className="progress-ring">
+                <svg className="progress-svg" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" className="progress-bg" />
+                  <circle cx="50" cy="50" r="45" className="progress-fill" style={{ strokeDasharray: 283, strokeDashoffset: 113 }} />
+                </svg>
+                <div className="progress-center">
+                  <span className="progress-percentage">60%</span>
+                  <span className="progress-label">Complete</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <nav className="sidebar-navigation">
+            <nav className="sidebar-navigation">
           <div className="nav-section">
             <button className="nav-item completed" onClick={() => switchSection('information')}>
               <div className="nav-icon">P</div>
@@ -302,7 +304,9 @@ export default function ClientDashboard() {
               <div className="nav-indicator">X</div>
             </button>
           </div>
-        </nav>
+            </nav>
+          </>
+        )}
 
         <div className="sidebar-footer">
           <div className="quick-actions">
