@@ -15,6 +15,7 @@ export default function PropertyInformation({ dealId }) {
     const fetchPropertyData = async () => {
       try {
         setLoading(true);
+        setError(null);
         console.log(`[PropertyInfo] 📋 Fetching property details for deal: ${dealId}`);
 
         const response = await api.get(`/client/property/${dealId}`);
@@ -23,6 +24,7 @@ export default function PropertyInformation({ dealId }) {
       } catch (err) {
         console.error(`[PropertyInfo] ❌ Error fetching property data:`, err.message);
         setError(err.message || 'Failed to load property information');
+        setPropertyData(null);
       } finally {
         setLoading(false);
       }

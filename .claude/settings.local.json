@@ -52,7 +52,8 @@
       "Bash(curl:*)",
       "Bash(cat:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node test-property-endpoint.js:*)"
     ],
     "deny": [],
     "ask": []

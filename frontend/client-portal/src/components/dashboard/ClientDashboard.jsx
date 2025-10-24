@@ -83,8 +83,8 @@ export default function ClientDashboard() {
     setSidebarPropertySwitcherOpen(!sidebarPropertySwitcherOpen);
   };
 
-  const switchProperty = (index, title, subtitle) => {
-    setCurrentProperty({ index, title, subtitle });
+  const switchProperty = (property) => {
+    setCurrentProperty(property);
     setSidebarPropertySwitcherOpen(false);
   };
 
@@ -182,8 +182,8 @@ export default function ClientDashboard() {
               {properties.map((prop) => (
                 <div
                   key={prop.index}
-                  className={`property-item ${currentProperty.index === prop.index ? 'active' : ''}`}
-                  onClick={() => switchProperty(prop.index, prop.title, prop.subtitle)}
+                  className={`property-item ${currentProperty?.index === prop.index ? 'active' : ''}`}
+                  onClick={() => switchProperty(prop)}
                 >
                   <div className="property-item-title">{prop.title}</div>
                   <div className="property-item-subtitle">{prop.subtitle}</div>
