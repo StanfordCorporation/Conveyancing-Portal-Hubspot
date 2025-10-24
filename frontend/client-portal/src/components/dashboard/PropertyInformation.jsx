@@ -168,7 +168,7 @@ export default function PropertyInformation({ dealId }) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .property-info-container {
           padding: 0;
           background: transparent;

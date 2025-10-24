@@ -148,26 +148,47 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       let additionalSellers = [];
       let agent = null;
 
-      for (const contact of dealContacts) {
+      // In HubSpot workflow, contacts associated with deal are:
+      // - Type 1: Primary Seller
+      // - Type 4: Additional Sellers
+      // - Type 6: Agent
+      // However, API doesn't return type, so we use heuristics:
+      // First contact = Primary Seller (most likely the main contact)
+      // Other contacts = Additional Sellers or Agent
+
+      for (let i = 0; i < dealContacts.length; i++) {
+        const contact = dealContacts[i];
         const props = contact.properties;
-        if (!primarySeller && props.firstname && props.lastname) {
-          // First valid contact is primary seller
-          primarySeller = {
-            id: contact.id,
-            firstname: props.firstname || '',
-            lastname: props.lastname || '',
-            email: props.email || '',
-            phone: props.phone || ''
-          };
-        } else if (props.firstname && props.lastname) {
-          // Additional contacts could be additional sellers or agent
-          additionalSellers.push({
-            id: contact.id,
-            firstname: props.firstname || '',
-            lastname: props.lastname || '',
-            email: props.email || '',
-            phone: props.phone || ''
-          });
+
+        if (props.firstname && props.lastname) {
+          if (!primarySeller) {
+            // First valid contact is primary seller
+            primarySeller = {
+              id: contact.id,
+              firstname: props.firstname || '',
+              lastname: props.lastname || '',
+              email: props.email || '',
+              phone: props.phone || ''
+            };
+          } else if (i === dealContacts.length - 1 && !agent) {
+            // Last contact could be the agent
+            agent = {
+              id: contact.id,
+              firstname: props.firstname || '',
+              lastname: props.lastname || '',
+              email: props.email || '',
+              phone: props.phone || ''
+            };
+          } else {
+            // Middle contacts are additional sellers
+            additionalSellers.push({
+              id: contact.id,
+              firstname: props.firstname || '',
+              lastname: props.lastname || '',
+              email: props.email || '',
+              phone: props.phone || ''
+            });
+          }
         }
       }
 
@@ -195,27 +216,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
           email: firstCompany.properties.email || '',
           phone: firstCompany.properties.phone || 'N/A'
         };
-
-        // Try to fetch agent from company's contacts
-        try {
-          const agencyContacts = await associationsIntegration.getAssociations(
-            firstCompany.id,
-            'contacts'
-          );
-          if (agencyContacts.associations && agencyContacts.associations.length > 0) {
-            const agentContact = agencyContacts.associations[0];
-            agent = {
-              id: agentContact.id,
-              firstname: agentContact.properties.firstname || '',
-              lastname: agentContact.properties.lastname || '',
-              email: agentContact.properties.email || '',
-              phone: agentContact.properties.phone || ''
-            };
-            console.log(`[Client Dashboard] 👤 Found agent for agency`);
-          }
-        } catch (err) {
-          console.log(`[Client Dashboard] ℹ️ Could not fetch agent from agency`);
-        }
+        console.log(`[Client Dashboard] 🏢 Agency found: ${agencyData.name}`);
       }
 
       // Set associations
