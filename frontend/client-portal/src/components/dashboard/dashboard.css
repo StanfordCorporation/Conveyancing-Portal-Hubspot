@@ -80,8 +80,9 @@ body {
 
 .logo {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   cursor: pointer;
   transition: transform 0.2s ease;
 }
@@ -91,13 +92,19 @@ body {
 }
 
 .logo-image {
-  height: 48px;
+  height: 40px;
   width: auto;
   object-fit: contain;
 }
 
+.logo-text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .logo-text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--gray-900);
   letter-spacing: -0.3px;
@@ -105,6 +112,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.2;
 }
 
 .header-actions {

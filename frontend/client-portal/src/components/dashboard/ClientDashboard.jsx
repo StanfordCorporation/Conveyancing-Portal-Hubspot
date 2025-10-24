@@ -111,7 +111,9 @@ export default function ClientDashboard() {
         <div className="header-left">
           <div className="logo">
             <img src="/logo (1).webp" alt="Property Logo" className="logo-image" />
-            <div className="logo-text">Property Workspace</div>
+            <div className="logo-text-container">
+              <div className="logo-text">Property Workspace</div>
+            </div>
           </div>
         </div>
 
