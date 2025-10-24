@@ -150,11 +150,11 @@ export const getDealContacts = async (dealId) => {
       }
     );
 
-    const contacts = response.data.results || [];
-    console.log(`[HubSpot Associations] ✅ Found ${contacts.length} contacts for deal`);
+    const contactsFromDeal = response.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Found ${contactsFromDeal.length} contacts for deal`);
 
     // Log association details for debugging
-    contacts.forEach((contact, idx) => {
+    contactsFromDeal.forEach((contact, idx) => {
       console.log(`[HubSpot Associations]    ${idx + 1}. Contact ID: ${contact.id}`);
       if (contact.type) {
         console.log(`[HubSpot Associations]       - Type: ${contact.type}`);
@@ -164,13 +164,35 @@ export const getDealContacts = async (dealId) => {
       }
     });
 
-    // Return formatted contact details with association metadata
-    return contacts.map(contact => ({
-      id: contact.id,
-      properties: contact.properties || {},
-      type: contact.type,
-      associationTypes: contact.associationTypes || []
-    }));
+    // If no contacts found, return empty array
+    if (contactsFromDeal.length === 0) {
+      return [];
+    }
+
+    // Batch fetch full contact properties for all contacts
+    console.log(`[HubSpot Associations] 📦 Batch fetching properties for ${contactsFromDeal.length} contacts`);
+    const contactIds = contactsFromDeal.map(c => c.id);
+
+    const batchResponse = await hubspotClient.post('/crm/v3/objects/contacts/batch/read', {
+      inputs: contactIds.map(id => ({ id })),
+      properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type', 'address']
+    });
+
+    const contactDetails = batchResponse.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Batch fetch returned properties for ${contactDetails.length} contacts`);
+
+    // Merge association metadata with contact properties
+    return contactsFromDeal.map(contactFromDeal => {
+      // Find matching contact details
+      const details = contactDetails.find(d => d.id === contactFromDeal.id);
+
+      return {
+        id: contactFromDeal.id,
+        properties: details?.properties || {},
+        type: contactFromDeal.type,
+        associationTypes: contactFromDeal.associationTypes || []
+      };
+    });
   } catch (error) {
     if (error.response?.status === 404) {
       console.log(`[HubSpot Associations] ℹ️ No contacts found for deal`);
@@ -196,14 +218,36 @@ export const getDealCompanies = async (dealId) => {
       }
     );
 
-    const companies = response.data.results || [];
-    console.log(`[HubSpot Associations] ✅ Found ${companies.length} companies for deal`);
+    const companiesFromDeal = response.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Found ${companiesFromDeal.length} companies for deal`);
 
-    // Return formatted company details
-    return companies.map(company => ({
-      id: company.id,
-      properties: company.properties || {}
-    }));
+    // If no companies found, return empty array
+    if (companiesFromDeal.length === 0) {
+      return [];
+    }
+
+    // Batch fetch full company properties
+    console.log(`[HubSpot Associations] 📦 Batch fetching properties for ${companiesFromDeal.length} companies`);
+    const companyIds = companiesFromDeal.map(c => c.id);
+
+    const batchResponse = await hubspotClient.post('/crm/v3/objects/companies/batch/read', {
+      inputs: companyIds.map(id => ({ id })),
+      properties: ['name', 'address', 'email', 'phone']
+    });
+
+    const companyDetails = batchResponse.data.results || [];
+    console.log(`[HubSpot Associations] ✅ Batch fetch returned properties for ${companyDetails.length} companies`);
+
+    // Return formatted company details with full properties
+    return companiesFromDeal.map(companyFromDeal => {
+      // Find matching company details
+      const details = companyDetails.find(d => d.id === companyFromDeal.id);
+
+      return {
+        id: companyFromDeal.id,
+        properties: details?.properties || {}
+      };
+    });
   } catch (error) {
     if (error.response?.status === 404) {
       console.log(`[HubSpot Associations] ℹ️ No companies found for deal`);
