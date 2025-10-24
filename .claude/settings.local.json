@@ -48,7 +48,10 @@
       "Bash(node test-phone-search.js)",
       "Bash(git checkout frontend/client-portal/src/components/auth/Login.jsx frontend/agent-portal/src/components/auth/Login.jsx)",
       "Bash(cat \"/c/Users/PrathamManochaStanfo/OneDrive - The Stanford Corporation/Desktop/Conveyancing-Portal-Hubspot/frontend/client-portal/src/components/dashboard/ClientDashboard.jsx\")",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

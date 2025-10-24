@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import api from '../../services/api.js';
+import PropertyInformation from './PropertyInformation.jsx';
 import './dashboard.css';
 
 export default function ClientDashboard() {
@@ -301,32 +302,16 @@ export default function ClientDashboard() {
           <section id="information" className="content-section active">
             <div className="content-header">
               <h1 className="content-title">Property Information</h1>
-              <p className="content-subtitle">Review and update your property and personal details</p>
+              <p className="content-subtitle">Comprehensive property and seller details</p>
             </div>
             <div className="content-card">
-              <div className="section-tabs">
-                <button className="tab active">Basic Information</button>
-                <button className="tab">Property Details</button>
-                <button className="tab">Additional Owners</button>
-              </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Full Name *</label>
-                  <input type="text" className="form-input" value={clientData.fullName} readOnly />
+              {currentProperty && currentProperty.id ? (
+                <PropertyInformation dealId={currentProperty.id} />
+              ) : (
+                <div className="empty-state">
+                  <p>Select a property to view detailed information</p>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Email Address *</label>
-                  <input type="email" className="form-input" value={clientData.email} readOnly />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Phone Number *</label>
-                  <input type="tel" className="form-input" value={clientData.phone} readOnly />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Property Address *</label>
-                  <input type="text" className="form-input" value={currentProperty ? `${currentProperty.title}, ${currentProperty.subtitle}` : ''} readOnly />
-                </div>
-              </div>
+              )}
             </div>
           </section>
         )}
