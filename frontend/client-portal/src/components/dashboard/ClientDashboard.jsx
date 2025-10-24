@@ -126,7 +126,7 @@ export default function ClientDashboard() {
             <span className="notification-badge">3</span>
           </button>
 
-          <div className="user-menu" onClick={toggleSidebarPropertySwitcher}>
+          <div className="user-menu">
             <div className="user-avatar">
               {clientData.fullName
                 .split(' ')
