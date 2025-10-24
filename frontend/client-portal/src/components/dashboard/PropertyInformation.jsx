@@ -206,39 +206,39 @@ export default function PropertyInformation({ dealId }) {
 
         /* Tile Styling */
         .property-tile {
-          background: transparent;
-          border: none;
-          border-radius: 0;
-          overflow: visible;
-          transition: none;
-          box-shadow: none;
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         .property-tile:hover {
-          border-color: transparent;
-          box-shadow: none;
+          border-color: #0E6DFF;
+          box-shadow: 0 4px 12px rgba(14, 109, 255, 0.08);
         }
 
         .tile-header {
           background: transparent;
-          border-bottom: 2px solid #0E6DFF;
-          padding: 0 0 12px 0;
-          margin-bottom: 16px;
+          border-bottom: 1px solid #E5E7EB;
+          padding: 14px 16px;
         }
 
         .tile-title {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 700;
           color: var(--gray-900, #1F2937);
           margin: 0;
-          letter-spacing: -0.3px;
+          letter-spacing: -0.2px;
+          text-transform: uppercase;
         }
 
         .tile-body {
-          padding: 0;
+          padding: 16px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
 
         /* Info Row */
@@ -310,21 +310,24 @@ export default function PropertyInformation({ dealId }) {
         /* Responsive Design */
         @media (max-width: 768px) {
           .property-info-container {
-            gap: 24px;
+            gap: 12px;
+          }
+
+          .property-tile {
+            border-radius: 6px;
           }
 
           .tile-header {
-            padding: 0 0 10px 0;
-            margin-bottom: 12px;
+            padding: 12px 14px;
           }
 
           .tile-title {
-            font-size: 15px;
+            font-size: 13px;
           }
 
           .tile-body {
-            padding: 0;
-            gap: 12px;
+            padding: 14px;
+            gap: 10px;
           }
 
           .field-label {
@@ -336,7 +339,7 @@ export default function PropertyInformation({ dealId }) {
           }
 
           .seller-content {
-            gap: 12px;
+            gap: 10px;
           }
 
           .seller-section:not(:first-child) {
