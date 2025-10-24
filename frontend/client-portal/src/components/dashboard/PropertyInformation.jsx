@@ -206,27 +206,28 @@ export default function PropertyInformation({ dealId }) {
 
         /* Tile Styling */
         .property-tile {
-          background: #FFFFFF;
-          border: 1px solid #E5E7EB;
-          border-radius: 10px;
-          overflow: hidden;
-          transition: all 0.2s ease;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          background: transparent;
+          border: none;
+          border-radius: 0;
+          overflow: visible;
+          transition: none;
+          box-shadow: none;
         }
 
         .property-tile:hover {
-          border-color: #0E6DFF;
-          box-shadow: 0 8px 16px rgba(14, 109, 255, 0.1);
+          border-color: transparent;
+          box-shadow: none;
         }
 
         .tile-header {
-          background: #F9FAFB;
-          border-bottom: 1px solid #E5E7EB;
-          padding: 16px 20px;
+          background: transparent;
+          border-bottom: 2px solid #0E6DFF;
+          padding: 0 0 12px 0;
+          margin-bottom: 16px;
         }
 
         .tile-title {
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 700;
           color: var(--gray-900, #1F2937);
           margin: 0;
@@ -234,10 +235,10 @@ export default function PropertyInformation({ dealId }) {
         }
 
         .tile-body {
-          padding: 20px;
+          padding: 0;
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 14px;
         }
 
         /* Info Row */
@@ -309,20 +310,21 @@ export default function PropertyInformation({ dealId }) {
         /* Responsive Design */
         @media (max-width: 768px) {
           .property-info-container {
-            gap: 12px;
+            gap: 24px;
           }
 
           .tile-header {
-            padding: 12px 16px;
+            padding: 0 0 10px 0;
+            margin-bottom: 12px;
           }
 
           .tile-title {
-            font-size: 14px;
+            font-size: 15px;
           }
 
           .tile-body {
-            padding: 16px;
-            gap: 14px;
+            padding: 0;
+            gap: 12px;
           }
 
           .field-label {
