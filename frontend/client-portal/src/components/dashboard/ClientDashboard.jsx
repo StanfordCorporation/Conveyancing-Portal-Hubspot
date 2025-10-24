@@ -12,7 +12,6 @@ export default function ClientDashboard() {
   // Get stored user data from localStorage
   const storedUser = JSON.parse(localStorage.getItem('user'));
 
-  const [sidebarPropertySwitcherOpen, setSidebarPropertySwitcherOpen] = useState(false);
   const [expandedProperty, setExpandedProperty] = useState(0);
   const [activeSection, setActiveSection] = useState('questionnaire');
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
@@ -80,13 +79,8 @@ export default function ClientDashboard() {
     navigate('/login');
   };
 
-  const toggleSidebarPropertySwitcher = () => {
-    setSidebarPropertySwitcherOpen(!sidebarPropertySwitcherOpen);
-  };
-
   const switchProperty = (property) => {
     setCurrentProperty(property);
-    setSidebarPropertySwitcherOpen(false);
   };
 
   const switchSection = (section) => {
@@ -153,7 +147,7 @@ export default function ClientDashboard() {
         </div>
       </header>
 
-      <aside className={`sidebar ${sidebarPropertySwitcherOpen ? 'property-switcher-open' : ''}`} id="sidebar">
+      <aside className="sidebar" id="sidebar">
         <div className="property-header">
           <div className="properties-section">
             <div className="properties-header">
@@ -233,80 +227,6 @@ export default function ClientDashboard() {
             </div>
           </div>
         </div>
-
-        {expandedProperty !== -1 && (
-          <>
-            <div className="progress-overview">
-              <div className="progress-ring">
-                <svg className="progress-svg" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" className="progress-bg" />
-                  <circle cx="50" cy="50" r="45" className="progress-fill" style={{ strokeDasharray: 283, strokeDashoffset: 113 }} />
-                </svg>
-                <div className="progress-center">
-                  <span className="progress-percentage">60%</span>
-                  <span className="progress-label">Complete</span>
-                </div>
-              </div>
-            </div>
-
-            <nav className="sidebar-navigation">
-          <div className="nav-section">
-            <button className="nav-item completed" onClick={() => switchSection('information')}>
-              <div className="nav-icon">P</div>
-              <div className="nav-content">
-                <h4>Property Information</h4>
-                <p className="nav-status completed">Completed</p>
-              </div>
-              <div className="nav-indicator">V</div>
-            </button>
-          </div>
-
-          <div className="nav-section">
-            <button className={`nav-item in-progress ${activeSection === 'questionnaire' ? 'active' : ''}`} onClick={() => switchSection('questionnaire')}>
-              <div className="nav-icon">Q</div>
-              <div className="nav-content">
-                <h4>Property Questionnaire</h4>
-                <p className="nav-status in-progress">8 of 13 questions</p>
-              </div>
-              <div className="nav-indicator">8/13</div>
-            </button>
-          </div>
-
-          <div className="nav-section">
-            <button className={`nav-item available ${activeSection === 'quote' ? 'active' : ''}`} onClick={() => switchSection('quote')}>
-              <div className="nav-icon">$</div>
-              <div className="nav-content">
-                <h4>Quote Review</h4>
-                <p className="nav-status pending">Ready for review</p>
-              </div>
-              <div className="nav-indicator">...</div>
-            </button>
-          </div>
-
-          <div className="nav-section">
-            <button className={`nav-item available ${activeSection === 'documents' ? 'active' : ''}`} onClick={() => switchSection('documents')}>
-              <div className="nav-icon">D</div>
-              <div className="nav-content">
-                <h4>Documents</h4>
-                <p className="nav-status available">3 uploaded, 2 pending</p>
-              </div>
-              <div className="nav-indicator"><span className="badge">5</span></div>
-            </button>
-          </div>
-
-          <div className="nav-section">
-            <button className="nav-item locked">
-              <div className="nav-icon">L</div>
-              <div className="nav-content">
-                <h4>Payment Instructions</h4>
-                <p className="nav-status locked">Complete quote first</p>
-              </div>
-              <div className="nav-indicator">X</div>
-            </button>
-          </div>
-            </nav>
-          </>
-        )}
 
         <div className="sidebar-footer">
           <div className="quick-actions">
