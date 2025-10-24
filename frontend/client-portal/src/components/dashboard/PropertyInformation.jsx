@@ -57,6 +57,17 @@ export default function PropertyInformation({ dealId }) {
     );
   }
 
+  // Helper function to check if seller data exists and is not N/A
+  const hasAdditionalSellerData = () => {
+    const seller = propertyData.additionalSeller;
+    if (!seller) return false;
+    return (
+      (seller.fullName && seller.fullName !== 'N/A') ||
+      (seller.email && seller.email !== 'N/A') ||
+      (seller.phone && seller.phone !== 'N/A')
+    );
+  };
+
   return (
     <div className="property-info-container">
       {/* Section 1: Seller Information */}
@@ -84,24 +95,26 @@ export default function PropertyInformation({ dealId }) {
             </div>
           </div>
 
-          {/* Additional Seller */}
-          <div className="info-group">
-            <h3 className="group-title">Additional Seller</h3>
-            <div className="info-fields">
-              <div className="info-field">
-                <label className="field-label">Full Name</label>
-                <p className="field-value">{propertyData.additionalSeller?.fullName || 'N/A'}</p>
-              </div>
-              <div className="info-field">
-                <label className="field-label">Email Address</label>
-                <p className="field-value">{propertyData.additionalSeller?.email || 'N/A'}</p>
-              </div>
-              <div className="info-field">
-                <label className="field-label">Mobile</label>
-                <p className="field-value">{propertyData.additionalSeller?.phone || 'N/A'}</p>
+          {/* Additional Seller - Only show if data exists */}
+          {hasAdditionalSellerData() && (
+            <div className="info-group">
+              <h3 className="group-title">Additional Seller</h3>
+              <div className="info-fields">
+                <div className="info-field">
+                  <label className="field-label">Full Name</label>
+                  <p className="field-value">{propertyData.additionalSeller?.fullName || 'N/A'}</p>
+                </div>
+                <div className="info-field">
+                  <label className="field-label">Email Address</label>
+                  <p className="field-value">{propertyData.additionalSeller?.email || 'N/A'}</p>
+                </div>
+                <div className="info-field">
+                  <label className="field-label">Mobile</label>
+                  <p className="field-value">{propertyData.additionalSeller?.phone || 'N/A'}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
