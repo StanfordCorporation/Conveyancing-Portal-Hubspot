@@ -143,51 +143,89 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       const dealCompanies = await associationsIntegration.getDealCompanies(dealId);
       console.log(`[Client Dashboard] 🏢 Found ${dealCompanies.length} companies for deal`);
 
-      // Process contacts: primary seller, additional sellers, and agent
+      // Process contacts with intelligent role assignment based on association types
       let primarySeller = null;
       let additionalSellers = [];
       let agent = null;
 
-      // In HubSpot workflow, contacts associated with deal are:
+      // HubSpot association types (USER_DEFINED):
       // - Type 1: Primary Seller
-      // - Type 4: Additional Sellers
-      // - Type 6: Agent
-      // However, API doesn't return type, so we use heuristics:
-      // First contact = Primary Seller (most likely the main contact)
-      // Other contacts = Additional Sellers or Agent
+      // - Type 4: Additional Seller
+      // - Type 6: Agent/Listing Salesperson
 
-      for (let i = 0; i < dealContacts.length; i++) {
-        const contact = dealContacts[i];
+      // First pass: assign roles based on association types if available
+      for (const contact of dealContacts) {
         const props = contact.properties;
+        const associationTypes = contact.associationTypes || [];
 
-        if (props.firstname && props.lastname) {
-          if (!primarySeller) {
-            // First valid contact is primary seller
-            primarySeller = {
-              id: contact.id,
-              firstname: props.firstname || '',
-              lastname: props.lastname || '',
-              email: props.email || '',
-              phone: props.phone || ''
-            };
-          } else if (i === dealContacts.length - 1 && !agent) {
-            // Last contact could be the agent
-            agent = {
-              id: contact.id,
-              firstname: props.firstname || '',
-              lastname: props.lastname || '',
-              email: props.email || '',
-              phone: props.phone || ''
-            };
+        if (!props.firstname || !props.lastname) continue;
+
+        const contactData = {
+          id: contact.id,
+          firstname: props.firstname || '',
+          lastname: props.lastname || '',
+          email: props.email || '',
+          phone: props.phone || ''
+        };
+
+        // Check association type metadata
+        let isAgent = false;
+        let isAdditionalSeller = false;
+        let isPrimarySeller = false;
+
+        // associationTypes is an array of objects with 'associationTypeId'
+        if (Array.isArray(associationTypes)) {
+          for (const assocType of associationTypes) {
+            const typeId = assocType.associationTypeId || assocType.type || assocType.id;
+            console.log(`[Client Dashboard] 🔍 Contact ${contact.id} has association type: ${typeId}`);
+
+            if (typeId === 6 || typeId === '6') {
+              isAgent = true;
+            } else if (typeId === 4 || typeId === '4') {
+              isAdditionalSeller = true;
+            } else if (typeId === 1 || typeId === '1') {
+              isPrimarySeller = true;
+            }
+          }
+        }
+
+        // Assign based on type metadata
+        if (isAgent) {
+          agent = contactData;
+          console.log(`[Client Dashboard] 👤 Agent assigned: ${contactData.firstname} ${contactData.lastname}`);
+        } else if (isAdditionalSeller) {
+          additionalSellers.push(contactData);
+          console.log(`[Client Dashboard] 👥 Additional seller assigned: ${contactData.firstname} ${contactData.lastname}`);
+        } else if (isPrimarySeller) {
+          primarySeller = contactData;
+          console.log(`[Client Dashboard] 👤 Primary seller assigned: ${contactData.firstname} ${contactData.lastname}`);
+        }
+      }
+
+      // Fallback: if no roles assigned by type, use heuristic (first = primary, others = additional/agent)
+      if (!primarySeller && dealContacts.length > 0) {
+        console.log(`[Client Dashboard] ℹ️ No type metadata found, using heuristic assignment`);
+
+        for (let i = 0; i < dealContacts.length; i++) {
+          const contact = dealContacts[i];
+          const props = contact.properties;
+
+          if (!props.firstname || !props.lastname) continue;
+
+          const contactData = {
+            id: contact.id,
+            firstname: props.firstname || '',
+            lastname: props.lastname || '',
+            email: props.email || '',
+            phone: props.phone || ''
+          };
+
+          if (i === 0) {
+            primarySeller = contactData;
+          } else if (i === dealContacts.length - 1) {
+            agent = contactData;
           } else {
-            // Middle contacts are additional sellers
-            additionalSellers.push({
-              id: contact.id,
-              firstname: props.firstname || '',
-              lastname: props.lastname || '',
-              email: props.email || '',
-              phone: props.phone || ''
-            });
+            additionalSellers.push(contactData);
           }
         }
       }

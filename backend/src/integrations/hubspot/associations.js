@@ -129,8 +129,13 @@ export const batchGetDealProperties = async (dealIds, properties = []) => {
 };
 
 /**
- * Get all contacts associated with a deal
- * Returns array of contact objects with ID and properties
+ * Get all contacts associated with a deal WITH association type information
+ * Returns array of contact objects with ID, properties, and association type
+ *
+ * Association Types (USER_DEFINED):
+ * - Type 1: Primary Seller
+ * - Type 4: Additional Seller
+ * - Type 6: Agent/Listing Salesperson
  */
 export const getDealContacts = async (dealId) => {
   try {
@@ -139,17 +144,32 @@ export const getDealContacts = async (dealId) => {
     const response = await hubspotClient.get(
       `/crm/v3/objects/deals/${dealId}/associations/contacts`,
       {
-        params: { limit: 100 }
+        params: {
+          limit: 100
+        }
       }
     );
 
     const contacts = response.data.results || [];
     console.log(`[HubSpot Associations] ✅ Found ${contacts.length} contacts for deal`);
 
-    // Return formatted contact details
+    // Log association details for debugging
+    contacts.forEach((contact, idx) => {
+      console.log(`[HubSpot Associations]    ${idx + 1}. Contact ID: ${contact.id}`);
+      if (contact.type) {
+        console.log(`[HubSpot Associations]       - Type: ${contact.type}`);
+      }
+      if (contact.associationTypes) {
+        console.log(`[HubSpot Associations]       - AssociationTypes: ${JSON.stringify(contact.associationTypes)}`);
+      }
+    });
+
+    // Return formatted contact details with association metadata
     return contacts.map(contact => ({
       id: contact.id,
-      properties: contact.properties || {}
+      properties: contact.properties || {},
+      type: contact.type,
+      associationTypes: contact.associationTypes || []
     }));
   } catch (error) {
     if (error.response?.status === 404) {
