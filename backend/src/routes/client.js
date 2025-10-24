@@ -157,6 +157,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       for (const contact of dealContacts) {
         const props = contact.properties;
         const associationTypes = contact.associationTypes || [];
+        const contactType = contact.type; // May be "deal_to_contact" label
 
         if (!props.firstname || !props.lastname) continue;
 
@@ -173,12 +174,17 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
         let isAdditionalSeller = false;
         let isPrimarySeller = false;
 
-        // associationTypes is an array of objects with 'associationTypeId'
-        if (Array.isArray(associationTypes)) {
+        console.log(`[Client Dashboard] 🔍 Contact ${contact.id} - Type field: ${contactType}`);
+
+        // Try to extract type from associationTypes array first
+        if (Array.isArray(associationTypes) && associationTypes.length > 0) {
           for (const assocType of associationTypes) {
             const typeId = assocType.associationTypeId || assocType.type || assocType.id;
-            console.log(`[Client Dashboard] 🔍 Contact ${contact.id} has association type: ${typeId}`);
+            const typeLabel = assocType.label;
 
+            console.log(`[Client Dashboard] 🔍    AssociationType - ID: ${typeId}, Label: ${typeLabel}`);
+
+            // Match by numeric ID
             if (typeId === 6 || typeId === '6') {
               isAgent = true;
             } else if (typeId === 4 || typeId === '4') {
@@ -186,7 +192,23 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             } else if (typeId === 1 || typeId === '1') {
               isPrimarySeller = true;
             }
+            // Match by label if numeric ID not found
+            else if (typeLabel) {
+              if (typeLabel.includes('agent') || typeLabel.includes('6')) {
+                isAgent = true;
+              } else if (typeLabel.includes('additional') || typeLabel.includes('4')) {
+                isAdditionalSeller = true;
+              } else if (typeLabel.includes('primary') || typeLabel.includes('1')) {
+                isPrimarySeller = true;
+              }
+            }
           }
+        }
+
+        // If no type found in associationTypes, we'll use heuristic in pass 2
+        // But log that we couldn't determine the type
+        if (!isAgent && !isAdditionalSeller && !isPrimarySeller) {
+          console.log(`[Client Dashboard] ℹ️ Contact ${contact.id} - No association type detected, will use heuristic`);
         }
 
         // Assign based on type metadata
@@ -202,7 +224,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
         }
       }
 
-      // Fallback: if no roles assigned by type, use heuristic (first = primary, others = additional/agent)
+      // Fallback: if no roles assigned by type, use heuristic based on contact properties
       if (!primarySeller && dealContacts.length > 0) {
         console.log(`[Client Dashboard] ℹ️ No type metadata found, using heuristic assignment`);
 
@@ -220,12 +242,26 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             phone: props.phone || ''
           };
 
-          if (i === 0) {
-            primarySeller = contactData;
-          } else if (i === dealContacts.length - 1) {
+          // Check contact properties for hints about their role
+          const contactType = props.contact_type || '';
+          const isAgentType = contactType.toLowerCase() === 'agent';
+
+          if (isAgentType && !agent) {
+            // Contact marked as Agent type
             agent = contactData;
+            console.log(`[Client Dashboard] 👤 Agent identified by contact_type: ${contactData.firstname} ${contactData.lastname}`);
+          } else if (!primarySeller) {
+            // First non-agent contact is primary seller
+            primarySeller = contactData;
+            console.log(`[Client Dashboard] 👤 Primary seller (heuristic): ${contactData.firstname} ${contactData.lastname}`);
+          } else if (isAgentType) {
+            // Agent type contact
+            agent = contactData;
+            console.log(`[Client Dashboard] 👤 Agent (heuristic): ${contactData.firstname} ${contactData.lastname}`);
           } else {
+            // Additional seller
             additionalSellers.push(contactData);
+            console.log(`[Client Dashboard] 👥 Additional seller (heuristic): ${contactData.firstname} ${contactData.lastname}`);
           }
         }
       }
