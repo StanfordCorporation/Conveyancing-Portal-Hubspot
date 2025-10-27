@@ -17,7 +17,6 @@ import * as authRoutes from './routes/auth.js';
 import * as agenciesRoutes from './routes/agencies.js';
 import * as workflowsRoutes from './routes/workflows.js';
 import clientRoutes from './routes/client.js';
-import * as questionnaireRoutes from './routes/questionnaire-simplified.js';
 
 dotenv.config();
 
@@ -82,17 +81,6 @@ app.post('/api/workflows/client-disclosure', workflowsRoutes.clientDisclosure);
 app.post('/api/workflows/property-intake', workflowsRoutes.propertyIntake);
 
 /**
- * Questionnaire Routes (Public - accessible to all)
- */
-app.get('/api/questionnaire/structure', questionnaireRoutes.getQuestionnaireStructure);
-app.get('/api/questionnaire/:sectionNumber/fields', questionnaireRoutes.getSectionFields);
-app.get('/api/questionnaire/:dealId/section/:sectionNumber', questionnaireRoutes.getSectionData);
-app.post('/api/questionnaire/:dealId/section/:sectionNumber', questionnaireRoutes.saveSectionData);
-app.post('/api/questionnaire/:dealId/file-upload', questionnaireRoutes.uploadFile);
-app.get('/api/questionnaire/sync-queue/status', questionnaireRoutes.getSyncQueueStatus);
-app.get('/api/questionnaire/sync-queue/items', questionnaireRoutes.getSyncQueueItems);
-
-/**
  * Client Portal Routes (Protected)
  */
 app.use('/api/client', clientRoutes);
@@ -139,15 +127,6 @@ app.get('/', (req, res) => {
         clientDisclosure: 'POST /api/workflows/client-disclosure',
         agentClientCreation: 'POST /api/workflows/agent-client-creation',
         propertyIntake: 'POST /api/workflows/property-intake'
-      },
-      questionnaire: {
-        structure: 'GET /api/questionnaire/structure',
-        fields: 'GET /api/questionnaire/:sectionNumber/fields',
-        getData: 'GET /api/questionnaire/:dealId/section/:sectionNumber',
-        saveData: 'POST /api/questionnaire/:dealId/section/:sectionNumber',
-        uploadFile: 'POST /api/questionnaire/:dealId/file-upload',
-        syncQueueStatus: 'GET /api/questionnaire/sync-queue/status',
-        syncQueueItems: 'GET /api/questionnaire/sync-queue/items'
       }
     }
   });

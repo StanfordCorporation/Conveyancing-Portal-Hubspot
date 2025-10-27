@@ -53,7 +53,9 @@
       "Bash(cat:*)",
       "Bash(git commit:*)",
       "Bash(git add:*)",
-      "Bash(node test-property-endpoint.js:*)"
+      "Bash(node test-property-endpoint.js:*)",
+      "Bash(npm run:*)",
+      "Bash(npx jest --version)"
     ],
     "deny": [],
     "ask": []

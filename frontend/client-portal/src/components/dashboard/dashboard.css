@@ -810,11 +810,7 @@ body {
 }
 
 .content-card {
-  background: white;
-  border-radius: var(--border-radius);
   padding: 32px;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--gray-200);
   margin-bottom: 24px;
 }
 

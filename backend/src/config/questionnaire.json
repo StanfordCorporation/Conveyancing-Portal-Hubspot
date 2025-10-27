@@ -1,0 +1,672 @@
+{
+  "sections": [
+    {
+      "section_number": "1",
+      "section_title": "Title Details and Encumbrances",
+      "questions": [
+        {
+          "form_question": "Is the property part of a body corporate?",
+          "form_field_name": "body_corporate",
+          "HubSpot_Property_Name": "body_corporate",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Body Corporate"
+        },
+        {
+          "form_question": "Are there any registered encumbrances on the property title that may affect use of the property (e.g. easements, statutory covenants, leases, mortgages)?",
+          "form_field_name": "registered_encumbrances",
+          "HubSpot_Property_Name": "registered_encumbrances",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Registered Encumbrances"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "registered_encumbrances_details",
+          "HubSpot_Property_Name": "registered_encumbrance_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "registered_encumbrances",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Registered Encumbrance Details"
+        },
+        {
+          "form_question": "Are there any unregistered encumbrances that will continue to affect the property after settlement (This may relate to Council sewerage/drainage man holes or access points, telecommunications, electricity)?",
+          "form_field_name": "unregistered_encumbrances",
+          "HubSpot_Property_Name": "unregistered_encumbrances",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Unregistered Encumbrances"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "unregistered_encumbrances_details",
+          "HubSpot_Property_Name": "unregistered_encumbrance_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "unregistered_encumbrances",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Unregistered Encumbrance Details"
+        }
+      ]
+    },
+    {
+      "section_number": "2",
+      "section_title": "Rental Agreement/Tenancy",
+      "questions": [
+        {
+          "form_question": "Has the property been subject to a residential tenancy agreement or rooming accommodation agreement under the relevant laws in the last 12 months (This question relates specifically to the property having tenants under an RTA agreement)?",
+          "form_field_name": "tenancy_agreement",
+          "HubSpot_Property_Name": "tenancy_agreement",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Tenancy Agreement"
+        },
+        {
+          "form_question": "If yes, when was the rent for the premises or each resident's room last increased? (Date)",
+          "form_field_name": "rent_increase_date",
+          "HubSpot_Property_Name": "tenancy_agreement_last_rental_increase",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Tenancy Agreement Last Rental Increase"
+        },
+        {
+          "form_question": "If yes, what is the start date of the rental lease term?",
+          "form_field_name": "lease_start_date",
+          "HubSpot_Property_Name": "tenancy_agreement_start_date",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Tenancy Agreement Start Date"
+        },
+        {
+          "form_question": "If yes, what is the end date of the rental lease term?",
+          "form_field_name": "lease_end_date",
+          "HubSpot_Property_Name": "tenancy_agreement_end_date",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Tenancy Agreement End Date"
+        },
+        {
+          "form_question": "If yes, what is the weekly rent amount? (Numbers only)",
+          "form_field_name": "weekly_rent",
+          "HubSpot_Property_Name": "weekly_rent",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Weekly Rent Amount"
+        },
+        {
+          "form_question": "If yes, what is the bond amount? (Numbers only)",
+          "form_field_name": "bond_amount",
+          "HubSpot_Property_Name": "bond_amount",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Security Bond Amount"
+        },
+        {
+          "form_question": "If yes, please upload a copy of the current Tenancy Agreement",
+          "form_field_name": "tenancy_agreement_upload",
+          "HubSpot_Property_Name": "tenancy_agreement_upload",
+          "form_field_type": "file",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Tenancy Agreement Upload"
+        },
+        {
+          "form_question": "Is there an unwritten or informal rental agreement without a signed Residential Tenancy Agreement? i.e., friends, parents, children and terms.",
+          "form_field_name": "informal_rental",
+          "HubSpot_Property_Name": "informal_rental",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Informal Rental"
+        }
+      ]
+    },
+    {
+      "section_number": "3",
+      "section_title": "Land Use, Planning and Environment",
+      "questions": [
+        {
+          "form_question": "Is the lot affected by a notice of intention to resume (or take) all or any part of the property for road, rail or other infrastructure?",
+          "form_field_name": "resume_notice",
+          "HubSpot_Property_Name": "resume_notice",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Resume Notice"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "resume_notice_details",
+          "HubSpot_Property_Name": "resume_notice_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "resume_notice",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Resume Notice Details"
+        },
+        {
+          "form_question": "Is the property recorded on the Environmental Management Register or the Contaminated Land Register?",
+          "form_field_name": "environmental_register",
+          "HubSpot_Property_Name": "environmental_register",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Environmental Register"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "environmental_register_details",
+          "HubSpot_Property_Name": "environmental_register_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "environmental_register",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Environmental Register Details"
+        },
+        {
+          "form_question": "Have you received any notice from the Government relating to environmental or contaminated land issues?",
+          "form_field_name": "government_notice",
+          "HubSpot_Property_Name": "government_notice",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Government Notice"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "government_notice_details",
+          "HubSpot_Property_Name": "government_notice_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "government_notice",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Government Notice Details"
+        },
+        {
+          "form_question": "Is there a tree order or QCAT application affecting the property?",
+          "form_field_name": "tree_order",
+          "HubSpot_Property_Name": "tree_order",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Tree Order"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "tree_order_details",
+          "HubSpot_Property_Name": "tree_order_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "tree_order",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Tree Order Details"
+        },
+        {
+          "form_question": "Is the property affected by the Queensland Heritage Act 1992 or is it included in the World Heritage List?",
+          "form_field_name": "heritage_act",
+          "HubSpot_Property_Name": "heritage_act",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Heritage Act"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "heritage_act_details",
+          "HubSpot_Property_Name": "heritage_act_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "heritage_act",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Heritage Act Details"
+        }
+      ]
+    },
+    {
+      "section_number": "4",
+      "section_title": "Buildings and Structures",
+      "questions": [
+        {
+          "form_question": "Is there a swimming pool or spa on the property?",
+          "form_field_name": "swimming_pool",
+          "HubSpot_Property_Name": "swimming_pool",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Swimming Pool"
+        },
+        {
+          "form_question": "Was any building work carried out on the property under an owner builder permit in the last 6 years?",
+          "form_field_name": "owner_builder",
+          "HubSpot_Property_Name": "owner_builder",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Owner Builder"
+        },
+        {
+          "form_question": "If so, Upload Plans, Approvals and Insurance Documents",
+          "form_field_name": "owner_builder_upload",
+          "HubSpot_Property_Name": "owner_builder_uploads",
+          "form_field_type": "file",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "owner_builder",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Owner Builder Plans, Approvals and Insurance Docs"
+        },
+        {
+          "form_question": "Have you received any Show Cause or Enforcement Notice from any Government department or Council? (i.e, Has Council contacted you about any unapproved structures on your property or requested you rectify any works done on the property?)",
+          "form_field_name": "enforcement_notice",
+          "HubSpot_Property_Name": "enforcement_notice",
+          "form_field_type": "radio",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Enforcement Notice"
+        },
+        {
+          "form_question": "If Yes, Give Details",
+          "form_field_name": "enforcement_notice_details",
+          "HubSpot_Property_Name": "enforcement_notice_details",
+          "form_field_type": "textarea",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "enforcement_notice",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Enforcement Notice Details"
+        }
+      ]
+    },
+    {
+      "section_number": "5",
+      "section_title": "Rates & Services",
+      "questions": [
+        {
+          "form_question": "If available, please upload your most recent Rates Notice",
+          "form_field_name": "rates_notice_upload",
+          "HubSpot_Property_Name": "most_recent_rates_notice",
+          "form_field_type": "file",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Most Recent Rates Notice"
+        },
+        {
+          "form_question": "If available, please upload your most recent Water Notice (if separate from rates)",
+          "form_field_name": "water_notice_upload",
+          "HubSpot_Property_Name": "file_upload_water_notice",
+          "form_field_type": "file",
+          "required": true,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Most Recent Water Notice - File"
+        }
+      ]
+    }
+  ]
+}
