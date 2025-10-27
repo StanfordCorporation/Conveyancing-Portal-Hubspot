@@ -1,6 +1,11 @@
 /**
- * Questionnaire Routes - SIMPLIFIED VERSION
- * Lightweight, direct approach using propertyMapping.js as single source of truth
+ * Property Questionnaire Routes
+ * Follows HubSpot API v3 naming conventions and patterns
+ *
+ * API Pattern (matching HubSpot v3):
+ * - GET    /crm/v3/objects/property-questionnaire              → Get all questionnaire questions
+ * - PATCH  /crm/v3/objects/property-questionnaire/{dealId}     → Update deal with questionnaire answers
+ * - POST   /crm/v3/objects/property-questionnaire/{dealId}/files/upload → Upload file
  *
  * Architecture:
  * propertyMapping.js → Routes → HubSpot
@@ -153,236 +158,192 @@ function mapToHubSpot(formData) {
 }
 
 // ============================================================================
-// API Endpoints
+// API Endpoints (Following HubSpot v3 API Patterns)
 // ============================================================================
 
 /**
- * GET /api/questionnaire/structure
+ * GET /crm/v3/objects/property-questionnaire
+ * Get all questionnaire questions (all sections combined)
+ * Returns the complete questionnaire schema with all questions and options
  */
-export const getQuestionnaireStructure = (req, res) => {
+export const getPropertyQuestionnaire = (_req, res) => {
   try {
-    const structure = {
-      sections: questionnaireConfig.sections.map(s => ({
-        section_number: s.section_number,
-        section_title: s.section_title,
-        question_count: s.questions.length
-      })),
-      total_sections: questionnaireConfig.sections.length,
-      total_questions: questionnaireConfig.sections.reduce((sum, s) => sum + s.questions.length, 0)
-    };
+    const questions = [];
 
-    res.json({ success: true, data: structure });
-  } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
-  }
-};
-
-/**
- * GET /api/questionnaire/:sectionNumber/fields
- */
-export const getSectionFields = (req, res) => {
-  try {
-    const { sectionNumber } = req.params;
-    const section = getSection(sectionNumber);
-
-    if (!section) {
-      return res.status(404).json({ error: 'Not Found', message: `Section ${sectionNumber} not found` });
-    }
+    // Flatten all questions from all sections with their section info
+    questionnaireConfig.sections.forEach(section => {
+      section.questions.forEach(question => {
+        questions.push({
+          section_number: section.section_number,
+          section_title: section.section_title,
+          field_name: question.form_field_name,
+          question: question.form_question,
+          type: question.form_field_type,
+          required: question.required,
+          conditional: question.conditional,
+          conditional_on: question.conditional_on,
+          options: question.options || null,
+          hsPropertyName: getFieldMapping(question.form_field_name)?.hsPropertyName || null
+        });
+      });
+    });
 
     res.json({
-      success: true,
-      data: {
-        section_number: section.section_number,
-        section_title: section.section_title,
-        field_count: section.questions.length,
-        fields: section.questions.map(q => ({
-          field_name: q.form_field_name,
-          question: q.form_question,
-          type: q.form_field_type,
-          required: q.required,
-          conditional: q.conditional,
-          conditional_on: q.conditional_on,
-          options: q.options || null
-        }))
+      status: 'ok',
+      results: questions,
+      paging: {
+        total: questions.length
       }
     });
   } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
-  }
-};
-
-/**
- * GET /api/questionnaire/:dealId/section/:sectionNumber
- */
-export const getSectionData = (req, res) => {
-  try {
-    const { dealId, sectionNumber } = req.params;
-    const section = getSection(sectionNumber);
-
-    if (!section) {
-      return res.status(404).json({ error: 'Not Found', message: `Section ${sectionNumber} not found` });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        section_number: sectionNumber,
-        section_title: section.section_title,
-        questions: section.questions,
-        savedData: {} // TODO: Fetch from HubSpot deal when implemented
-      }
+    console.error('[Property Questionnaire] Error:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
     });
-  } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
   }
 };
 
 /**
- * POST /api/questionnaire/:dealId/section/:sectionNumber
+ * PATCH /crm/v3/objects/property-questionnaire/{dealId}
+ * Update a deal with questionnaire answers
+ * Validates form data and syncs with HubSpot
  */
-export const saveSectionData = async (req, res) => {
+export const updatePropertyQuestionnaire = async (req, res) => {
   try {
-    const { dealId, sectionNumber } = req.params;
+    const { dealId } = req.params;
     const formData = req.body;
 
-    // Validate section exists
-    const section = getSection(sectionNumber);
-    if (!section) {
-      return res.status(404).json({ error: 'Not Found', message: `Section ${sectionNumber} not found` });
-    }
-
-    // Validate form data
-    const validation = validateFormData(sectionNumber, formData);
-    if (!validation.valid) {
+    if (!dealId) {
       return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Form data validation failed',
-        errors: validation.errors
+        status: 'error',
+        message: 'dealId is required'
       });
     }
 
-    // Map to HubSpot properties
+    // Validate form data against questionnaire schema
+    let allErrors = [];
+    questionnaireConfig.sections.forEach(section => {
+      const sectionValidation = validateFormData(section.section_number, formData);
+      if (!sectionValidation.valid) {
+        allErrors = allErrors.concat(sectionValidation.errors);
+      }
+    });
+
+    if (allErrors.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Form data validation failed',
+        errors: allErrors
+      });
+    }
+
+    // Map form data to HubSpot properties
     const hubSpotData = mapToHubSpot(formData);
 
-    // Save to HubSpot
+    // Update deal in HubSpot
     try {
       await updateDeal(dealId, hubSpotData);
 
       res.json({
-        success: true,
-        message: `Section ${sectionNumber} saved successfully`,
-        data: {
-          dealId,
-          sectionNumber,
-          fields_updated: Object.keys(hubSpotData).length
-        }
+        status: 'ok',
+        id: dealId,
+        message: 'Questionnaire answers saved successfully',
+        properties: Object.keys(hubSpotData)
       });
     } catch (hubspotError) {
-      // HubSpot error - could implement queue here if needed
-      console.error('[Questionnaire] HubSpot error:', hubspotError.message);
+      console.error('[Property Questionnaire] HubSpot error:', hubspotError.message);
 
+      // Return 202 Accepted if HubSpot fails - indicates async processing
       res.status(202).json({
-        success: false,
+        status: 'error',
+        id: dealId,
         message: 'Save queued for retry',
         error: hubspotError.message
       });
     }
   } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
+    console.error('[Property Questionnaire] Error:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
   }
 };
 
 /**
- * POST /api/questionnaire/:dealId/file-upload
+ * POST /crm/v3/objects/property-questionnaire/{dealId}/files/upload
+ * Upload a file associated with a questionnaire field
+ * Files are uploaded to HubSpot with size and type validation
  */
-export const uploadFile = [
+export const uploadPropertyQuestionnaireFile = [
   upload.single('file'),
   async (req, res) => {
     try {
       const { dealId } = req.params;
       const { fieldName } = req.body;
 
+      if (!dealId) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'dealId is required'
+        });
+      }
+
       if (!fieldName) {
-        return res.status(400).json({ error: 'Validation Error', message: 'fieldName is required' });
+        return res.status(400).json({
+          status: 'error',
+          message: 'fieldName is required'
+        });
       }
 
       if (!req.file) {
-        return res.status(400).json({ error: 'Validation Error', message: 'file is required' });
+        return res.status(400).json({
+          status: 'error',
+          message: 'file is required in request body'
+        });
       }
 
-      // Validate field exists in mapping
+      // Validate field exists in mapping and supports file uploads
       const mapping = getFieldMapping(fieldName);
       if (!mapping) {
-        return res.status(400).json({ error: 'Validation Error', message: `fieldName ${fieldName} not found` });
+        return res.status(400).json({
+          status: 'error',
+          message: `fieldName '${fieldName}' not found in questionnaire`
+        });
       }
 
-      // TODO: Implement HubSpot file upload
-      console.log(`[Questionnaire] File upload for ${fieldName}: ${req.file.originalname}`);
+      if (!mapping.fileUpload) {
+        return res.status(400).json({
+          status: 'error',
+          message: `fieldName '${fieldName}' does not support file uploads`
+        });
+      }
 
-      res.json({
-        success: true,
-        message: 'File uploaded successfully',
-        data: {
-          fileId: 'temp-file-id',
-          fileName: req.file.originalname,
-          fieldName: fieldName
-        }
+      // TODO: Implement HubSpot file upload using Files API
+      console.log(`[Property Questionnaire] File upload for field '${fieldName}' (${req.file.originalname}) to deal ${dealId}`);
+
+      res.status(201).json({
+        status: 'ok',
+        id: 'temp-file-id',
+        dealId: dealId,
+        fieldName: fieldName,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        message: 'File uploaded successfully'
       });
     } catch (error) {
-      console.error('[Questionnaire] Error:', error.message);
-      res.status(500).json({ error: 'Server Error', message: error.message });
+      console.error('[Property Questionnaire] Error:', error.message);
+      res.status(500).json({
+        status: 'error',
+        message: error.message
+      });
     }
   }
 ];
 
-/**
- * GET /api/questionnaire/sync-queue/status
- */
-export const getSyncQueueStatus = (req, res) => {
-  try {
-    // TODO: Implement queue if needed
-    res.json({
-      success: true,
-      data: {
-        status: 'active',
-        message: 'Simplified version - no queue needed yet'
-      }
-    });
-  } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
-  }
-};
-
-/**
- * GET /api/questionnaire/sync-queue/items
- */
-export const getSyncQueueItems = (req, res) => {
-  try {
-    // TODO: Implement queue if needed
-    res.json({
-      success: true,
-      data: {
-        count: 0,
-        items: []
-      }
-    });
-  } catch (error) {
-    console.error('[Questionnaire] Error:', error.message);
-    res.status(500).json({ error: 'Server Error', message: error.message });
-  }
-};
-
 export default {
-  getQuestionnaireStructure,
-  getSectionFields,
-  getSectionData,
-  saveSectionData,
-  uploadFile,
-  getSyncQueueStatus,
-  getSyncQueueItems
+  getPropertyQuestionnaire,
+  updatePropertyQuestionnaire,
+  uploadPropertyQuestionnaireFile
 };

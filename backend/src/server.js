@@ -82,15 +82,12 @@ app.post('/api/workflows/client-disclosure', workflowsRoutes.clientDisclosure);
 app.post('/api/workflows/property-intake', workflowsRoutes.propertyIntake);
 
 /**
- * Questionnaire Routes (Public - accessible to all)
+ * Property Questionnaire Routes (HubSpot v3 API Pattern)
+ * Public - accessible to all
  */
-app.get('/api/questionnaire/structure', questionnaireRoutes.getQuestionnaireStructure);
-app.get('/api/questionnaire/:sectionNumber/fields', questionnaireRoutes.getSectionFields);
-app.get('/api/questionnaire/:dealId/section/:sectionNumber', questionnaireRoutes.getSectionData);
-app.post('/api/questionnaire/:dealId/section/:sectionNumber', questionnaireRoutes.saveSectionData);
-app.post('/api/questionnaire/:dealId/file-upload', questionnaireRoutes.uploadFile);
-app.get('/api/questionnaire/sync-queue/status', questionnaireRoutes.getSyncQueueStatus);
-app.get('/api/questionnaire/sync-queue/items', questionnaireRoutes.getSyncQueueItems);
+app.get('/crm/v3/objects/property-questionnaire', questionnaireRoutes.getPropertyQuestionnaire);
+app.patch('/crm/v3/objects/property-questionnaire/:dealId', questionnaireRoutes.updatePropertyQuestionnaire);
+app.post('/crm/v3/objects/property-questionnaire/:dealId/files/upload', questionnaireRoutes.uploadPropertyQuestionnaireFile);
 
 /**
  * Client Portal Routes (Protected)
@@ -140,14 +137,11 @@ app.get('/', (req, res) => {
         agentClientCreation: 'POST /api/workflows/agent-client-creation',
         propertyIntake: 'POST /api/workflows/property-intake'
       },
-      questionnaire: {
-        structure: 'GET /api/questionnaire/structure',
-        fields: 'GET /api/questionnaire/:sectionNumber/fields',
-        getData: 'GET /api/questionnaire/:dealId/section/:sectionNumber',
-        saveData: 'POST /api/questionnaire/:dealId/section/:sectionNumber',
-        uploadFile: 'POST /api/questionnaire/:dealId/file-upload',
-        syncQueueStatus: 'GET /api/questionnaire/sync-queue/status',
-        syncQueueItems: 'GET /api/questionnaire/sync-queue/items'
+      propertyQuestionnaire: {
+        description: 'Property intake questionnaire (HubSpot v3 API pattern)',
+        getAll: 'GET /crm/v3/objects/property-questionnaire',
+        update: 'PATCH /crm/v3/objects/property-questionnaire/{dealId}',
+        uploadFile: 'POST /crm/v3/objects/property-questionnaire/{dealId}/files/upload'
       }
     }
   });
