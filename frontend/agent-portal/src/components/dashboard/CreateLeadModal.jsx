@@ -18,6 +18,10 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
     },
     additionalSellers: [],
     
+    // Title Search
+    agentTitleSearch: null, // 'Yes' or 'No'
+    agentTitleSearchFile: null,
+    
     // Step 2: Property Questionnaire
     questionnaireData: {},
     
@@ -80,6 +84,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
         numberOfOwners: '1',
         primarySeller: { fullName: '', email: '', mobile: '', address: '' },
         additionalSellers: [],
+        agentTitleSearch: null,
+        agentTitleSearchFile: null,
         questionnaireData: {},
         sendInvitation: true
       });

@@ -59,6 +59,20 @@ export default function AgentDashboard() {
     try {
       console.log('[Dashboard] Creating new lead:', formData);
       
+      // Handle file upload if title search file exists
+      let titleSearchFileId = null;
+      if (formData.agentTitleSearchFile) {
+        try {
+          console.log('[Dashboard] Uploading title search file...');
+          const uploadResponse = await agentApi.uploadTitleSearchFile(formData.agentTitleSearchFile);
+          titleSearchFileId = uploadResponse.data.fileId;
+          console.log('[Dashboard] Title search file uploaded:', titleSearchFileId);
+        } catch (uploadErr) {
+          console.error('[Dashboard] Error uploading title search file:', uploadErr);
+          // Continue without file - user can upload later
+        }
+      }
+      
       // Format data for API
       const apiData = {
         client: {
@@ -74,7 +88,9 @@ export default function AgentDashboard() {
         },
         questionnaireData: formData.questionnaireData,
         sendInvitation: formData.sendInvitation,
-        isDraft: formData.isDraft
+        isDraft: formData.isDraft,
+        agentTitleSearch: formData.agentTitleSearch,
+        agentTitleSearchFile: titleSearchFileId
       };
 
       const response = await agentApi.createLead(apiData);
@@ -212,10 +228,11 @@ export default function AgentDashboard() {
         )}
 
         {activeSection === 'leads' && (
-          <LeadsManagement 
+          <LeadsManagement
             deals={dashboardData.deals}
             onCreateLead={() => setIsCreateLeadModalOpen(true)}
             onRefresh={loadDashboard}
+            onViewLead={handleViewLead}
           />
         )}
 

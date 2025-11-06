@@ -91,11 +91,15 @@ router.get('/authorize', requireSmokeballEnabled, (req, res) => {
       response_type: 'code',
       client_id: SMOKEBALL_CONFIG.clientId,
       redirect_uri: SMOKEBALL_CONFIG.redirectUri,
-      scope: SMOKEBALL_CONFIG.scopes.join(' '),
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: SMOKEBALL_CONFIG.codeChallengeMethod,
     });
+    
+    // Only add scope if scopes are configured
+    if (SMOKEBALL_CONFIG.scopes.length > 0) {
+      authParams.set('scope', SMOKEBALL_CONFIG.scopes.join(' '));
+    }
 
     const authorizationUrl = `${SMOKEBALL_CONFIG.authorizationEndpoint}?${authParams.toString()}`;
 

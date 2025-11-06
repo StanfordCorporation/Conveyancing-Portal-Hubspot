@@ -83,6 +83,14 @@ export const agentApi = {
   },
 
   /**
+   * Send client invitation (alias for sendClientPortalInvitation)
+   */
+  sendClientInvitation: (leadId) => {
+    console.log('[API] Sending client invitation for lead:', leadId);
+    return api.post(`/agent/leads/${leadId}/send-to-client`, { sendEmail: true });
+  },
+
+  /**
    * Get lead details
    */
   getLead: (leadId) => {
@@ -107,6 +115,22 @@ export const agentApi = {
     formData.append('documentType', documentType);
     
     return api.post(`/agent/deals/${dealId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  /**
+   * Upload title search file
+   */
+  uploadTitleSearchFile: (file) => {
+    console.log('[API] Uploading title search file');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', 'title_search');
+    
+    return api.post('/upload/file', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

@@ -2,6 +2,8 @@ import { findOrCreateContact, searchContactByEmailOrPhone } from '../../integrat
 import { searchCompaniesByName, createCompany, searchCompaniesByNameAndEmail } from '../../integrations/hubspot/companies.js';
 import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
 import hubspotClient from '../../integrations/hubspot/client.js';
+import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
+import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
 
 /**
  * Workflow: Client-Initiated Disclosure Form
@@ -233,13 +235,29 @@ export const processClientDisclosure = async (formData) => {
 
     console.log('[Client Disclosure] Deal created successfully:', deal.id);
 
+    // ========================================
+    // STEP 7: Create Smokeball lead (if enabled)
+    // ========================================
+    let smokeballLead = null;
+    if (SMOKEBALL_ENABLED) {
+      try {
+        console.log('[Client Disclosure] ⏳ STEP 7: Creating Smokeball lead...');
+        smokeballLead = await createSmokeballLeadFromDeal(deal.id);
+        console.log('[Client Disclosure] ✅ Smokeball lead created:', smokeballLead.leadId);
+      } catch (smokeballError) {
+        console.error('[Client Disclosure] ⚠️ Smokeball lead creation failed:', smokeballError.message);
+        // Don't fail entire workflow - deal is created, Smokeball can be synced later
+      }
+    }
+
     return {
       success: true,
       deal,
       primarySeller,
       additionalSellers: additionalSellerIds,
       agency,
-      agent: agentContact
+      agent: agentContact,
+      smokeballLead
     };
 
   } catch (error) {

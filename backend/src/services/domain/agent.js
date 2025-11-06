@@ -215,8 +215,10 @@ export const getAgentDeals = async (agentId) => {
       'rental_agreement_post_settlement', 'resume_notice', 'swimming_pool',
       'owner_builder', 'createdate', 'hs_lastmodifieddate', 'closedate',
       'amount', 'pipeline', 'deal_currency_code',
+      'is_draft', // Draft status indicator
+      'agent_title_search', 'agent_title_search_file', // Title search fields
       // Questionnaire fields
-      'body_corporate_details', 'non_statutory_encumbrances', 
+      'body_corporate_details', 'non_statutory_encumbrances',
       'formal_tenancy_agreement', 'tenancy_end_date', 'weekly_rent',
       'owner_name', 'contaminated_land', 'tree_disputes',
       'environmental_management', 'unauthorised_works'

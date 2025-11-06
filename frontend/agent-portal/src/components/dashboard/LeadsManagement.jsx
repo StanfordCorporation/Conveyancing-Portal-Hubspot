@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Filter, Plus, Eye, Edit2, Archive } from 'lucide-react';
+import { Search, Filter, Plus, Eye, Edit2, Archive, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { getStageLabel, getAgentNextStep, getStageColor, isDraft } from '../../constants/dealStages';
+import { agentApi } from '../../services/api';
 
-export default function LeadsManagement({ deals, onCreateLead, onRefresh }) {
+export default function LeadsManagement({ deals, onCreateLead, onRefresh, onViewLead }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [sendingInvitation, setSendingInvitation] = useState(null); // Track which deal is sending invitation
 
   // Filter deals based on search and filters
   const filteredDeals = deals.filter(deal => {
@@ -42,6 +44,45 @@ export default function LeadsManagement({ deals, onCreateLead, onRefresh }) {
   });
 
   // Helper functions now imported from constants
+
+  const handleSendToClient = async (dealId) => {
+    if (!window.confirm('Send client portal invitation? This will activate the lead and send an email to the client.')) {
+      return;
+    }
+
+    try {
+      setSendingInvitation(dealId);
+      await agentApi.sendClientInvitation(dealId);
+
+      // Refresh deals to show updated status
+      await onRefresh();
+
+      alert('Client portal invitation sent successfully!');
+    } catch (error) {
+      console.error('[LeadsManagement] Error sending invitation:', error);
+      alert(error.response?.data?.message || 'Failed to send invitation');
+    } finally {
+      setSendingInvitation(null);
+    }
+  };
+
+  const handleArchive = async (dealId, propertyAddress) => {
+    if (!window.confirm(`Archive lead for ${propertyAddress}? This will mark the deal as closed/lost.`)) {
+      return;
+    }
+
+    try {
+      await agentApi.updateLead(dealId, { dealstage: 'closedlost' });
+
+      // Refresh deals
+      await onRefresh();
+
+      alert('Lead archived successfully');
+    } catch (error) {
+      console.error('[LeadsManagement] Error archiving lead:', error);
+      alert(error.response?.data?.message || 'Failed to archive lead');
+    }
+  };
 
   return (
     <div className="leads-management">
@@ -194,24 +235,41 @@ export default function LeadsManagement({ deals, onCreateLead, onRefresh }) {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button 
+                      <button
                         className="action-btn"
                         title="View Details"
-                        onClick={() => console.log('View', deal.id)}
+                        onClick={() => onViewLead(deal)}
                       >
                         <Eye size={16} />
                       </button>
-                      <button 
-                        className="action-btn"
-                        title="Edit"
-                        onClick={() => console.log('Edit', deal.id)}
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button 
-                        className="action-btn"
+
+                      {isDraft(deal) ? (
+                        <button
+                          className="action-btn action-btn-primary"
+                          title="Send to Client Portal"
+                          onClick={() => handleSendToClient(deal.id)}
+                          disabled={sendingInvitation === deal.id}
+                        >
+                          {sendingInvitation === deal.id ? (
+                            <div className="spinner-tiny" />
+                          ) : (
+                            <Send size={16} />
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          className="action-btn"
+                          title="Edit"
+                          onClick={() => alert('Edit functionality coming soon!')}
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+
+                      <button
+                        className="action-btn action-btn-danger"
                         title="Archive"
-                        onClick={() => console.log('Archive', deal.id)}
+                        onClick={() => handleArchive(deal.id, deal.property_address)}
                       >
                         <Archive size={16} />
                       </button>

@@ -18,6 +18,13 @@ export const createDeal = async (dealData, associations = []) => {
       pipeline: dealData.pipeline || 'default',
       property_address: dealData.property_address || '',
       number_of_owners: dealData.number_of_owners || 1,
+      
+      // Draft status (Yes or null)
+      is_draft: dealData.is_draft === 'Yes' ? 'Yes' : null,
+      
+      // Agent title search
+      agent_title_search: dealData.agent_title_search || null,
+      agent_title_search_file: dealData.agent_title_search_file || null,
 
       // Section 1: Title Details & Encumbrances
       body_corporate: dealData.body_corporate || '',

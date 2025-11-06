@@ -1,7 +1,8 @@
-import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Upload, FileText, X } from 'lucide-react';
 
 export default function CreateLeadStep1({ formData, updateFormData }) {
+  const [uploadingTitleSearch, setUploadingTitleSearch] = useState(false);
   const handlePrimarySellerChange = (field, value) => {
     updateFormData({
       primarySeller: {
@@ -90,6 +91,87 @@ export default function CreateLeadStep1({ formData, updateFormData }) {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Title Search Section */}
+      <div className="form-section">
+        <h3 className="section-title">Title Search</h3>
+        
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label className="form-label">Have you conducted a title search for the client already?</label>
+            <div className="radio-group">
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="agentTitleSearch"
+                  value="Yes"
+                  checked={formData.agentTitleSearch === 'Yes'}
+                  onChange={(e) => updateFormData({ agentTitleSearch: e.target.value })}
+                />
+                <span>Yes</span>
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="agentTitleSearch"
+                  value="No"
+                  checked={formData.agentTitleSearch === 'No'}
+                  onChange={(e) => updateFormData({ 
+                    agentTitleSearch: e.target.value,
+                    agentTitleSearchFile: null
+                  })}
+                />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* File Upload (only show if Yes) */}
+        {formData.agentTitleSearch === 'Yes' && (
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label className="form-label">Upload Title Search Document</label>
+              {!formData.agentTitleSearchFile ? (
+                <div className="file-upload-area">
+                  <input
+                    type="file"
+                    id="titleSearchFile"
+                    className="file-input"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        updateFormData({ agentTitleSearchFile: file });
+                      }
+                    }}
+                    disabled={uploadingTitleSearch}
+                  />
+                  <label htmlFor="titleSearchFile" className="file-upload-label">
+                    <Upload size={24} />
+                    <span className="upload-text">
+                      {uploadingTitleSearch ? 'Uploading...' : 'Click to upload or drag and drop'}
+                    </span>
+                    <span className="upload-hint">PDF, DOC, or DOCX (max 10MB)</span>
+                  </label>
+                </div>
+              ) : (
+                <div className="file-uploaded">
+                  <FileText size={20} />
+                  <span className="file-name">{formData.agentTitleSearchFile.name}</span>
+                  <button
+                    type="button"
+                    className="btn-remove-file"
+                    onClick={() => updateFormData({ agentTitleSearchFile: null })}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Primary Seller */}

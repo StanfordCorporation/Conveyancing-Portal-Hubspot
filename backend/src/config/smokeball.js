@@ -42,7 +42,7 @@ export const SMOKEBALL_CONFIG = {
 
   // OAuth2 Flow
   redirectUri: process.env.SMOKEBALL_REDIRECT_URI || 'http://localhost:3001/api/smokeball/oauth-callback',
-  scopes: ['openid', 'offline_access', 'sb.api'], // Required scopes for Smokeball API
+  scopes: [], // Use default scopes - Smokeball OAuth2 doesn't require explicit scopes
 
   // Authorization Endpoints
   authorizationEndpoint: `${process.env.SMOKEBALL_AUTH_BASE_URL || 'https://auth.smokeball.com.au'}/oauth2/authorize`,

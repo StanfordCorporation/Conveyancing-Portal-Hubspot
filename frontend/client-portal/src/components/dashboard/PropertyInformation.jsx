@@ -155,6 +155,8 @@ export default function PropertyInformation({ dealId, initialData }) {
           dealStage={propertyData.dealStage}
           nextStep={propertyData.nextStep}
           clientResidentialAddress={propertyData.primarySeller?.residentialAddress}
+          agentTitleSearch={propertyData.agentTitleSearch}
+          agentTitleSearchFile={propertyData.agentTitleSearchFile}
         />
       </div>
 

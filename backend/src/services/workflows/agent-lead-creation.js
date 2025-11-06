@@ -8,6 +8,8 @@
 import { findOrCreateContact, searchContactByEmailOrPhone } from '../../integrations/hubspot/contacts.js';
 import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
 import hubspotClient from '../../integrations/hubspot/client.js';
+import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
+import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
 
 /**
  * Process agent-initiated lead creation
@@ -155,10 +157,13 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
 
     const dealData = {
       dealname: `${leadData.property.address} - ${primarySellerNames.firstname} ${primarySellerNames.lastname}`,
-      dealstage: leadData.isDraft ? 'draft' : '1923713518', // Draft or Stage 1
+      dealstage: '1923713518', // Stage 1: Client Disclosure
       pipeline: 'default',
       property_address: leadData.property.address,
       number_of_owners: (additionalSellerIds.length + 1).toString(),
+      is_draft: leadData.isDraft ? 'Yes' : null, // Use is_draft property (Yes or null)
+      agent_title_search: leadData.agentTitleSearch || null,
+      agent_title_search_file: leadData.agentTitleSearchFile || null,
       // Add transformed questionnaire data
       ...transformedQuestionnaireData
     };
@@ -210,10 +215,25 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
     console.log('[Agent Lead Creation] Deal created successfully:', deal.id);
 
     // ========================================
-    // STEP 5: Send client portal invitation (if requested)
+    // STEP 5: Create Smokeball lead (if enabled and not draft)
+    // ========================================
+    let smokeballLead = null;
+    if (SMOKEBALL_ENABLED && !leadData.isDraft) {
+      try {
+        console.log('[Agent Lead Creation] ⏳ STEP 5: Creating Smokeball lead...');
+        smokeballLead = await createSmokeballLeadFromDeal(deal.id);
+        console.log('[Agent Lead Creation] ✅ Smokeball lead created:', smokeballLead.leadId);
+      } catch (smokeballError) {
+        console.error('[Agent Lead Creation] ⚠️ Smokeball lead creation failed:', smokeballError.message);
+        // Don't fail entire workflow - deal is created, Smokeball can be synced later
+      }
+    }
+
+    // ========================================
+    // STEP 6: Send client portal invitation (if requested)
     // ========================================
     if (leadData.sendInvitation && !leadData.isDraft) {
-      console.log('[Agent Lead Creation] ⏳ STEP 5: Sending client portal invitation...');
+      console.log('[Agent Lead Creation] ⏳ STEP 6: Sending client portal invitation...');
       // TODO: Implement OTP invitation sending
       // This will use the existing /api/auth/send-otp endpoint
       console.log('[Agent Lead Creation] 📧 Client portal invitation will be sent to:', primarySeller.properties?.email);
@@ -224,7 +244,8 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
       deal,
       primarySeller,
       additionalSellers: additionalSellerIds,
-      agencyId
+      agencyId,
+      smokeballLead
     };
 
   } catch (error) {

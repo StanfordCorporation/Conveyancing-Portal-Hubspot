@@ -1,5 +1,7 @@
 import { createContact } from '../../integrations/hubspot/contacts.js';
 import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
+import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
+import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
 
 /**
  * Workflow 2: Agent-Initiated Client Creation
@@ -80,14 +82,28 @@ export const processAgentClientCreation = async (formData) => {
 
     console.log('[Agent Client Creation] Deal created successfully:', deal.id);
 
-    // Step 4: Update deal stage to indicate portal access should be sent
+    // Step 4: Create Smokeball lead (if enabled)
+    let smokeballLead = null;
+    if (SMOKEBALL_ENABLED) {
+      try {
+        console.log('[Agent Client Creation] ⏳ Creating Smokeball lead...');
+        smokeballLead = await createSmokeballLeadFromDeal(deal.id);
+        console.log('[Agent Client Creation] ✅ Smokeball lead created:', smokeballLead.leadId);
+      } catch (smokeballError) {
+        console.error('[Agent Client Creation] ⚠️ Smokeball lead creation failed:', smokeballError.message);
+        // Don't fail entire workflow - deal is created, Smokeball can be synced later
+      }
+    }
+
+    // Step 5: Update deal stage to indicate portal access should be sent
     // (This would trigger portal provisioning in the next step)
 
     return {
       success: true,
       deal,
       client: clientContact,
-      nextStep: 'send_client_portal_access'
+      nextStep: 'send_client_portal_access',
+      smokeballLead
     };
 
   } catch (error) {

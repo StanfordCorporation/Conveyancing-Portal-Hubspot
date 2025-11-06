@@ -556,6 +556,37 @@ body {
   color: var(--primary-blue);
 }
 
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn-primary {
+  background: var(--primary-blue-light);
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+}
+
+.action-btn-primary:hover:not(:disabled) {
+  background: var(--primary-blue);
+  color: white;
+}
+
+.action-btn-danger:hover:not(:disabled) {
+  background: var(--error-light);
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.spinner-tiny {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--primary-blue-light);
+  border-top-color: var(--primary-blue);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
 /* ============================================================================ */
 /* KANBAN BOARD */
 /* ============================================================================ */
