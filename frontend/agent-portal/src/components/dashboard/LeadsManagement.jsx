@@ -259,8 +259,12 @@ export default function LeadsManagement({ deals, onCreateLead, onRefresh, onView
                       ) : (
                         <button
                           className="action-btn"
-                          title="Edit"
+                          title={deal.client_portal_sent_at
+                            ? "Cannot edit - already sent to client portal"
+                            : "Edit lead details"
+                          }
                           onClick={() => onEditLead(deal)}
+                          disabled={!!deal.client_portal_sent_at}
                         >
                           <Edit2 size={16} />
                         </button>

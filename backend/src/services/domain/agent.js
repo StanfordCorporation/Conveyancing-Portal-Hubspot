@@ -216,6 +216,7 @@ export const getAgentDeals = async (agentId) => {
       'owner_builder', 'createdate', 'hs_lastmodifieddate', 'closedate',
       'amount', 'pipeline', 'deal_currency_code',
       'is_draft', // Draft status indicator
+      'client_portal_sent_at', // Timestamp when sent to client portal
       'agent_title_search', 'agent_title_search_file', // Title search fields
       // Questionnaire fields
       'body_corporate_details', 'non_statutory_encumbrances',
