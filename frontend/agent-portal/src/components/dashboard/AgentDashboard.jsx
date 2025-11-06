@@ -23,6 +23,7 @@ export default function AgentDashboard() {
   const [isCreateLeadModalOpen, setIsCreateLeadModalOpen] = useState(false);
   const [isLeadDetailsModalOpen, setIsLeadDetailsModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [leadToEdit, setLeadToEdit] = useState(null);
 
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -57,11 +58,12 @@ export default function AgentDashboard() {
 
   const handleCreateLead = async (formData) => {
     try {
-      console.log('[Dashboard] Creating new lead:', formData);
-      
+      const isEditMode = !!formData.dealId;
+      console.log(`[Dashboard] ${isEditMode ? 'Updating' : 'Creating'} lead:`, formData);
+
       // Handle file upload if title search file exists
       let titleSearchFileId = null;
-      if (formData.agentTitleSearchFile) {
+      if (formData.agentTitleSearchFile && typeof formData.agentTitleSearchFile !== 'string') {
         try {
           console.log('[Dashboard] Uploading title search file...');
           const uploadResponse = await agentApi.uploadTitleSearchFile(formData.agentTitleSearchFile);
@@ -72,38 +74,67 @@ export default function AgentDashboard() {
           // Continue without file - user can upload later
         }
       }
-      
-      // Format data for API
-      const apiData = {
-        client: {
-          fullName: formData.primarySeller.fullName,
-          email: formData.primarySeller.email,
-          mobile: formData.primarySeller.mobile,
-          address: formData.primarySeller.address
-        },
-        additionalSellers: formData.additionalSellers,
-        property: {
-          address: formData.propertyAddress,
-          number_of_owners: formData.numberOfOwners
-        },
-        questionnaireData: formData.questionnaireData,
-        sendInvitation: formData.sendInvitation,
-        isDraft: formData.isDraft,
-        agentTitleSearch: formData.agentTitleSearch,
-        agentTitleSearchFile: titleSearchFileId
-      };
 
-      const response = await agentApi.createLead(apiData);
-      console.log('[Dashboard] Lead created successfully:', response.data);
-      
+      if (isEditMode) {
+        // Update existing lead
+        const updates = {
+          property_address: formData.propertyAddress,
+          number_of_owners: formData.numberOfOwners,
+          agent_title_search: formData.agentTitleSearch,
+          ...(titleSearchFileId && { agent_title_search_file: titleSearchFileId }),
+          // Include questionnaire data
+          ...formData.questionnaireData
+        };
+
+        await agentApi.updateLead(formData.dealId, updates);
+        console.log('[Dashboard] Lead updated successfully');
+
+        // If sendInvitation is checked, send invitation
+        if (formData.sendInvitation) {
+          await agentApi.sendClientInvitation(formData.dealId);
+          console.log('[Dashboard] Client invitation sent');
+        }
+
+        setIsCreateLeadModalOpen(false);
+        setLeadToEdit(null);
+      } else {
+        // Create new lead
+        const apiData = {
+          client: {
+            fullName: formData.primarySeller.fullName,
+            email: formData.primarySeller.email,
+            mobile: formData.primarySeller.mobile,
+            address: formData.primarySeller.address
+          },
+          additionalSellers: formData.additionalSellers,
+          property: {
+            address: formData.propertyAddress,
+            number_of_owners: formData.numberOfOwners
+          },
+          questionnaireData: formData.questionnaireData,
+          sendInvitation: formData.sendInvitation,
+          isDraft: formData.isDraft,
+          agentTitleSearch: formData.agentTitleSearch,
+          agentTitleSearchFile: titleSearchFileId
+        };
+
+        const response = await agentApi.createLead(apiData);
+        console.log('[Dashboard] Lead created successfully:', response.data);
+
+        setIsCreateLeadModalOpen(false);
+      }
+
       // Refresh dashboard data
       await loadDashboard();
-      
-      setIsCreateLeadModalOpen(false);
     } catch (err) {
-      console.error('[Dashboard] Error creating lead:', err);
+      console.error('[Dashboard] Error saving lead:', err);
       throw err;
     }
+  };
+
+  const handleEditLead = (deal) => {
+    setLeadToEdit(deal);
+    setIsCreateLeadModalOpen(true);
   };
 
   const handleViewLead = (deal) => {
@@ -230,9 +261,13 @@ export default function AgentDashboard() {
         {activeSection === 'leads' && (
           <LeadsManagement
             deals={dashboardData.deals}
-            onCreateLead={() => setIsCreateLeadModalOpen(true)}
+            onCreateLead={() => {
+              setLeadToEdit(null);
+              setIsCreateLeadModalOpen(true);
+            }}
             onRefresh={loadDashboard}
             onViewLead={handleViewLead}
+            onEditLead={handleEditLead}
           />
         )}
 
@@ -254,8 +289,12 @@ export default function AgentDashboard() {
       {/* Modals */}
       <CreateLeadModal
         isOpen={isCreateLeadModalOpen}
-        onClose={() => setIsCreateLeadModalOpen(false)}
+        onClose={() => {
+          setIsCreateLeadModalOpen(false);
+          setLeadToEdit(null);
+        }}
         onSubmit={handleCreateLead}
+        existingLead={leadToEdit}
       />
 
       <LeadDetailsModal

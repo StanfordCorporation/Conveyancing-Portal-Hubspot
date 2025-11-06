@@ -4,33 +4,85 @@ import CreateLeadStep1 from './CreateLeadStep1';
 import CreateLeadStep2 from './CreateLeadStep2';
 import CreateLeadStep3 from './CreateLeadStep3';
 
-export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
+export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLead = null }) {
+  const isEditMode = !!existingLead;
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    // Step 1: Client Information
-    propertyAddress: '',
-    numberOfOwners: '1',
-    primarySeller: {
-      fullName: '',
-      email: '',
-      mobile: '',
-      address: ''
-    },
-    additionalSellers: [],
-    
-    // Title Search
-    agentTitleSearch: null, // 'Yes' or 'No'
-    agentTitleSearchFile: null,
-    
-    // Step 2: Property Questionnaire
-    questionnaireData: {},
-    
-    // Step 3: Review & Send
-    sendInvitation: true
-  });
+
+  // Initialize form data from existing lead or with defaults
+  const getInitialFormData = () => {
+    if (existingLead) {
+      return {
+        dealId: existingLead.id,
+        propertyAddress: existingLead.property_address || '',
+        numberOfOwners: existingLead.number_of_owners || '1',
+        primarySeller: {
+          fullName: existingLead.primarySeller
+            ? `${existingLead.primarySeller.firstname || ''} ${existingLead.primarySeller.lastname || ''}`.trim()
+            : '',
+          email: existingLead.primarySeller?.email || '',
+          mobile: existingLead.primarySeller?.phone || '',
+          address: existingLead.primarySeller?.address || ''
+        },
+        additionalSellers: existingLead.additionalSellers || [],
+        agentTitleSearch: existingLead.agent_title_search || null,
+        agentTitleSearchFile: existingLead.agent_title_search_file || null,
+        questionnaireData: extractQuestionnaireData(existingLead),
+        sendInvitation: false // Don't auto-send when editing
+      };
+    }
+
+    return {
+      propertyAddress: '',
+      numberOfOwners: '1',
+      primarySeller: {
+        fullName: '',
+        email: '',
+        mobile: '',
+        address: ''
+      },
+      additionalSellers: [],
+      agentTitleSearch: null,
+      agentTitleSearchFile: null,
+      questionnaireData: {},
+      sendInvitation: true
+    };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData());
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Extract questionnaire data from existing lead
+  const extractQuestionnaireData = (lead) => {
+    if (!lead) return {};
+
+    const questionnaireFields = [
+      'body_corporate', 'body_corporate_details', 'registered_encumbrances',
+      'tenancy_agreement', 'formal_tenancy_agreement', 'tenancy_end_date',
+      'weekly_rent', 'rental_agreement_post_settlement', 'resume_notice',
+      'swimming_pool', 'owner_builder', 'contaminated_land', 'tree_disputes',
+      'environmental_management', 'unauthorised_works', 'non_statutory_encumbrances'
+    ];
+
+    const data = {};
+    questionnaireFields.forEach(field => {
+      if (lead[field]) {
+        data[field] = lead[field];
+      }
+    });
+
+    return data;
+  };
+
+  // Reset form when modal opens/closes or when existingLead changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData(getInitialFormData());
+      setCurrentStep(1);
+      setError('');
+    }
+  }, [isOpen, existingLead]);
 
   if (!isOpen) return null;
 
@@ -104,7 +156,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
     switch (currentStep) {
       case 1: return 'Client Information';
       case 2: return 'Property Questionnaire';
-      case 3: return 'Review & Send';
+      case 3: return isEditMode ? 'Review & Save' : 'Review & Send';
       default: return '';
     }
   };
@@ -115,7 +167,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
         {/* Header */}
         <div className="modal-header">
           <div>
-            <h2 className="modal-title">Create New Lead</h2>
+            <h2 className="modal-title">{isEditMode ? 'Edit Lead' : 'Create New Lead'}</h2>
             <p className="modal-subtitle">Step {currentStep} of 3: {getStepTitle()}</p>
           </div>
           <button className="modal-close" onClick={onClose}>
@@ -207,7 +259,12 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }) {
                   </>
                 ) : (
                   <>
-                    <span>{formData.sendInvitation ? 'Send to Client Portal' : 'Create Lead'}</span>
+                    <span>
+                      {isEditMode
+                        ? 'Save Changes'
+                        : (formData.sendInvitation ? 'Send to Client Portal' : 'Create Lead')
+                      }
+                    </span>
                     <ArrowRight size={18} />
                   </>
                 )}

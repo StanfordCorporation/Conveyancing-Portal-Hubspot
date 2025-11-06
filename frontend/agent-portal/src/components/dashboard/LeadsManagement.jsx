@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { getStageLabel, getAgentNextStep, getStageColor, isDraft } from '../../constants/dealStages';
 import { agentApi } from '../../services/api';
 
-export default function LeadsManagement({ deals, onCreateLead, onRefresh, onViewLead }) {
+export default function LeadsManagement({ deals, onCreateLead, onRefresh, onViewLead, onEditLead }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
@@ -260,7 +260,7 @@ export default function LeadsManagement({ deals, onCreateLead, onRefresh, onView
                         <button
                           className="action-btn"
                           title="Edit"
-                          onClick={() => alert('Edit functionality coming soon!')}
+                          onClick={() => onEditLead(deal)}
                         >
                           <Edit2 size={16} />
                         </button>
