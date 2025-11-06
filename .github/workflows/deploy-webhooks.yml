@@ -1,0 +1,81 @@
+name: Deploy Webhooks to Cloudflare Workers
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'workers/**'
+      - '.github/workflows/deploy-webhooks.yml'
+
+jobs:
+  deploy-docusign-webhook:
+    runs-on: ubuntu-latest
+    name: Deploy DocuSign Webhook
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy DocuSign Webhook Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: workers/docusign-webhook
+          secrets: |
+            HUBSPOT_ACCESS_TOKEN
+        env:
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+      
+      - name: Deployment Summary
+        run: echo "✅ DocuSign webhook deployed successfully"
+  
+  deploy-stripe-webhook:
+    runs-on: ubuntu-latest
+    name: Deploy Stripe Webhook
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy Stripe Webhook Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: workers/stripe-webhook
+          secrets: |
+            HUBSPOT_ACCESS_TOKEN
+            STRIPE_WEBHOOK_SECRET
+        env:
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      
+      - name: Deployment Summary
+        run: echo "✅ Stripe webhook deployed successfully"
+  
+  deploy-smokeball-webhook:
+    runs-on: ubuntu-latest
+    name: Deploy Smokeball Webhook
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy Smokeball Webhook Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: workers/smokeball-webhook
+          secrets: |
+            HUBSPOT_ACCESS_TOKEN
+        env:
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+      
+      - name: Deployment Summary
+        run: echo "✅ Smokeball webhook deployed successfully"
+

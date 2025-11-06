@@ -55,7 +55,15 @@
       "Bash(git add:*)",
       "Bash(node test-property-endpoint.js:*)",
       "Bash(npm run:*)",
-      "Bash(npx jest --version)"
+      "Bash(npx jest --version)",
+      "Bash(node:*)",
+      "Bash(npm start)",
+      "Bash(dir:*)",
+      "Bash(git rm:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 35056)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

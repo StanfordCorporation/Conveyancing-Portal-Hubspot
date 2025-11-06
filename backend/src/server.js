@@ -17,7 +17,14 @@ import * as authRoutes from './routes/auth.js';
 import * as agenciesRoutes from './routes/agencies.js';
 import * as workflowsRoutes from './routes/workflows.js';
 import clientRoutes from './routes/client.js';
+import agentRoutes from './routes/agent.js';
 import * as questionnaireRoutes from './routes/questionnaire-simplified.js';
+import * as questionnaireSchemaRoutes from './routes/questionnaire.js';
+import quoteRoutes from './routes/quote.js';
+import docusignRoutes from './routes/docusign.js';
+import paymentRoutes from './routes/payment.js';
+import webhookRoutes from './routes/webhook.js';
+import smokeballRoutes from './routes/smokeball.js';
 
 dotenv.config();
 
@@ -38,6 +45,9 @@ app.use(cors({
 
 // Request logging
 app.use(requestLogger);
+
+// CRITICAL: Webhook MUST come BEFORE body parser (Stripe needs raw body for signature verification)
+app.use('/api/webhook', webhookRoutes);
 
 // Body parsing
 app.use(express.json());
@@ -90,9 +100,41 @@ app.patch('/crm/v3/objects/property-questionnaire/:dealId', questionnaireRoutes.
 app.post('/crm/v3/objects/property-questionnaire/:dealId/files/upload', questionnaireRoutes.uploadPropertyQuestionnaireFile);
 
 /**
+ * Questionnaire Schema Route
+ * Public - provides single source of truth for questionnaire configuration
+ */
+app.get('/api/questionnaire/schema', questionnaireSchemaRoutes.getSchema);
+
+/**
  * Client Portal Routes (Protected)
  */
 app.use('/api/client', clientRoutes);
+
+/**
+ * Agent Portal Routes (Protected)
+ */
+app.use('/api/agent', agentRoutes);
+
+/**
+ * Quote Calculator Routes (Protected)
+ */
+app.use('/api/quote', quoteRoutes);
+
+/**
+ * DocuSign Embedded Signing Routes (Protected)
+ */
+app.use('/api/docusign', docusignRoutes);
+
+/**
+ * Payment Routes (Protected)
+ */
+app.use('/api/payment', paymentRoutes);
+
+/**
+ * Smokeball Integration Routes
+ * OAuth2 + PKCE authentication and CRM operations
+ */
+app.use('/api/smokeball', smokeballRoutes);
 
 // ============================================================================
 // HEALTH CHECK & INFO ROUTES
@@ -142,6 +184,10 @@ app.get('/', (req, res) => {
         getAll: 'GET /crm/v3/objects/property-questionnaire',
         update: 'PATCH /crm/v3/objects/property-questionnaire/{dealId}',
         uploadFile: 'POST /crm/v3/objects/property-questionnaire/{dealId}/files/upload'
+      },
+      questionnaireSchema: {
+        description: 'Single source of truth for questionnaire configuration',
+        getSchema: 'GET /api/questionnaire/schema'
       }
     }
   });

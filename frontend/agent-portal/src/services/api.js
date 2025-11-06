@@ -30,12 +30,96 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
+      console.error('[API] Authentication error - redirecting to login');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = '/agent/login';
     }
     return Promise.reject(error);
   }
 );
+
+/**
+ * Agent API Service
+ * All API calls for the agent dashboard
+ */
+export const agentApi = {
+  /**
+   * Get complete dashboard data (agent info, deals, metrics)
+   */
+  getDashboardComplete: () => {
+    console.log('[API] Fetching dashboard complete');
+    return api.get('/agent/dashboard-complete');
+  },
+
+  /**
+   * Get agent profile
+   */
+  getProfile: () => {
+    return api.get('/agent/profile');
+  },
+
+  /**
+   * Update agent profile
+   */
+  updateProfile: (updates) => {
+    return api.patch('/agent/profile', updates);
+  },
+
+  /**
+   * Create new lead
+   */
+  createLead: (leadData) => {
+    console.log('[API] Creating new lead:', leadData.property?.address);
+    return api.post('/agent/leads/create', leadData);
+  },
+
+  /**
+   * Send client portal invitation
+   */
+  sendClientPortalInvitation: (leadId) => {
+    console.log('[API] Sending client portal invitation for lead:', leadId);
+    return api.post(`/agent/leads/${leadId}/send-to-client`, { sendEmail: true });
+  },
+
+  /**
+   * Get lead details
+   */
+  getLead: (leadId) => {
+    return api.get(`/agent/leads/${leadId}`);
+  },
+
+  /**
+   * Update lead
+   */
+  updateLead: (leadId, updates) => {
+    console.log('[API] Updating lead:', leadId);
+    return api.patch(`/agent/leads/${leadId}`, { updates });
+  },
+
+  /**
+   * Upload document for deal
+   */
+  uploadDocument: (dealId, documentType, file) => {
+    console.log('[API] Uploading document:', documentType, 'for deal:', dealId);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    
+    return api.post(`/agent/deals/${dealId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  /**
+   * Update agent profile
+   */
+  updateAgentProfile: (profileData) => {
+    console.log('[API] Updating agent profile');
+    return api.patch('/agent/profile', profileData);
+  }
+};
 
 export default api;

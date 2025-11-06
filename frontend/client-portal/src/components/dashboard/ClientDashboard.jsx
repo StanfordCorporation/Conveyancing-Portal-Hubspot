@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import api from '../../services/api.js';
+import { getStepFromStage, getStageFromStep } from '../../constants/dealStages.js';
 import PropertyInformation from './PropertyInformation.jsx';
+import PropertyQuestionnaire from './PropertyQuestionnaire.jsx';
+import DynamicQuote from './DynamicQuote.jsx';
+import SigningStatus from './SigningStatus.jsx';
+import PaymentInstructions from './PaymentInstructions.jsx';
+import StatusTracking from './StatusTracking.jsx';
 import './dashboard.css';
 
 export default function ClientDashboard() {
@@ -12,10 +18,14 @@ export default function ClientDashboard() {
   // Get stored user data from localStorage
   const storedUser = JSON.parse(localStorage.getItem('user'));
 
-  const [expandedProperty, setExpandedProperty] = useState(0);
+  // Prevent StrictMode double-execution
+  const hasFetchedDashboardRef = useRef(false);
+
+  const [expandedProperties, setExpandedProperties] = useState(new Set([0])); // Allow multiple expansions, start with first property expanded
   const [activeSection, setActiveSection] = useState('information');
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
   const [propertyStages, setPropertyStages] = useState({});
+  const [quoteRefreshKey, setQuoteRefreshKey] = useState(Date.now());
 
   // Client data from login
   const [clientData, setClientData] = useState({
@@ -27,42 +37,147 @@ export default function ClientDashboard() {
   // Dynamically loaded properties
   const [properties, setProperties] = useState([]);
   const [currentProperty, setCurrentProperty] = useState(null);
+  const [questionnaireDataByDeal, setQuestionnaireDataByDeal] = useState({}); // { dealId: { questionnaire data } }
+  const [propertyDetailsByDeal, setPropertyDetailsByDeal] = useState({}); // { dealId: { full property info } }
+  const [filesByDeal, setFilesByDeal] = useState({}); // { dealId: { fieldName: [file objects] } }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [envelopeStatus, setEnvelopeStatus] = useState({}); // { dealId: { status, signers, etc } }
+  const [quoteAmounts, setQuoteAmounts] = useState({}); // { dealId: amount }
 
-  const [formData, setFormData] = useState({
-    q1_1: '',
-    q1_2: '',
-    q1_2_details: '',
-    q1_3: '',
-    q1_3_details: '',
-  });
+  // Handle signing completion query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const signingComplete = params.get('signing');
+    const step = params.get('step');
+    const envelopeId = params.get('envelopeId');
 
-  const [conditionalFields, setConditionalFields] = useState({
-    q1_2_details: false,
-    q1_3_details: false,
-  });
+    if (signingComplete === 'complete') {
+      console.log('[Dashboard] 🎉 Signing completed!', { envelopeId, step });
+      
+      // Move to step 5 (payment)
+      if (step === '5' && currentProperty) {
+        setPropertyStages(prev => ({
+          ...prev,
+          [currentProperty.id]: 5
+        }));
+        setActiveSection('payment');
+      }
+
+      // Store envelope ID for this property
+      if (envelopeId && currentProperty) {
+        setEnvelopeStatus(prev => ({
+          ...prev,
+          [currentProperty.id]: { envelopeId, status: 'signed' }
+        }));
+      }
+
+      // Clear query parameters
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [location.search, currentProperty]);
 
   // Fetch dashboard data on component mount
   useEffect(() => {
+    // Prevent double execution in React StrictMode
+    if (hasFetchedDashboardRef.current) {
+      console.log('[Dashboard] ⏭️ Skipping duplicate dashboard fetch (StrictMode prevention)');
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        console.log('[Dashboard] 📊 Fetching dashboard data...');
+        console.log('[Dashboard] 🚀 Fetching COMPLETE dashboard data (all in one call)...');
 
-        const response = await api.get('/client/dashboard-data');
+        const response = await api.get('/client/dashboard-complete');
+        hasFetchedDashboardRef.current = true; // Mark as fetched
 
         if (response.data.deals && response.data.deals.length > 0) {
-          console.log(`[Dashboard] ✅ Loaded ${response.data.deals.length} deals`);
-          setProperties(response.data.deals);
-          setCurrentProperty(response.data.deals[0]); // Auto-select first property
+          console.log(`[Dashboard] ✅ Loaded ${response.data.deals.length} deals with ALL data (questionnaire + property details)`);
 
-          // Initialize stages for each property (start at stage 1)
+          // Calculate progress percentage for each deal based on stage progression
+          // Convert HubSpot stage to step number first to calculate progress
+          const TOTAL_STAGES = 12; // Total number of stages in the workflow
+
+          const dealsWithProgress = response.data.deals.map(deal => {
+            // Get current stage/step number from HubSpot deal stage
+            const currentStage = getStepFromStage(deal.status);
+
+            // Calculate progress: (current stage / total stages) * 100
+            const progressPercentage = Math.round((currentStage / TOTAL_STAGES) * 100);
+
+            console.log(`[Dashboard] 📊 Deal "${deal.title}": Stage ${currentStage}/${TOTAL_STAGES} = ${progressPercentage}%`);
+
+            return {
+              ...deal,
+              progressPercentage
+            };
+          });
+
+          setProperties(dealsWithProgress);
+          setCurrentProperty(dealsWithProgress[0]); // Auto-select first property
+
+          // Store questionnaire data by dealId for quick lookup
+          const questionnaireDataLookup = {};
+          const propertyDetailsLookup = {};
+          const filesLookup = {};
+
+          dealsWithProgress.forEach((deal) => {
+            if (deal.questionnaire) {
+              questionnaireDataLookup[deal.id] = deal.questionnaire;
+              console.log(`[Dashboard] 📋 Stored ${Object.keys(deal.questionnaire).length} questionnaire fields for deal ${deal.id}`);
+            }
+            if (deal.propertyDetails) {
+              propertyDetailsLookup[deal.id] = deal.propertyDetails;
+              console.log(`[Dashboard] 🏠 Stored property details for deal ${deal.id}`);
+            }
+            if (deal.files) {
+              filesLookup[deal.id] = deal.files;
+              const fileCount = Object.values(deal.files).reduce((sum, files) => sum + files.length, 0);
+              console.log(`[Dashboard] 📎 Stored ${fileCount} file(s) for deal ${deal.id}`);
+            }
+          });
+
+          setQuestionnaireDataByDeal(questionnaireDataLookup);
+          setPropertyDetailsByDeal(propertyDetailsLookup);
+          setFilesByDeal(filesLookup);
+
+          // Initialize stages for each property from HubSpot dealstage
           const initialStages = {};
-          response.data.deals.forEach((deal) => {
-            initialStages[deal.id] = 1;
+          dealsWithProgress.forEach((deal) => {
+            console.log(`[Dashboard] 🔍 Raw deal data:`, {
+              id: deal.id,
+              title: deal.title,
+              status: deal.status,
+              statusType: typeof deal.status
+            });
+
+            // Convert HubSpot stage ID to step number (1-5)
+            const stepNumber = getStepFromStage(deal.status);
+            initialStages[deal.id] = stepNumber;
+            console.log(`[Dashboard] 📊 Deal ${deal.id} is at step ${stepNumber} (HubSpot stage: ${deal.status})`);
           });
           setPropertyStages(initialStages);
+
+          // Set initial section based on first property's stage
+          if (dealsWithProgress.length > 0) {
+            const firstDeal = dealsWithProgress[0];
+            const firstDealStage = initialStages[firstDeal.id] || 1;
+
+            const sectionMap = {
+              1: 'information',
+              2: 'questionnaire',
+              3: 'quote',
+              4: 'signature',
+              5: 'payment',
+              6: 'status'
+            };
+
+            const initialSection = sectionMap[firstDealStage];
+            setActiveSection(initialSection);
+            console.log(`[Dashboard] 📍 Initial section set to "${initialSection}" for step ${firstDealStage}`);
+          }
         } else {
           console.log('[Dashboard] ℹ️ No deals found');
           setProperties([]);
@@ -87,40 +202,118 @@ export default function ClientDashboard() {
     navigate('/login');
   };
 
+  const togglePropertyExpansion = (idx) => {
+    setExpandedProperties(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(idx)) {
+        newExpanded.delete(idx);
+      } else {
+        newExpanded.add(idx);
+      }
+      return newExpanded;
+    });
+  };
+
   const switchProperty = (property) => {
+    console.log(`[Dashboard] 🔄 Switching to property: ${property.id}`);
     setCurrentProperty(property);
+
+    // Reset to the appropriate section based on property's current stage
+    const currentStage = propertyStages[property.id] || 1;
+    const hasSigned = envelopeStatus[property.id]?.status === 'signed';
+
+    const sectionMap = {
+      1: 'information',
+      2: 'questionnaire',
+      3: 'quote',
+      4: 'signature',
+      5: 'payment'
+    };
+
+    // If signed, go to payment, otherwise go to property's current stage
+    const targetSection = hasSigned ? 'payment' : sectionMap[currentStage];
+    setActiveSection(targetSection);
+
+    console.log(`[Dashboard] 📍 Property stage: ${currentStage}, Section: ${targetSection}, Signed: ${hasSigned}`);
   };
 
   // Determine if a stage is accessible based on dependencies
   const isStageAccessible = (stageNumber, currentPropertyId) => {
-    if (stageNumber === 1) return true; // Stage 1 always accessible
-    if (stageNumber === 2) return true; // Stage 2 always accessible
-    if (stageNumber === 3) return propertyStages[currentPropertyId] >= 2; // Requires stage 2
-    if (stageNumber === 4) return propertyStages[currentPropertyId] >= 3; // Requires stage 3
-    if (stageNumber === 5) return propertyStages[currentPropertyId] >= 4; // Requires stage 4
-    return false;
+    const currentStage = propertyStages[currentPropertyId] || 1;
+    const hasSigned = envelopeStatus[currentPropertyId]?.status === 'signed';
+
+    // If document is signed, lock all stages before Stage 5
+    if (hasSigned && stageNumber < 5) {
+      return false; // Lock editing after signing
+    }
+
+    // Progression rules: Can only access current stage or previous stages
+    // Cannot skip ahead - must complete stages in order
+    if (stageNumber === 1) return true; // Stage 1 always accessible (unless signed)
+    if (stageNumber === 2) return currentStage >= 1; // Can access if at stage 1 or higher
+    if (stageNumber === 3) return currentStage >= 2; // Can access if at stage 2 or higher
+    if (stageNumber === 4) return currentStage >= 3; // Can access if at stage 3 or higher
+    if (stageNumber === 5) return currentStage >= 4; // Can access if at stage 4 or higher
+
+    // Cannot skip stages - must unlock them in order
+    return stageNumber <= currentStage;
   };
 
   // Get stage status (completed, current, locked)
   const getStageStatus = (stageNumber, currentPropertyId) => {
     const currentStage = propertyStages[currentPropertyId] || 1;
+    const hasSigned = envelopeStatus[currentPropertyId]?.status === 'signed';
+    
+    // After signing, mark stages 1-4 as completed and locked
+    if (hasSigned && stageNumber < 5) {
+      return 'completed-locked';
+    }
+    
     if (stageNumber < currentStage) return 'completed';
     if (stageNumber === currentStage) return 'current';
     return 'locked';
   };
 
   // Handle stage click
-  const handleStageClick = (stageNumber, currentPropertyId) => {
+  const handleStageClick = async (stageNumber, currentPropertyId) => {
     if (!isStageAccessible(stageNumber, currentPropertyId)) {
-      console.log(`Stage ${stageNumber} is locked`);
+      console.log(`[Dashboard] 🔒 Stage ${stageNumber} is locked`);
+      alert('Please complete the previous steps before accessing this stage.');
       return;
     }
 
-    // Update current stage
-    setPropertyStages(prev => ({
-      ...prev,
-      [currentPropertyId]: stageNumber
-    }));
+    const currentStage = propertyStages[currentPropertyId] || 1;
+
+    // Only allow progression forward (not backward to prevent data loss)
+    if (stageNumber > currentStage) {
+      // Moving forward - update HubSpot stage
+      try {
+        console.log(`[Dashboard] 📊 Progressing to step ${stageNumber} for deal ${currentPropertyId}`);
+
+        await api.patch(`/client/property/${currentPropertyId}/stage`, {
+          stepNumber: stageNumber
+        });
+
+        console.log(`[Dashboard] ✅ Deal stage updated in HubSpot to step ${stageNumber}`);
+
+        // Update local state
+        setPropertyStages(prev => ({
+          ...prev,
+          [currentPropertyId]: stageNumber
+        }));
+      } catch (error) {
+        console.error('[Dashboard] ❌ Error updating deal stage:', error);
+        alert('Failed to update progress. Please try again.');
+        return;
+      }
+    } else {
+      // Moving backward or staying - just update local UI
+      console.log(`[Dashboard] ⬅️ Navigating back to step ${stageNumber}`);
+      setPropertyStages(prev => ({
+        ...prev,
+        [currentPropertyId]: stageNumber
+      }));
+    }
 
     // Switch to appropriate section based on stage
     const sectionMap = {
@@ -128,7 +321,8 @@ export default function ClientDashboard() {
       2: 'questionnaire',
       3: 'quote',
       4: 'signature',
-      5: 'payment'
+      5: 'payment',
+      6: 'status'
     };
     setActiveSection(sectionMap[stageNumber]);
   };
@@ -148,6 +342,69 @@ export default function ClientDashboard() {
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle questionnaire data updates (after save)
+  const handleQuestionnaireDataUpdate = (dealId, updatedData) => {
+    console.log(`[Dashboard] 🔄 Updating cached questionnaire data for deal ${dealId}`);
+    setQuestionnaireDataByDeal(prev => ({
+      ...prev,
+      [dealId]: updatedData
+    }));
+  };
+
+  // Handle Save Progress button click
+  const handleSaveProgress = async () => {
+    if (!currentProperty?.id) {
+      console.warn('[Dashboard] No property selected');
+      alert('Please select a property first');
+      return;
+    }
+
+    try {
+      console.log(`[Dashboard] 💾 Saving progress for deal: ${currentProperty.id}`);
+
+      // Get current stage for this property
+      const currentStage = propertyStages[currentProperty.id] || 1;
+
+      // Only trigger save for editable sections
+      if (activeSection === 'questionnaire') {
+        // Trigger save on PropertyQuestionnaire component
+        const event = new CustomEvent('saveQuestionnaire', { detail: { dealId: currentProperty.id } });
+        window.dispatchEvent(event);
+
+        // Update deal stage in HubSpot to ensure it's at least at step 2
+        if (currentStage < 2) {
+          try {
+            await api.patch(`/client/property/${currentProperty.id}/stage`, {
+              stepNumber: 2
+            });
+            setPropertyStages(prev => ({
+              ...prev,
+              [currentProperty.id]: 2
+            }));
+            console.log(`[Dashboard] 📊 Updated deal stage to step 2 (questionnaire in progress)`);
+          } catch (error) {
+            console.error('[Dashboard] ⚠️ Error updating stage:', error);
+            // Continue even if stage update fails
+          }
+        }
+
+        console.log(`[Dashboard] ✅ Save progress triggered for questionnaire`);
+      } else {
+        // For non-editable sections, show info message
+        alert('This section is view-only. Progress is automatically saved when you complete the questionnaire.');
+        console.log(`[Dashboard] ℹ️ Section "${activeSection}" is view-only`);
+      }
+    } catch (error) {
+      console.error('[Dashboard] ❌ Error saving progress:', error);
+      alert('Failed to save progress. Please try again.');
+    }
+  };
+
+  // Handle Help button click
+  const handleHelp = () => {
+    window.open('https://stanfordlegal.com.au/contact/', '_blank');
   };
 
   return (
@@ -215,7 +472,7 @@ export default function ClientDashboard() {
                     className="property-card-header"
                     onClick={() => {
                       switchProperty(prop);
-                      setExpandedProperty(expandedProperty === idx ? -1 : idx);
+                      togglePropertyExpansion(idx);
                     }}
                   >
                     <div className="property-card-content">
@@ -226,17 +483,23 @@ export default function ClientDashboard() {
                       </div>
                       <div className="property-progress">
                         <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${prop.progressPercentage || 60}%` }}></div>
+                          <div
+                            className="progress-fill"
+                            style={{
+                              width: `${prop.progressPercentage || 0}%`,
+                              minWidth: (prop.progressPercentage || 0) === 0 ? '0px' : '2px'
+                            }}
+                          ></div>
                         </div>
-                        <span className="progress-label">{prop.progressPercentage || 60}%</span>
+                        <span className="progress-label">{prop.progressPercentage !== undefined ? prop.progressPercentage : 0}%</span>
                       </div>
                     </div>
-                    <svg className={`chevron-icon ${expandedProperty === idx ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`chevron-icon ${expandedProperties.has(idx) ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
 
-                  {expandedProperty === idx && (
+                  {expandedProperties.has(idx) && (
                     <div className="property-card-details">
                       {/* Stage 1: Review Property Information */}
                       <button
@@ -382,34 +645,39 @@ export default function ClientDashboard() {
                           )}
                         </div>
                       </button>
+
+                      {/* Stage 6: Status Tracking (Post-Workflow) */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(6, prop.id)} ${!isStageAccessible(6, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(6, prop.id)}
+                      >
+                        <div className="stage-number">6</div>
+                        <div className="stage-content">
+                          <h4>In Progress</h4>
+                          <p>Track conveyancing progress</p>
+                        </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(6, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(6, prop.id) === 'current' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(6, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="sidebar-footer">
-          <div className="quick-actions">
-            <button className="action-btn primary">
-              <span className="btn-icon">M</span>
-              Contact Agent
-            </button>
-            <button className="action-btn secondary">
-              <span className="btn-icon">T</span>
-              View Timeline
-            </button>
-          </div>
-
-          <div className="property-meta">
-            <div className="meta-item">
-              <span className="label">Last Updated:</span>
-              <span className="value">2 hours ago</span>
-            </div>
-            <div className="meta-item">
-              <span className="label">Agent:</span>
-              <span className="value">Stanford Legal</span>
             </div>
           </div>
         </div>
@@ -424,7 +692,10 @@ export default function ClientDashboard() {
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
-                <PropertyInformation dealId={currentProperty.id} />
+                <PropertyInformation
+                  dealId={currentProperty.id}
+                  initialData={propertyDetailsByDeal[currentProperty.id]}
+                />
               ) : (
                 <div className="empty-state">
                   <p>Select a property to view detailed information</p>
@@ -442,96 +713,22 @@ export default function ClientDashboard() {
             </div>
 
             <div className="content-card">
-              <div className="questionnaire-tabs">
-                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section1' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section1')}>
-                  Title & Encumbrances (3)
-                </button>
-                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section2' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section2')}>
-                  Rental Agreement (1)
-                </button>
-                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section3' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section3')}>
-                  Land Use & Planning (4)
-                </button>
-                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section4' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section4')}>
-                  Buildings & Structures (4)
-                </button>
-                <button className={`questionnaire-tab ${activeQuestionnaireTab === 'q-section5' ? 'active' : ''}`} onClick={() => switchQuestionnaireTab('q-section5')}>
-                  Rates & Services (5)
-                </button>
-              </div>
-
-              {activeQuestionnaireTab === 'q-section1' && (
-                <div className="questionnaire-subsection active">
-                  <h3 style={{ marginBottom: '20px', color: 'var(--gray-900)' }}>Title Details & Encumbrances</h3>
-
-                  <div className="form-group">
-                    <label className="form-label required">Is the property part of a body corporate?</label>
-                    <div className="radio-group">
-                      <label className="radio-item">
-                        <input type="radio" name="q1_1" value="yes" checked={formData.q1_1 === 'yes'} onChange={handleFormChange} />
-                        <span className="radio-label">Yes</span>
-                      </label>
-                      <label className="radio-item">
-                        <input type="radio" name="q1_1" value="no" checked={formData.q1_1 === 'no'} onChange={handleFormChange} />
-                        <span className="radio-label">No</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label required">Are there any Non-Statutory Encumbrances?</label>
-                    <div className="radio-group">
-                      <label className="radio-item">
-                        <input type="radio" name="q1_2" value="yes" checked={formData.q1_2 === 'yes'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
-                        <span className="radio-label">Yes</span>
-                      </label>
-                      <label className="radio-item">
-                        <input type="radio" name="q1_2" value="no" checked={formData.q1_2 === 'no'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
-                        <span className="radio-label">No</span>
-                      </label>
-                      <label className="radio-item">
-                        <input type="radio" name="q1_2" value="unsure" checked={formData.q1_2 === 'unsure'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_2_details', e.target.value); }} />
-                        <span className="radio-label">Unsure</span>
-                      </label>
-                    </div>
-                    {conditionalFields.q1_2_details && (
-                      <div className="conditional-field show">
-                        <label className="form-label">If Yes, Give Details</label>
-                        <textarea className="form-textarea" name="q1_2_details" value={formData.q1_2_details} onChange={handleFormChange} placeholder="Please detail any agreements"></textarea>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label required">Are there any Statutory Encumbrances?</label>
-                    <div className="radio-group">
-                      <label className="radio-item">
-                        <input type="radio" name="q1_3" value="yes" checked={formData.q1_3 === 'yes'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
-                        <span className="radio-label">Yes</span>
-                      </label>
-                      <label className="radio-item">
-                        <input type="radio" name="q1_3" value="no" checked={formData.q1_3 === 'no'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
-                        <span className="radio-label">No</span>
-                      </label>
-                      <label className="radio-item">
-                        <input type="radio" name="q1_3" value="unsure" checked={formData.q1_3 === 'unsure'} onChange={(e) => { handleFormChange(e); toggleConditional('q1_3_details', e.target.value); }} />
-                        <span className="radio-label">Unsure</span>
-                      </label>
-                    </div>
-                    {conditionalFields.q1_3_details && (
-                      <div className="conditional-field show">
-                        <label className="form-label">If Yes, Give Details</label>
-                        <textarea className="form-textarea" name="q1_3_details" value={formData.q1_3_details} onChange={handleFormChange} placeholder="Please detail any agencies"></textarea>
-                      </div>
-                    )}
-                  </div>
+              {currentProperty && currentProperty.id ? (
+                <PropertyQuestionnaire
+                  dealId={currentProperty.id}
+                  initialData={questionnaireDataByDeal[currentProperty.id] || {}}
+                  initialFiles={filesByDeal[currentProperty.id] || {}}
+                  onSubmitSuccess={() => {
+                    setQuoteRefreshKey(Date.now()); // Force quote to refresh with new data
+                    handleStageClick(3, currentProperty.id);
+                  }}
+                  onDataUpdate={handleQuestionnaireDataUpdate}
+                />
+              ) : (
+                <div className="empty-state">
+                  <p>Select a property to view the questionnaire</p>
                 </div>
               )}
-
-              {activeQuestionnaireTab === 'q-section2' && <div className="questionnaire-subsection active"><h3>Rental Agreement</h3><p>Coming soon...</p></div>}
-              {activeQuestionnaireTab === 'q-section3' && <div className="questionnaire-subsection active"><h3>Land Use & Planning</h3><p>Coming soon...</p></div>}
-              {activeQuestionnaireTab === 'q-section4' && <div className="questionnaire-subsection active"><h3>Buildings & Structures</h3><p>Coming soon...</p></div>}
-              {activeQuestionnaireTab === 'q-section5' && <div className="questionnaire-subsection active"><h3>Rates & Services</h3><p>Coming soon...</p></div>}
             </div>
           </section>
         )}
@@ -539,10 +736,105 @@ export default function ClientDashboard() {
         {activeSection === 'quote' && (
           <section id="quote" className="content-section active">
             <div className="content-header">
-              <h1 className="content-title">Quote Review</h1>
-              <p className="content-subtitle">Review your conveyancing quote</p>
+              <h1 className="content-title">Your Property Search Quote</h1>
+              <p className="content-subtitle">Review the calculated search costs based on your questionnaire answers</p>
             </div>
-            <div className="content-card"><p>Quote details coming soon...</p></div>
+            <div className="content-card">
+              {currentProperty && currentProperty.id ? (
+                <DynamicQuote
+                  key={quoteRefreshKey}
+                  dealId={currentProperty.id}
+                  onBack={() => handleStageClick(2, currentProperty.id)}
+                  onUpdate={(quote) => {
+                    // Store quote amount for payment step
+                    setQuoteAmounts(prev => ({
+                      ...prev,
+                      [currentProperty.id]: quote.grandTotal
+                    }));
+                    console.log(`[Dashboard] 💰 Quote amount stored: $${quote.grandTotal}`);
+                  }}
+                />
+              ) : (
+                <div className="empty-state">
+                  <p>Select a property to view the quote</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'signature' && (
+          <section id="signature" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Sign Your Documents</h1>
+              <p className="content-subtitle">Review and electronically sign your property disclosure forms</p>
+            </div>
+            <div className="content-card">
+              {currentProperty && currentProperty.id ? (
+                <SigningStatus 
+                  dealId={currentProperty.id}
+                  contactEmail={clientData.email}
+                  sellers={propertyDetailsByDeal[currentProperty.id]}
+                  onComplete={(envelopeId) => {
+                    console.log('[Dashboard] 🎉 Signing completed for deal:', currentProperty.id);
+                    console.log('[Dashboard] 📋 Envelope ID:', envelopeId);
+                    
+                    // Mark as signed and move to Step 5
+                    setEnvelopeStatus(prev => ({
+                      ...prev,
+                      [currentProperty.id]: { status: 'signed', envelopeId }
+                    }));
+                    setPropertyStages(prev => ({
+                      ...prev,
+                      [currentProperty.id]: 5
+                    }));
+                    
+                    // Switch to payment section
+                    setActiveSection('payment');
+                    
+                    console.log('[Dashboard] ✅ Redirected to Step 5 (Payment)');
+                  }}
+                />
+              ) : (
+                <div className="empty-state">
+                  <p>Select a property to proceed with document signing</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'payment' && (
+          <section id="payment" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Payment Instructions</h1>
+              <p className="content-subtitle">Complete your conveyancing search payment</p>
+            </div>
+            <div className="content-card">
+              {currentProperty && currentProperty.id ? (
+                <PaymentInstructions
+                  dealId={currentProperty.id}
+                  quoteAmount={quoteAmounts[currentProperty.id] || '0.00'}
+                  propertyAddress={currentProperty.subtitle || currentProperty.title}
+                />
+              ) : (
+                <div className="empty-state">
+                  <p>Select a property to proceed with payment</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'status' && (
+          <section id="status" className="content-section active">
+            {currentProperty && currentProperty.id ? (
+              <StatusTracking deal={currentProperty} />
+            ) : (
+              <div className="empty-state">
+                <p>Select a property to view status</p>
+              </div>
+            )}
           </section>
         )}
 
@@ -557,8 +849,8 @@ export default function ClientDashboard() {
         )}
 
         <div className="floating-actions">
-          <button className="fab primary"><span className="fab-icon">S</span> Save Progress</button>
-          <button className="fab secondary"><span className="fab-icon">?</span> Help</button>
+          <button className="fab primary" onClick={handleSaveProgress}>Save Progress</button>
+          <button className="fab secondary" onClick={handleHelp}>Help</button>
         </div>
       </main>
     </div>

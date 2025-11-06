@@ -160,8 +160,8 @@ const AgentLogin = () => {
 
       // Wait for animation then redirect
       setTimeout(() => {
-        console.log('✅ Redirecting to dashboard...');
-        navigate('/dashboard');
+        console.log('✅ Redirecting to agent dashboard...');
+        navigate('/agent/dashboard');
       }, 1500);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to verify OTP';

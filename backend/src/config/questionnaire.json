@@ -25,13 +25,18 @@
               "value": "no",
               "label": "No",
               "hs_property_value": "No"
+            },
+            {
+              "value": "unsure",
+              "label": "Unsure",
+              "hs_property_value": "Unsure"
             }
           ],
           "HubSpot_Property_Type": "enumeration",
           "HubSpot_Property_Label": "Body Corporate"
         },
         {
-          "form_question": "Are there any registered encumbrances on the property title that may affect use of the property (e.g. easements, statutory covenants, leases, mortgages)?",
+          "form_question": "Are there any Non-Statutory Encumbrances affecting the use of the property? This is any kind of lease or agreement with any party that is not listed on the title – excluding an RTA Tenancy Agreement. (Eg. This could include a lease for a Telstra tower, etc).",
           "form_field_name": "registered_encumbrances",
           "HubSpot_Property_Name": "registered_encumbrances",
           "form_field_type": "radio",
@@ -129,8 +134,8 @@
       "section_title": "Rental Agreement/Tenancy",
       "questions": [
         {
-          "form_question": "Has the property been subject to a residential tenancy agreement or rooming accommodation agreement under the relevant laws in the last 12 months (This question relates specifically to the property having tenants under an RTA agreement)?",
-          "form_field_name": "tenancy_agreement",
+          "form_question": "Has the property been subject to a residential tenancy agreement or rooming accommodation agreement under the relevant laws in the last 12 months (This question relates specifically to the property having tenants under an RTA agreement)? ",
+          "form_field_name": "formal_tenancy_agreement",
           "HubSpot_Property_Name": "tenancy_agreement",
           "form_field_type": "radio",
           "required": true,
@@ -152,17 +157,43 @@
             }
           ],
           "HubSpot_Property_Type": "enumeration",
-          "HubSpot_Property_Label": "Tenancy Agreement"
+          "HubSpot_Property_Label": "Formal Tenancy Agreement"
         },
         {
-          "form_question": "If yes, when was the rent for the premises or each resident's room last increased? (Date)",
-          "form_field_name": "rent_increase_date",
+          "form_question": "Will this rental agreement continue after settlement?",
+          "form_field_name": "formal_continues_after_settlement",
+          "HubSpot_Property_Name": "rental_agreement_post_settlement",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "formal_tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Rental Agreement Continues Post-Settlement"
+        },
+        {
+          "form_question": "Last rent increase date",
+          "form_field_name": "formal_rent_increase_date_continuing",
           "HubSpot_Property_Name": "tenancy_agreement_last_rental_increase",
           "form_field_type": "date",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
@@ -170,44 +201,44 @@
           "HubSpot_Property_Label": "Tenancy Agreement Last Rental Increase"
         },
         {
-          "form_question": "If yes, what is the start date of the rental lease term?",
-          "form_field_name": "lease_start_date",
-          "HubSpot_Property_Name": "tenancy_agreement_start_date",
+          "form_question": "Lease start date",
+          "form_field_name": "formal_lease_start_date",
+          "HubSpot_Property_Name": "rental_agreement_start_date",
           "form_field_type": "date",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
           "HubSpot_Property_Type": "date",
-          "HubSpot_Property_Label": "Tenancy Agreement Start Date"
+          "HubSpot_Property_Label": "Rental Agreement Start Date"
         },
         {
-          "form_question": "If yes, what is the end date of the rental lease term?",
-          "form_field_name": "lease_end_date",
-          "HubSpot_Property_Name": "tenancy_agreement_end_date",
+          "form_question": "Lease end date",
+          "form_field_name": "formal_lease_end_date",
+          "HubSpot_Property_Name": "rental_agreement_end_date",
           "form_field_type": "date",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
           "HubSpot_Property_Type": "date",
-          "HubSpot_Property_Label": "Tenancy Agreement End Date"
+          "HubSpot_Property_Label": "Rental Agreement End Date"
         },
         {
-          "form_question": "If yes, what is the weekly rent amount? (Numbers only)",
-          "form_field_name": "weekly_rent",
+          "form_question": "Weekly rent amount",
+          "form_field_name": "formal_weekly_rent",
           "HubSpot_Property_Name": "weekly_rent",
           "form_field_type": "number",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
@@ -215,29 +246,29 @@
           "HubSpot_Property_Label": "Weekly Rent Amount"
         },
         {
-          "form_question": "If yes, what is the bond amount? (Numbers only)",
-          "form_field_name": "bond_amount",
-          "HubSpot_Property_Name": "bond_amount",
+          "form_question": "Bond amount",
+          "form_field_name": "formal_bond_amount",
+          "HubSpot_Property_Name": "rental_agreement_bond_amount",
           "form_field_type": "number",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
           "HubSpot_Property_Type": "number",
-          "HubSpot_Property_Label": "Security Bond Amount"
+          "HubSpot_Property_Label": "Rental Agreement Bond Amount"
         },
         {
-          "form_question": "If yes, please upload a copy of the current Tenancy Agreement",
-          "form_field_name": "tenancy_agreement_upload",
+          "form_question": "Upload tenancy agreement",
+          "form_field_name": "formal_tenancy_agreement_upload",
           "HubSpot_Property_Name": "tenancy_agreement_upload",
           "form_field_type": "file",
           "required": false,
           "conditional": true,
           "conditional_on": {
-            "question": "tenancy_agreement",
+            "question": "formal_continues_after_settlement",
             "value": "yes"
           },
           "options": [],
@@ -245,11 +276,41 @@
           "HubSpot_Property_Label": "Tenancy Agreement Upload"
         },
         {
+          "form_question": "Current rent amount",
+          "form_field_name": "formal_current_rent_amount",
+          "HubSpot_Property_Name": "current_rent_amount",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "formal_continues_after_settlement",
+            "value": "no"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Current Rent Amount"
+        },
+        {
+          "form_question": "Last rental increase date",
+          "form_field_name": "formal_rent_increase_date_not_continuing",
+          "HubSpot_Property_Name": "tenancy_agreement_last_rental_increase",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "formal_continues_after_settlement",
+            "value": "no"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Tenancy Agreement Last Rental Increase"
+        },
+        {
           "form_question": "Is there an unwritten or informal rental agreement without a signed Residential Tenancy Agreement? i.e., friends, parents, children and terms.",
-          "form_field_name": "informal_rental",
+          "form_field_name": "informal_tenancy_agreement",
           "HubSpot_Property_Name": "informal_rental",
           "form_field_type": "radio",
-          "required": false,
+          "required": true,
           "conditional": false,
           "conditional_on": {
             "question": null,
@@ -268,7 +329,153 @@
             }
           ],
           "HubSpot_Property_Type": "enumeration",
-          "HubSpot_Property_Label": "Informal Rental"
+          "HubSpot_Property_Label": "Informal Rental Agreement"
+        },
+        {
+          "form_question": "Will this informal rental agreement continue after settlement?",
+          "form_field_name": "informal_continues_after_settlement",
+          "HubSpot_Property_Name": "informal_rental_agreement_post_settlement",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_tenancy_agreement",
+            "value": "yes"
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "hs_property_value": "No"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Informal Rental Agreement Continues Post-Settlement"
+        },
+        {
+          "form_question": "Last rent increase date",
+          "form_field_name": "informal_rent_increase_date_continuing",
+          "HubSpot_Property_Name": "informal_tenancy_agreement_last_rental_increase",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Informal Tenancy Agreement Last Rental Increase"
+        },
+        {
+          "form_question": "Lease start date",
+          "form_field_name": "informal_lease_start_date",
+          "HubSpot_Property_Name": "informal_rental_agreement_start_date",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Informal Rental Agreement Start Date"
+        },
+        {
+          "form_question": "Lease end date",
+          "form_field_name": "informal_lease_end_date",
+          "HubSpot_Property_Name": "informal_rental_agreement_end_date",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Informal Rental Agreement End Date"
+        },
+        {
+          "form_question": "Weekly rent amount",
+          "form_field_name": "informal_weekly_rent",
+          "HubSpot_Property_Name": "informal_weekly_rent",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Informal Weekly Rent Amount"
+        },
+        {
+          "form_question": "Bond amount",
+          "form_field_name": "informal_bond_amount",
+          "HubSpot_Property_Name": "informal_rental_agreement_bond_amount",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Informal Rental Agreement Bond Amount"
+        },
+        {
+          "form_question": "Upload tenancy agreement",
+          "form_field_name": "informal_tenancy_agreement_upload",
+          "HubSpot_Property_Name": "informal_tenancy_agreement_upload",
+          "form_field_type": "file",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "yes"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "string",
+          "HubSpot_Property_Label": "Informal Tenancy Agreement Upload"
+        },
+        {
+          "form_question": "Current rent amount",
+          "form_field_name": "informal_current_rent_amount",
+          "HubSpot_Property_Name": "informal_current_rent_amount",
+          "form_field_type": "number",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "no"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "number",
+          "HubSpot_Property_Label": "Informal Current Rent Amount"
+        },
+        {
+          "form_question": "Last rental increase date",
+          "form_field_name": "informal_rent_increase_date_not_continuing",
+          "HubSpot_Property_Name": "informal_tenancy_agreement_last_rental_increase",
+          "form_field_type": "date",
+          "required": false,
+          "conditional": true,
+          "conditional_on": {
+            "question": "informal_continues_after_settlement",
+            "value": "no"
+          },
+          "options": [],
+          "HubSpot_Property_Type": "date",
+          "HubSpot_Property_Label": "Informal Tenancy Agreement Last Rental Increase"
         }
       ]
     },

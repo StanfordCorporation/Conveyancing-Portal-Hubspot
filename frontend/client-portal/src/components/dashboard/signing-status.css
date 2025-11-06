@@ -1,0 +1,280 @@
+.signing-status-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.status-loading,
+.status-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4CAF50;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+}
+
+.status-error h3 {
+  margin-bottom: 0.5rem;
+  color: #d32f2f;
+}
+
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+}
+
+.retry-btn:hover {
+  background: #45a049;
+}
+
+/* Info Banner */
+.signing-info-banner {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+}
+
+.info-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.signing-info-banner strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #1976d2;
+}
+
+.signing-info-banner p {
+  margin: 0;
+  color: #0d47a1;
+}
+
+/* Status Message */
+.status-message {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.status-message.status-waiting {
+  border-left: 4px solid #ff9800;
+}
+
+.status-message.status-complete {
+  border-left: 4px solid #4CAF50;
+}
+
+.status-icon {
+  font-size: 64px;
+  margin-bottom: 1.5rem;
+}
+
+.status-content h2 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 28px;
+}
+
+.status-description {
+  font-size: 18px;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+/* Waiting List */
+.waiting-list {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.waiting-list h4 {
+  margin: 0 0 1rem 0;
+  color: #e65100;
+}
+
+.waiting-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.waiting-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  font-size: 16px;
+  color: #bf360c;
+}
+
+.waiting-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff9800;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Signer Progress */
+.signer-progress {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.signer-progress h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.signers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.signer-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #ddd;
+}
+
+.signer-item.signer-completed {
+  border-left-color: #4CAF50;
+  background: #f1f8e9;
+}
+
+.signer-item.signer-sent,
+.signer-item.signer-delivered {
+  border-left-color: #2196F3;
+  background: #e3f2fd;
+}
+
+.signer-number {
+  width: 32px;
+  height: 32px;
+  background: #e0e0e0;
+  color: #666;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.signer-item.signer-completed .signer-number {
+  background: #4CAF50;
+  color: white;
+}
+
+.signer-item.signer-sent .signer-number,
+.signer-item.signer-delivered .signer-number {
+  background: #2196F3;
+  color: white;
+}
+
+.signer-info {
+  flex: 1;
+}
+
+.signer-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.signer-status {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Completion Actions */
+.completion-actions {
+  margin-top: 2rem;
+}
+
+.completion-note {
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+  border-radius: 6px;
+  padding: 1rem;
+  color: #2e7d32;
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .status-message {
+    padding: 2rem 1rem;
+  }
+
+  .status-content h2 {
+    font-size: 24px;
+  }
+
+  .status-description {
+    font-size: 16px;
+  }
+
+  .status-icon {
+    font-size: 48px;
+  }
+}
+

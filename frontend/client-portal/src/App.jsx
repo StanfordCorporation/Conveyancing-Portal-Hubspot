@@ -4,6 +4,7 @@ import '../../src/index.css';
 import ConveyancingLogin from './components/auth/Login';
 import DisclosureForm from './components/disclosure/DisclosureForm';
 import ClientDashboard from './components/dashboard/ClientDashboard';
+import SigningComplete from './components/docusign/SigningComplete';
 
 function App() {
   return (
@@ -15,6 +16,9 @@ function App() {
       <Route path="login" element={<ConveyancingLogin />} />
       <Route path="disclosure" element={<DisclosureForm />} />
       <Route path="dashboard" element={<ClientDashboard />} />
+
+      {/* DocuSign completion handler */}
+      <Route path="signing-complete" element={<SigningComplete />} />
 
       {/* Catch-all for this portal */}
       <Route path="*" element={<Navigate to="login" replace />} />

@@ -3,10 +3,23 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Environment
+# Environment & Secrets
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
+.env.backup
+
+# Sensitive Keys & Credentials
+docusign-rsa-keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
 
 # IDE
 .vscode/
@@ -27,11 +40,21 @@ yarn-error.log*
 dist/
 build/
 .next/
+.vercel
+.wrangler
 
 # Temporary files
 *.tmp
 temp/
+.cache/
 
 # OS
 Thumbs.db
 .DS_Store
+
+# Documentation (archived)
+archive/
+
+# Plan files (temporary)
+*.plan.md
+documentation-consolidation.plan.md

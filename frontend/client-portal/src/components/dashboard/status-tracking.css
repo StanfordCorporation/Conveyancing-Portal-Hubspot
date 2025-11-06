@@ -1,0 +1,426 @@
+/* ============================================================================ */
+/* STATUS TRACKING COMPONENT STYLES */
+/* ============================================================================ */
+
+.status-tracking-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.status-tracking-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.status-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 8px;
+}
+
+.status-subtitle {
+  font-size: 16px;
+  color: #6B7280;
+}
+
+/* ============================================================================ */
+/* CURRENT STATUS CARD */
+/* ============================================================================ */
+
+.status-current-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(135deg, #EBF5FF 0%, #E0F2FE 100%);
+  border: 2px solid #0E6DFF;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px rgba(14, 109, 255, 0.15);
+}
+
+.status-icon-wrapper {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(14, 109, 255, 0.2);
+}
+
+.status-icon {
+  color: #0E6DFF;
+  animation: pulse-gentle 3s ease-in-out infinite;
+}
+
+@keyframes pulse-gentle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.status-content {
+  flex: 1;
+}
+
+.status-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0052CC;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.status-stage-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0;
+}
+
+/* ============================================================================ */
+/* NEXT STEP CARD */
+/* ============================================================================ */
+
+.status-next-step-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.next-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #0E6DFF;
+}
+
+.next-step-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.next-step-text {
+  font-size: 16px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================================================ */
+/* TIMELINE */
+/* ============================================================================ */
+
+.status-timeline {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.timeline-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 24px;
+}
+
+.timeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.timeline-step-marker {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-marker-inner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #F3F4F6;
+  border: 2px solid #D1D5DB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-step.current .timeline-marker-inner {
+  background: linear-gradient(135deg, #EBF5FF 0%, #DBEAFE 100%);
+  border-color: #0E6DFF;
+  color: #0E6DFF;
+  box-shadow: 0 0 0 4px rgba(14, 109, 255, 0.1);
+  animation: pulse-marker 2s ease-in-out infinite;
+}
+
+@keyframes pulse-marker {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(14, 109, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(14, 109, 255, 0.15);
+  }
+}
+
+.timeline-step.completed .timeline-marker-inner {
+  background: #10B981;
+  border-color: #10B981;
+  color: white;
+}
+
+.timeline-connector {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 32px;
+  background: #D1D5DB;
+  transition: background 0.3s ease;
+}
+
+.timeline-connector.completed {
+  background: #10B981;
+}
+
+.timeline-step-content {
+  flex: 1;
+  padding-top: 8px;
+}
+
+.timeline-step-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.timeline-step.current .timeline-step-label {
+  color: #0E6DFF;
+  font-weight: 600;
+}
+
+.timeline-step-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #EBF5FF;
+  color: #0E6DFF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.timeline-step-badge.completed {
+  background: #D1FAE5;
+  color: #047857;
+}
+
+/* ============================================================================ */
+/* INFO MESSAGE */
+/* ============================================================================ */
+
+.status-info-message {
+  display: flex;
+  gap: 16px;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.info-message-icon {
+  flex-shrink: 0;
+  color: #0284C7;
+}
+
+.info-message-content h5 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0C4A6E;
+  margin-bottom: 8px;
+}
+
+.info-message-content p {
+  font-size: 14px;
+  color: #075985;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================================================ */
+/* PROPERTY CARD */
+/* ============================================================================ */
+
+.status-property-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.status-property-card h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 16px;
+}
+
+.property-details-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.property-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.property-detail-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detail-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+  text-align: right;
+}
+
+/* ============================================================================ */
+/* CONTACT CARD */
+/* ============================================================================ */
+
+.status-contact-card {
+  background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.status-contact-card h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 8px;
+}
+
+.status-contact-card p {
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 16px;
+}
+
+.contact-button {
+  background: #0E6DFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(14, 109, 255, 0.2);
+}
+
+.contact-button:hover {
+  background: #0052CC;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14, 109, 255, 0.3);
+}
+
+.contact-button:active {
+  transform: translateY(0);
+}
+
+/* ============================================================================ */
+/* RESPONSIVE DESIGN */
+/* ============================================================================ */
+
+@media (max-width: 768px) {
+  .status-tracking-container {
+    padding: 16px;
+  }
+
+  .status-current-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .status-stage-name {
+    font-size: 20px;
+  }
+
+  .timeline-step {
+    gap: 12px;
+  }
+
+  .timeline-marker-inner {
+    width: 40px;
+    height: 40px;
+  }
+
+  .timeline-connector {
+    top: 40px;
+    height: 28px;
+  }
+
+  .property-detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .detail-value {
+    text-align: left;
+  }
+}
+

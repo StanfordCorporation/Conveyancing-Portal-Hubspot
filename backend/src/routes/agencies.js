@@ -1,8 +1,3 @@
-/**
- * Agencies Routes
- * All agency-related endpoints
- */
-
 import * as agencyService from '../services/domain/agency.js';
 import * as agentService from '../services/domain/agent.js';
 

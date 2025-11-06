@@ -72,12 +72,20 @@ export const createDeal = async (dealData, associations = []) => {
 
 /**
  * Get deal by ID
+ * @param {string} dealId - HubSpot deal ID
+ * @param {string[]} properties - Optional array of specific properties to fetch. If not provided, fetches all properties.
  */
-export const getDeal = async (dealId) => {
+export const getDeal = async (dealId, properties = null) => {
+  const params = {};
+
+  if (properties && properties.length > 0) {
+    // Fetch specific properties
+    params.properties = properties.join(',');
+  }
+  // If no properties specified, HubSpot returns all properties by default
+
   const response = await hubspotClient.get(`/crm/v3/objects/deals/${dealId}`, {
-    params: {
-      properties: 'dealname,dealstage,pipeline,property_address,number_of_owners'
-    }
+    params
   });
   return response.data;
 };

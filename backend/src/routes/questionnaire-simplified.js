@@ -8,24 +8,16 @@
  * - POST   /crm/v3/objects/property-questionnaire/{dealId}/files/upload → Upload file
  *
  * Architecture:
- * propertyMapping.js → Routes → HubSpot
- * No redundant service layer
+ * questionnaire.json → questionnaireHelper.js → Routes → HubSpot
+ * Single source of truth with cached helper functions
  */
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { getAllMappings, getFieldMapping, getSectionMappings } from '../config/propertyMapping.js';
+import { getAllMappings, getFieldMapping, getSectionMappings, getQuestionnaireSchema } from '../utils/questionnaireHelper.js';
 import { updateDeal } from '../integrations/hubspot/deals.js';
 import multer from 'multer';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load questionnaire config from JSON file
-const questionnaireConfig = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../config/questionnaire.json'), 'utf8')
-);
+// Load questionnaire config using helper (cached)
+const questionnaireConfig = getQuestionnaireSchema();
 
 // Configure multer for file uploads
 const upload = multer({

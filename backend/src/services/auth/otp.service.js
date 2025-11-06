@@ -87,8 +87,11 @@ export const sendOTPForAgent = async (identifier, method = 'email') => {
     };
   }
 
-  // Validate contact is an agent
-  if (contact.properties.contact_type !== HUBSPOT.CONTACT_TYPES.AGENT) {
+  // Validate contact is an agent (handle multiple contact types separated by semicolon)
+  const contactTypes = contact.properties.contact_type || '';
+  const isAgent = contactTypes.includes(HUBSPOT.CONTACT_TYPES.AGENT);
+
+  if (!isAgent) {
     throw {
       status: 403,
       error: 'Invalid Agent',
@@ -200,8 +203,11 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
     };
   }
 
-  // Validate agent role
-  if (contact.properties.contact_type !== HUBSPOT.CONTACT_TYPES.AGENT) {
+  // Validate agent role (handle multiple contact types separated by semicolon)
+  const contactTypes = contact.properties.contact_type || '';
+  const isAgent = contactTypes.includes(HUBSPOT.CONTACT_TYPES.AGENT);
+
+  if (!isAgent) {
     throw {
       status: 403,
       error: 'Invalid Agent',
