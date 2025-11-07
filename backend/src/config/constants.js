@@ -15,6 +15,19 @@ export const HUBSPOT = {
     COMPANY_TO_DEAL: 341,          // Company/Agency → Deal (HUBSPOT_DEFINED)
   },
 
+  // Permission Types (for Agent Permissions via Association Types)
+  PERMISSION_TYPES: {
+    ADMIN: 7,           // Admin User (USER_DEFINED) - Full agency management
+    VIEW_ALL: 9,        // View All User (USER_DEFINED) - Read-only agency view
+    STANDARD: 279,      // Standard (HUBSPOT_DEFINED) - See own leads only
+  },
+
+  // Association Categories
+  ASSOCIATION_CATEGORIES: {
+    USER_DEFINED: 'USER_DEFINED',
+    HUBSPOT_DEFINED: 'HUBSPOT_DEFINED',
+  },
+
   // Contact Types
   CONTACT_TYPES: {
     AGENT: 'Agent',

@@ -342,7 +342,7 @@ export function CreateAgencyForm({
       });
 
       if (onSuccess) {
-        onSuccess(response.data);
+        onSuccess(response.data.agency);
       }
     } catch (err) {
       console.error('Agency creation error:', err);
@@ -398,7 +398,7 @@ export function CreateAgencyForm({
       });
 
       if (onSuccess) {
-        onSuccess(response.data);
+        onSuccess(response.data.agency);
       }
     } catch (err) {
       console.error('Agency creation error:', err);

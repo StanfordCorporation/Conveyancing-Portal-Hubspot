@@ -86,23 +86,92 @@ export const create = async (firstname, lastname, email, phone) => {
 
 /**
  * Create agent and associate to agency
+ * First agent of an agency is automatically made Admin
  */
 export const createForAgency = async (agencyId, firstname, lastname, email, phone) => {
+  console.log(`[Agent Service] Creating agent for agency ${agencyId}`);
+
+  // Check if this is the first agent for this agency
+  // Use Associations API instead of property-based search for reliability
+  let isFirstAgent = false;
+  try {
+    // Get all contacts associated with this company
+    const associationsResponse = await hubspotClient.get(
+      `/crm/v3/objects/companies/${agencyId}/associations/contacts`
+    );
+
+    const associatedContacts = associationsResponse.data.results || [];
+    console.log(`[Agent Service] Found ${associatedContacts.length} associated contacts`);
+
+    // If no contacts at all, this is definitely the first agent
+    if (associatedContacts.length === 0) {
+      isFirstAgent = true;
+      console.log(`[Agent Service] No associated contacts - this is the first agent`);
+    } else {
+      // Batch fetch all contacts to check if any are agents
+      const contactIds = associatedContacts.map(c => c.id);
+      console.log(`[Agent Service] Checking ${contactIds.length} contacts to find existing agents...`);
+
+      const contactsResponse = await hubspotClient.post(
+        '/crm/v3/objects/contacts/batch/read',
+        {
+          inputs: contactIds.map(id => ({ id })),
+          properties: ['contact_type']
+        }
+      );
+
+      const contacts = contactsResponse.data.results || [];
+      const existingAgents = contacts.filter(
+        c => c.properties.contact_type === HUBSPOT.CONTACT_TYPES.AGENT
+      );
+
+      isFirstAgent = existingAgents.length === 0;
+      console.log(`[Agent Service] Found ${existingAgents.length} existing agents, isFirstAgent: ${isFirstAgent}`);
+    }
+  } catch (error) {
+    console.error(`[Agent Service] Error checking existing agents:`, error.message);
+    // If we can't check, assume it's not the first agent (safer default)
+    isFirstAgent = false;
+  }
+
+  // Determine association type based on whether this is the first agent
+  let associationTypeId = HUBSPOT.PERMISSION_TYPES.STANDARD; // Default: 279
+  let associationCategory = HUBSPOT.ASSOCIATION_CATEGORIES.HUBSPOT_DEFINED;
+
+  if (isFirstAgent) {
+    associationTypeId = HUBSPOT.PERMISSION_TYPES.ADMIN; // 7
+    associationCategory = HUBSPOT.ASSOCIATION_CATEGORIES.USER_DEFINED;
+    console.log(`[Agent Service] ⭐ First agent - creating with Admin privileges (type ${associationTypeId})`);
+  } else {
+    console.log(`[Agent Service] Creating with Standard privileges (type ${associationTypeId})`);
+  }
+
   const contact = await contactsIntegration.createContact({
     email,
     firstname,
     lastname,
     phone: phone || '',
     contact_type: HUBSPOT.CONTACT_TYPES.AGENT,
-    associateToCompanyId: agencyId
+    associateToCompanyId: agencyId,
+    associationTypeId,
+    associationCategory
   });
+
+  console.log(`[Agent Service] ✅ Agent created successfully with ${isFirstAgent ? 'Admin' : 'Standard'} privileges`);
+
+  // Wait for HubSpot's association index to update (2 second delay)
+  // This ensures subsequent agent creations can see this agent in associations
+  console.log(`[Agent Service] ⏱️  Waiting 2 seconds for HubSpot index to update...`);
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  console.log(`[Agent Service] ✅ Index update wait complete`);
 
   return {
     id: contact.id,
     firstname: contact.properties.firstname,
     lastname: contact.properties.lastname,
     email: contact.properties.email,
-    phone: contact.properties.phone
+    phone: contact.properties.phone,
+    permissionLevel: isFirstAgent ? 'admin' : 'standard'
   };
 };
 

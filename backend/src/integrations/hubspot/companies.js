@@ -1,5 +1,6 @@
 import hubspotClient from './client.js';
 import { generateTokenFilterGroups, searchAndScore, extractTokens } from '../../utils/scoring.js';
+import { normalizePhoneToInternational } from '../../utils/phone.js';
 
 /**
  * Create a new company (agency)
@@ -22,7 +23,7 @@ export const createCompany = async (companyData) => {
       name: companyData.name,
       address: companyData.address || '',
       email: companyData.email || '',
-      phone: companyData.phone || ''
+      phone: normalizePhoneToInternational(companyData.phone) || ''
     }
   };
 

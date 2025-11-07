@@ -1,4 +1,5 @@
 import hubspotClient from './client.js';
+import { normalizePhoneToInternational } from '../../utils/phone.js';
 
 /**
  * Search for contact by email
@@ -37,12 +38,17 @@ export const searchContactByEmail = async (email) => {
  * @param {string} contactData.address - Contact address
  * @param {string} contactData.contact_type - Contact type (Agent, etc)
  * @param {string} contactData.associateToCompanyId - Optional: Company ID to associate with (inline)
+ * @param {number} contactData.associationTypeId - Optional: Association type ID (default: 279 Standard, 7 Admin, 9 View All)
+ * @param {string} contactData.associationCategory - Optional: Association category (default: HUBSPOT_DEFINED)
  */
 export const createContact = async (contactData) => {
   console.log(`[HubSpot Contacts] ➕ Creating new contact: ${contactData.email} (${contactData.firstname} ${contactData.lastname})`);
   console.log(`[HubSpot Contacts] 📋 Contact type: ${contactData.contact_type}`);
   if (contactData.associateToCompanyId) {
     console.log(`[HubSpot Contacts] 🔗 Associating to company: ${contactData.associateToCompanyId}`);
+    if (contactData.associationTypeId) {
+      console.log(`[HubSpot Contacts] 🔑 Association type ID: ${contactData.associationTypeId} (${contactData.associationCategory || 'HUBSPOT_DEFINED'})`);
+    }
   }
 
   const payload = {
@@ -50,7 +56,7 @@ export const createContact = async (contactData) => {
       email: contactData.email,
       firstname: contactData.firstname || '',
       lastname: contactData.lastname || '',
-      phone: contactData.phone || null,
+      phone: normalizePhoneToInternational(contactData.phone) || null,
       address: contactData.address || null,
       contact_type: contactData.contact_type
     }
@@ -58,6 +64,10 @@ export const createContact = async (contactData) => {
 
   // Add inline association if companyId provided
   if (contactData.associateToCompanyId) {
+    // Use custom association type if provided, otherwise default to 279 (Standard)
+    const associationTypeId = contactData.associationTypeId || 279;
+    const associationCategory = contactData.associationCategory || 'HUBSPOT_DEFINED';
+
     payload.associations = [
       {
         to: {
@@ -65,8 +75,8 @@ export const createContact = async (contactData) => {
         },
         types: [
           {
-            associationCategory: 'HUBSPOT_DEFINED',
-            associationTypeId: 279  // Contact to Company association
+            associationCategory: associationCategory,
+            associationTypeId: associationTypeId
           }
         ]
       }

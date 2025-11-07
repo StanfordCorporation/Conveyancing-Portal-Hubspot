@@ -1,0 +1,19 @@
+name = "stanford-smokeball-webhook"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set via: wrangler secret put)
+# HUBSPOT_ACCESS_TOKEN - HubSpot Private Access Token
+
+[env.production]
+name = "stanford-smokeball-webhook"
+routes = [
+  { pattern = "webhooks.stanfordlegal.com.au/smokeball", zone_name = "stanfordlegal.com.au" }
+]
+
+[env.staging]
+name = "stanford-smokeball-webhook-staging"
+

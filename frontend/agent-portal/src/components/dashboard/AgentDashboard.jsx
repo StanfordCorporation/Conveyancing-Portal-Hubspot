@@ -6,6 +6,8 @@ import DashboardHome from './DashboardHome';
 import LeadsManagement from './LeadsManagement';
 import DocumentsTasks from './DocumentsTasks';
 import AgentSettings from './AgentSettings';
+import AgencyDashboard from './AgencyDashboard';
+import TeamManagement from './TeamManagement';
 import CreateLeadModal from './CreateLeadModal';
 import LeadDetailsModal from './LeadDetailsModal';
 import { SkeletonDashboard } from './SkeletonLoaders';
@@ -251,10 +253,22 @@ export default function AgentDashboard() {
 
       <main className="main-content">
         {activeSection === 'dashboard' && (
-          <DashboardHome 
+          <DashboardHome
             deals={dashboardData.deals}
             metrics={dashboardData.metrics}
             agent={dashboardData.agent}
+          />
+        )}
+
+        {activeSection === 'agency' && (
+          <AgencyDashboard
+            onRefresh={loadDashboard}
+          />
+        )}
+
+        {activeSection === 'team' && (
+          <TeamManagement
+            onRefresh={loadDashboard}
           />
         )}
 
@@ -272,14 +286,14 @@ export default function AgentDashboard() {
         )}
 
         {activeSection === 'documents' && (
-          <DocumentsTasks 
+          <DocumentsTasks
             deals={dashboardData.deals}
             onUploadDocument={handleUploadDocument}
           />
         )}
 
         {activeSection === 'settings' && (
-          <AgentSettings 
+          <AgentSettings
             agent={dashboardData.agent}
             onSave={handleSaveProfile}
           />

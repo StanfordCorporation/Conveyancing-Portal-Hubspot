@@ -17,6 +17,7 @@ All code, documentation, and CI/CD pipelines have been created. The remaining ta
 5. ✅ **EventNotification** - Added to DocuSign envelope creation
 6. ✅ **Enhanced .gitignore** - Sensitive files excluded
 7. ✅ **Comprehensive README** - Professional project documentation
+8. ✅ **Agency Owner Features** - First agent auto-admin, team management, and permission system (November 7, 2025)
 
 ---
 
@@ -69,28 +70,50 @@ Go to: **GitHub Repository → Settings → Secrets and variables → Actions**
 
 #### Add Repository Secrets:
 
+**NOTE:** Complete Step 3 (Deploy Backend) FIRST to get Vercel IDs, then come back here.
+
 ```
 Backend Deployment (Vercel):
 ☐ VERCEL_TOKEN               → vercel.com/account/tokens
-☐ VERCEL_ORG_ID              → Run: vercel link; check .vercel/project.json
-☐ VERCEL_PROJECT_ID          → Run: vercel link; check .vercel/project.json
+                                 1. Login to vercel.com
+                                 2. Go to Settings → Tokens
+                                 3. Create new token with full access
+                                 
+☐ VERCEL_ORG_ID              → Get from .vercel/project.json after running "vercel link"
+                                 (format: team_xxx)
+                                 
+☐ VERCEL_PROJECT_ID          → Get from .vercel/project.json after running "vercel link"
+                                 (format: prj_xxx)
 
 Frontend Deployment (Cloudflare):
 ☐ CLOUDFLARE_API_TOKEN       → dash.cloudflare.com → My Profile → API Tokens
+                                 1. Click "Create Token"
+                                 2. Use "Edit Cloudflare Workers" template
+                                 3. Copy token (starts with: xxx_xxx)
+                                 
 ☐ CLOUDFLARE_ACCOUNT_ID      → dash.cloudflare.com → Account ID (right sidebar)
-☐ STRIPE_PUBLISHABLE_KEY     → stripe.com/dashboard (pk_live_xxx)
+                                 (format: 32-character hex string)
+                                 
+☐ STRIPE_PUBLISHABLE_KEY     → stripe.com/dashboard → Developers → API Keys
+                                 (format: pk_live_xxx or pk_test_xxx)
 
 Webhook Deployment (Cloudflare):
 ☐ HUBSPOT_ACCESS_TOKEN       → Your existing HubSpot private access token
-☐ STRIPE_WEBHOOK_SECRET      → Configure after creating Stripe webhook endpoint
+                                 (format: pat-au-xxx)
+                                 
+☐ STRIPE_WEBHOOK_SECRET      → Get after creating Stripe webhook endpoint in Step 7
+                                 (format: whsec_xxx)
 ```
 
-**How to Get Vercel IDs:**
+**How to Get Vercel IDs (Do Step 3 First):**
 ```bash
+# After running "vercel link" in Step 3:
 cd backend
-vercel link
-# Follow prompts to link to Vercel project
-# Check .vercel/project.json for orgId and projectId
+cat .vercel/project.json
+
+# Copy the values:
+# "orgId": "team_xxx"      → VERCEL_ORG_ID for GitHub Secrets
+# "projectId": "prj_xxx"   → VERCEL_PROJECT_ID for GitHub Secrets
 ```
 
 **Verification:**
@@ -109,15 +132,90 @@ vercel link
 # Install Vercel CLI (if not already)
 npm install -g vercel
 
-# Login
+# Login to Vercel with company account
 vercel login
 
-# Deploy backend
+# Link to new project (FIRST TIME SETUP)
 cd backend
+vercel link
+
+# When prompted:
+# ? Set up and deploy? YES
+# ? Which scope? Select "Stanford Corporation's projects" (company account)
+# ? Link to existing project? NO (creating new)
+# ? What's your project's name? conveyancing-portal-backend (LOWERCASE, no spaces)
+# ? In which directory is your code located? ./ (just press Enter)
+# ? Do you want to change additional project settings? NO
+
+# This creates .vercel/project.json with your IDs
+```
+
+**IMPORTANT: Vercel Project Name Rules**
+- ✅ Must be lowercase
+- ✅ Can use: letters, digits, `.`, `_`, `-`
+- ❌ Cannot contain uppercase
+- ❌ Cannot contain spaces
+- ❌ Cannot contain `---` sequence
+
+**Good names:**
+- `conveyancing-portal-backend` ✅
+- `stanford-portal-api` ✅
+- `stanford.portal.backend` ✅
+
+**Bad names:**
+- `Conveyancing-Portal` ❌ (uppercase)
+- `Conveyancing Portal` ❌ (space)
+- `portal---backend` ❌ (triple dash)
+
+```bash
+# After linking successfully, verify your IDs were created
+# PowerShell:
+Get-Content .vercel/project.json
+
+# Mac/Linux:
+cat .vercel/project.json
+
+# Should show:
+# {
+#   "orgId": "team_xxx",          ← Save this for GitHub Secrets
+#   "projectId": "prj_xxx"        ← Save this for GitHub Secrets
+# }
+
+# COPY THESE VALUES - you'll need them for Step 2 (GitHub Secrets)
+
+# Now deploy to production
 vercel --prod
 
-# Note the deployment URL:
+# Follow prompts, confirm deployment
+# Note the deployment URL that appears:
 # https://conveyancing-portal-backend-xxx.vercel.app
+
+# Test the deployment
+# PowerShell:
+curl https://conveyancing-portal-backend-xxx.vercel.app
+
+# Should return HTML or JSON (not 404)
+```
+
+#### Troubleshooting Vercel Link
+
+**Error: "Project names must be lowercase"**
+- Use: `conveyancing-portal-backend` (not `Conveyancing-Portal`)
+
+**Error: "Cannot contain ---"**
+- Use single or double dash: `portal-backend` or `portal--backend`
+
+**Error: "Organization not found"**
+- Make sure you selected "Stanford Corporation's projects" (company account)
+- Not your personal account
+
+**Already linked but need to re-link?**
+```bash
+# PowerShell: Delete .vercel folder
+Remove-Item -Recurse -Force .vercel
+
+# Then run vercel link again
+vercel link
 ```
 
 #### Configure Environment Variables in Vercel:

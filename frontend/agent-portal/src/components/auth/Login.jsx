@@ -6,11 +6,13 @@ import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
 import { ParticleWaves } from "../ui/ParticleWaves";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 const AgentLogin = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
   const [loginMethod, setLoginMethod] = useState("email");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
@@ -151,9 +153,8 @@ const AgentLogin = () => {
 
       console.log('✅ OTP verified successfully:', response.data);
 
-      // Store auth token and user data
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Use auth context login method
+      authLogin(response.data.user, response.data.token);
 
       setError("");
       setIsTransitioning(true);

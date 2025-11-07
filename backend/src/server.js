@@ -18,6 +18,7 @@ import * as agenciesRoutes from './routes/agencies.js';
 import * as workflowsRoutes from './routes/workflows.js';
 import clientRoutes from './routes/client.js';
 import agentRoutes from './routes/agent.js';
+import agencyOwnerRoutes from './routes/agency-owner.js';
 import * as questionnaireRoutes from './routes/questionnaire-simplified.js';
 import * as questionnaireSchemaRoutes from './routes/questionnaire.js';
 import quoteRoutes from './routes/quote.js';
@@ -37,7 +38,11 @@ const PORT = process.env.PORT || 3001;
 
 // CORS - MUST be first before logging to handle preflight
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://portal.stanfordlegal.com.au',
+    'https://stanford-portal.pages.dev'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -114,6 +119,12 @@ app.use('/api/client', clientRoutes);
  * Agent Portal Routes (Protected)
  */
 app.use('/api/agent', agentRoutes);
+
+/**
+ * Agency Owner Routes (Protected)
+ * Permission-based routes for agency management
+ */
+app.use('/api/agency-owner', agencyOwnerRoutes);
 
 /**
  * Quote Calculator Routes (Protected)

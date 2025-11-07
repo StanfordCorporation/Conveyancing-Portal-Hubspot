@@ -6,6 +6,7 @@
 
 import jwt from 'jsonwebtoken';
 import hubspotClient from '../integrations/hubspot/client.js';
+import { HUBSPOT } from '../config/constants.js';
 
 export const agentAuth = async (req, res, next) => {
   try {
@@ -38,14 +39,59 @@ export const agentAuth = async (req, res, next) => {
     }
     
     console.log(`[Agent Auth] ✅ Agent verified: ${agentResponse.data.properties.email}`);
-    
+
+    // Get agent's company association to determine agency and permission level
+    let agencyId = null;
+    let permissionLevel = 'standard'; // Default to standard
+
+    try {
+      // Step 1: Get company associations (v3 endpoint for basic company association)
+      const companyAssocResponse = await hubspotClient.get(
+        `/crm/v3/objects/contacts/${agentId}/associations/companies`
+      );
+
+      agencyId = companyAssocResponse.data.results[0]?.id || null;
+
+      // Step 2: Get association types (v4 endpoint for permission level)
+      if (agencyId) {
+        const associationTypesResponse = await hubspotClient.get(
+          `/crm/v4/objects/contacts/${agentId}/associations/companies`
+        );
+
+        // Find the association for this specific company
+        const companyAssoc = associationTypesResponse.data.results.find(
+          r => r.toObjectId === agencyId
+        );
+        const types = companyAssoc?.associationTypes || [];
+
+        // Determine permission level based on association type
+        // Priority: Admin (7) > View All (9) > Standard (279)
+        if (types.some(t => t.typeId === HUBSPOT.PERMISSION_TYPES.ADMIN)) {
+          permissionLevel = 'admin';
+        } else if (types.some(t => t.typeId === HUBSPOT.PERMISSION_TYPES.VIEW_ALL)) {
+          permissionLevel = 'view_all';
+        } else {
+          permissionLevel = 'standard';
+        }
+
+        console.log(`[Agent Auth] Permission level: ${permissionLevel} for agency ${agencyId}`);
+      } else {
+        console.log('[Agent Auth] ⚠️ Agent has no agency association');
+      }
+    } catch (error) {
+      console.warn('[Agent Auth] Could not fetch association types:', error.message);
+      // Default to 'standard' if fetch fails - don't block authentication
+    }
+
     // Add user info to request
-    req.user = { 
+    req.user = {
       id: agentId,
       email: agentResponse.data.properties.email,
-      role: 'agent'
+      role: 'agent',
+      permissionLevel: permissionLevel,  // NEW: admin | view_all | standard
+      agencyId: agencyId                  // NEW: agency company ID
     };
-    
+
     next();
   } catch (error) {
     console.error('[Agent Auth] ❌ Authentication failed:', error.message);

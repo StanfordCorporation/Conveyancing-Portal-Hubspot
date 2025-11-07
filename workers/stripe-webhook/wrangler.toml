@@ -1,0 +1,20 @@
+name = "stanford-stripe-webhook"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set via: wrangler secret put)
+# HUBSPOT_ACCESS_TOKEN - HubSpot Private Access Token
+# STRIPE_WEBHOOK_SECRET - Stripe webhook signing secret (whsec_xxx)
+
+[env.production]
+name = "stanford-stripe-webhook"
+routes = [
+  { pattern = "webhooks.stanfordlegal.com.au/stripe", zone_name = "stanfordlegal.com.au" }
+]
+
+[env.staging]
+name = "stanford-stripe-webhook-staging"
+

@@ -1,7 +1,10 @@
 import React from 'react';
-import { Home, FileText, Upload, Settings, ChevronRight, X } from 'lucide-react';
+import { Home, FileText, Upload, Settings, ChevronRight, X, Building2, Users } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AgentSidebar({ activeSection, onSectionChange, isOpen, onClose }) {
+  const { canViewAll, isAdmin } = useAuth();
+
   const menuItems = [
     {
       id: 'dashboard',
@@ -9,6 +12,20 @@ export default function AgentSidebar({ activeSection, onSectionChange, isOpen, o
       description: 'Overview & metrics',
       icon: Home
     },
+    // Agency Dashboard - visible to admins and view_all users
+    ...(canViewAll() ? [{
+      id: 'agency',
+      label: 'Agency Dashboard',
+      description: 'View all agency leads',
+      icon: Building2
+    }] : []),
+    // Team Management - visible to admins only
+    ...(isAdmin() ? [{
+      id: 'team',
+      label: 'Manage Team',
+      description: 'Agent permissions',
+      icon: Users
+    }] : []),
     {
       id: 'leads',
       label: 'Leads',

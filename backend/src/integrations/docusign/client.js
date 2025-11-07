@@ -288,7 +288,7 @@ function makeEnvelopeFromTemplate(args) {
 
   // Use template
   env.templateId = templateId;
-  
+
   // Add EventNotification for webhooks (if dealId provided in args)
   if (args.dealId) {
     const webhookUrl = process.env.DOCUSIGN_WEBHOOK_URL || 'https://webhooks.stanfordlegal.com.au/docusign';

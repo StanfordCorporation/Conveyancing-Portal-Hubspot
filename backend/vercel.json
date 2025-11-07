@@ -1,45 +1,15 @@
 {
   "version": 2,
-  "name": "conveyancing-portal-backend",
   "builds": [
     {
-      "src": "api/**/*.js",
+      "src": "src/server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/contacts/(.*)",
-      "dest": "/api/contacts/$1"
-    },
-    {
-      "src": "/api/companies/(.*)",
-      "dest": "/api/companies/$1"
-    },
-    {
-      "src": "/api/deals/(.*)",
-      "dest": "/api/deals/$1"
-    },
-    {
-      "src": "/api/associations/(.*)",
-      "dest": "/api/associations/$1"
-    },
-    {
-      "src": "/api/files/(.*)",
-      "dest": "/api/files/$1"
-    },
-    {
-      "src": "/api/docusign/(.*)",
-      "dest": "/api/docusign/$1"
-    },
-    {
-      "src": "/api/auth/(.*)",
-      "dest": "/api/auth/$1"
+      "src": "/(.*)",
+      "dest": "/src/server.js"
     }
-  ],
-  "env": {
-    "HUBSPOT_ACCESS_TOKEN": "@hubspot_access_token",
-    "JWT_SECRET": "@jwt_secret",
-    "DOCUSIGN_INTEGRATION_KEY": "@docusign_integration_key"
-  }
+  ]
 }
