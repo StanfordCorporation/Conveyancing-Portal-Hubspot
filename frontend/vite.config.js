@@ -32,10 +32,19 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'client-portal': ['./client-portal/src/App'],
-          'agent-portal': ['./agent-portal/src/App'],
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        manualChunks(id) {
+          // Put React and related libs in vendor chunk
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor';
+            }
+            if (id.includes('recharts') || id.includes('lucide-react')) {
+              return 'charts';
+            }
+            if (id.includes('@stripe')) {
+              return 'stripe';
+            }
+          }
         },
       },
     },
