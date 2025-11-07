@@ -41,7 +41,10 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'https://portal.stanfordlegal.com.au',
-    'https://stanford-portal.pages.dev'
+    'https://stanford-portal.pages.dev',
+    // Vercel frontend deployments
+    'https://frontend-ocy2t9xf0-stanford-corporations-projects.vercel.app',
+    /https:\/\/frontend-.*\.vercel\.app$/ // Allow any frontend-*.vercel.app subdomain
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
