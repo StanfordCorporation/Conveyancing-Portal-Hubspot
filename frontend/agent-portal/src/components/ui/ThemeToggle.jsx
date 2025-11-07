@@ -1,37 +1,28 @@
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "./Button";
+import { useVideoTheme } from "../../context/ThemeVideoContext";
 
 export const ThemeToggle = () => {
-  const [theme, setTheme] = useState("dark");
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    const initialTheme = root.classList.contains("dark") ? "dark" : "light";
-    setTheme(initialTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const root = window.document.documentElement;
-    const newTheme = theme === "light" ? "dark" : "light";
-
-    root.classList.remove("light", "dark");
-    root.classList.add(newTheme);
-    setTheme(newTheme);
-  };
+  const { toggleMode, isDarkMode } = useVideoTheme();
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={toggleTheme}
-      className="rounded-full"
-    >
-      {theme === "light" ? (
-        <Moon className="h-5 w-5" />
-      ) : (
-        <Sun className="h-5 w-5" />
-      )}
-    </Button>
+    <div className="relative">
+      {/* Black overlay background */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-full -z-10 scale-110" />
+      
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={toggleMode}
+        className="rounded-full bg-black/20 border-white/20 hover:bg-black/30 text-white backdrop-blur-sm"
+        title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      >
+        {isDarkMode ? (
+          <Sun className="h-5 w-5" />
+        ) : (
+          <Moon className="h-5 w-5" />
+        )}
+      </Button>
+    </div>
   );
 };

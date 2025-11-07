@@ -4,22 +4,23 @@ import { Mail, Phone, ArrowRight, Shield, Clock, CheckCircle } from "lucide-reac
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
-import { ParticleWaves } from "../ui/ParticleWaves";
+import { VideoBackground } from "../ui/VideoBackground";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { useAuth } from "../../context/AuthContext";
+import { useVideoTheme } from "../../context/ThemeVideoContext";
 import api from "../../services/api";
 
 const AgentLogin = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
+  const { isDarkMode } = useVideoTheme();
   const [loginMethod, setLoginMethod] = useState("email");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -157,7 +158,6 @@ const AgentLogin = () => {
       authLogin(response.data.user, response.data.token);
 
       setError("");
-      setIsTransitioning(true);
 
       // Wait for animation then redirect
       setTimeout(() => {
@@ -185,42 +185,28 @@ const AgentLogin = () => {
         <ThemeToggle />
       </div>
 
-      {/* Background with Particle Waves */}
-      <div className="absolute inset-0 overflow-hidden">
-        <img
-          src="/images/property-law.png"
-          alt="Property Law Background"
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-        />
-        <ParticleWaves isTransitioning={isTransitioning} />
-      </div>
+      {/* Video Background */}
+      <VideoBackground isDarkMode={isDarkMode} />
 
-      {/* Transition overlay */}
-      <div
-        className={`absolute inset-0 bg-background pointer-events-none z-30 transition-opacity duration-[2000ms] ${
-          isTransitioning ? "opacity-100" : "opacity-0"
-        }`}
-      ></div>
-
-      <div
-        className={`w-full max-w-6xl grid lg:grid-cols-2 gap-8 relative z-10 transition-all duration-700 ${
-          isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
-        }`}
-      >
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 relative z-10">
         {/* Left side - Features */}
         <div className="hidden lg:flex flex-col justify-center space-y-8 p-12">
           <div className="space-y-4 animate-fade-in">
-            <div className="inline-block px-4 py-2 bg-primary rounded-full">
-              <span className="text-primary-foreground font-semibold text-sm tracking-wide">
+            <div className={`inline-block px-5 py-2 rounded-full shadow-lg transition-colors duration-700 ${
+              isDarkMode ? "bg-blue-500" : "bg-blue-600"
+            }`}>
+              <span className="text-white font-bold text-sm tracking-wider">
                 AGENT PORTAL
               </span>
             </div>
-            <h1 className="text-5xl font-bold text-foreground leading-tight">
+            <h1 className="text-5xl font-bold text-white leading-tight drop-shadow-lg">
               Welcome to Your
               <br />
-              <span className="text-primary">Agent Portal</span>
+              <span className={`drop-shadow-[0_0_20px_rgba(96,165,250,0.5)] transition-colors duration-700 ${
+                isDarkMode ? "text-blue-300" : "text-blue-400"
+              }`}>Agent Portal</span>
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-xl text-white/90 leading-relaxed drop-shadow-md">
               Manage your deals and clients securely with our modern agent portal
             </p>
           </div>
@@ -231,14 +217,20 @@ const AgentLogin = () => {
               return (
                 <div
                   key={idx}
-                  className="flex items-start gap-4 p-4 bg-card/60 backdrop-blur-sm rounded-xl transform transition-all hover:scale-105 hover:bg-card/80 border border-border/50"
+                  className={`flex items-start gap-4 p-5 backdrop-blur-md rounded-xl transform transition-all hover:scale-105 border shadow-xl ${
+                    isDarkMode 
+                      ? "bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50" 
+                      : "bg-white/20 hover:bg-white/30 border-white/30"
+                  }`}
                 >
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/20 text-primary flex-shrink-0">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-lg text-white flex-shrink-0 shadow-lg transition-colors duration-700 ${
+                    isDarkMode ? "bg-blue-500" : "bg-blue-500"
+                  }`}>
                     <Icon className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground">{feature.desc}</p>
+                    <h3 className="font-bold text-white mb-1 drop-shadow-md">{feature.title}</h3>
+                    <p className="text-sm text-white/80 drop-shadow-sm">{feature.desc}</p>
                   </div>
                 </div>
               );
@@ -248,10 +240,14 @@ const AgentLogin = () => {
 
         {/* Right side - Login Form */}
         <div className="flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl p-8 animate-slide-up border border-border">
+          <div className={`w-full max-w-md backdrop-blur-lg rounded-2xl shadow-2xl p-8 animate-slide-up border transition-colors duration-700 ${
+            isDarkMode 
+              ? "bg-slate-900/95 border-slate-700/50" 
+              : "bg-white/95 border-white/50"
+          }`}>
             <div className="lg:hidden mb-8 text-center">
-              <h2 className="text-2xl font-bold text-foreground">Agent Portal</h2>
-              <p className="text-muted-foreground text-sm mt-1">Access your secure portal</p>
+              <h2 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>Agent Portal</h2>
+              <p className={`text-sm mt-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>Access your secure portal</p>
             </div>
 
             {successMessage && (
@@ -269,17 +265,21 @@ const AgentLogin = () => {
             {!otpSent ? (
               <>
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-foreground mb-2">Sign In</h2>
-                  <p className="text-muted-foreground">Enter your details to access your portal</p>
+                  <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-900"}`}>Sign In</h2>
+                  <p className={isDarkMode ? "text-slate-300" : "text-gray-600"}>Enter your details to access your portal</p>
                 </div>
 
-                <div className="flex gap-2 p-1 bg-muted rounded-lg mb-6">
+                <div className={`flex gap-2 p-1 rounded-lg mb-6 ${isDarkMode ? "bg-slate-800" : "bg-gray-100"}`}>
                   <button
                     onClick={() => setLoginMethod("email")}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md font-medium transition-all ${
                       loginMethod === "email"
-                        ? "bg-card text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? isDarkMode 
+                          ? "bg-blue-600 text-white shadow-md" 
+                          : "bg-white text-blue-600 shadow-md"
+                        : isDarkMode
+                          ? "text-slate-400 hover:text-white"
+                          : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     <Mail className="w-4 h-4" />
@@ -289,8 +289,12 @@ const AgentLogin = () => {
                     onClick={() => setLoginMethod("mobile")}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md font-medium transition-all ${
                       loginMethod === "mobile"
-                        ? "bg-card text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? isDarkMode 
+                          ? "bg-blue-600 text-white shadow-md" 
+                          : "bg-white text-blue-600 shadow-md"
+                        : isDarkMode
+                          ? "text-slate-400 hover:text-white"
+                          : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     <Phone className="w-4 h-4" />
@@ -301,19 +305,23 @@ const AgentLogin = () => {
                 <div className="space-y-4">
                   {loginMethod === "email" ? (
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
+                      <Label htmlFor="email" className={isDarkMode ? "text-white" : "text-gray-900"}>Email Address</Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your.email@example.com"
-                        className="h-12"
+                        className={`h-12 ${
+                          isDarkMode 
+                            ? "bg-slate-800 border-slate-600 text-white placeholder:text-slate-400 focus-visible:ring-blue-500/20" 
+                            : "bg-white border-gray-300 text-gray-900"
+                        }`}
                       />
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Label htmlFor="mobile">Mobile Number</Label>
+                      <Label htmlFor="mobile" className={isDarkMode ? "text-white" : "text-gray-900"}>Mobile Number</Label>
                       <div>
                         <Input
                           id="mobile"
@@ -324,17 +332,19 @@ const AgentLogin = () => {
                           className={`h-12 ${
                             mobile && !isValidPhoneNumber(mobile)
                               ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
-                              : ''
+                              : isDarkMode 
+                                ? "bg-slate-800 border-slate-600 text-white placeholder:text-slate-400 focus-visible:ring-blue-500/20" 
+                                : "bg-white border-gray-300 text-gray-900"
                           }`}
                           maxLength="14"
                         />
                         {mobile && !isValidPhoneNumber(mobile) && (
-                          <p className="text-sm text-red-600 mt-1">
+                          <p className={`text-sm mt-1 ${isDarkMode ? "text-red-400" : "text-red-600"}`}>
                             Please enter a valid 10-digit Australian mobile number (starting with 0)
                           </p>
                         )}
                         {mobile && isValidPhoneNumber(mobile) && (
-                          <p className="text-sm text-green-600 mt-1">
+                          <p className={`text-sm mt-1 ${isDarkMode ? "text-green-400" : "text-green-600"}`}>
                             ✓ Valid phone number
                           </p>
                         )}
@@ -361,8 +371,8 @@ const AgentLogin = () => {
                   </Button>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-border">
-                  <p className="text-sm text-muted-foreground text-center">
+                <div className={`mt-6 pt-6 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+                  <p className={`text-sm text-center ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
                     We'll send you a secure one-time code to verify your identity
                   </p>
                 </div>
@@ -370,16 +380,18 @@ const AgentLogin = () => {
             ) : (
               <>
                 <div className="mb-8 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-full mb-4">
-                    <Mail className="w-8 h-8 text-primary" />
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+                    isDarkMode ? "bg-blue-600/20" : "bg-blue-100"
+                  }`}>
+                    <Mail className={`w-8 h-8 ${isDarkMode ? "text-blue-400" : "text-blue-600"}`} />
                   </div>
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
+                  <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-900"}`}>
                     Enter Verification Code
                   </h2>
-                  <p className="text-muted-foreground">
+                  <p className={isDarkMode ? "text-slate-300" : "text-gray-600"}>
                     We've sent a 6-digit code to
                     <br />
-                    <span className="font-semibold text-foreground">
+                    <span className={`font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
                       {loginMethod === "email" ? email : mobile}
                     </span>
                   </p>
@@ -396,7 +408,11 @@ const AgentLogin = () => {
                         value={digit}
                         onChange={(e) => handleOTPChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-12 h-14 text-center text-xl font-bold border-2 border-input rounded-lg focus:border-primary focus:ring-4 focus:ring-ring outline-none transition-all bg-background text-foreground"
+                        className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-lg outline-none transition-all ${
+                          isDarkMode
+                            ? "bg-slate-800 border-slate-600 text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                            : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        }`}
                       />
                     ))}
                   </div>
@@ -422,15 +438,23 @@ const AgentLogin = () => {
                   <div className="text-center space-y-2">
                     <button
                       onClick={() => setOtpSent(false)}
-                      className="text-sm text-primary hover:text-primary/80 font-medium"
+                      className={`text-sm font-medium ${
+                        isDarkMode 
+                          ? "text-blue-400 hover:text-blue-300" 
+                          : "text-blue-600 hover:text-blue-700"
+                      }`}
                     >
                       Change {loginMethod === "email" ? "email" : "mobile number"}
                     </button>
-                    <p className="text-sm text-muted-foreground">
+                    <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
                       Didn't receive the code?{" "}
                       <button
                         onClick={handleSendOTP}
-                        className="text-primary hover:text-primary/80 font-medium"
+                        className={`font-medium ${
+                          isDarkMode 
+                            ? "text-blue-400 hover:text-blue-300" 
+                            : "text-blue-600 hover:text-blue-700"
+                        }`}
                       >
                         Resend
                       </button>
@@ -440,8 +464,12 @@ const AgentLogin = () => {
               </>
             )}
 
-            <div className="mt-8 pt-6 border-t border-border text-center">
-              <p className="text-xs text-muted-foreground">Protected by 256-bit SSL encryption</p>
+            <div className={`mt-8 pt-6 border-t text-center ${
+              isDarkMode ? "border-slate-700" : "border-gray-200"
+            }`}>
+              <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                Protected by 256-bit SSL encryption
+              </p>
             </div>
           </div>
         </div>
