@@ -326,11 +326,11 @@ All rights reserved. Unauthorized copying, distribution, or use of this software
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **Development:** Dave (Senior Software Engineer)
-- **HubSpot Integration:** HubSpot Developer Team
-- **Testing & Feedback:** Stanford Legal Team
+- **Development:** Pratham Manocha (Head of Tech)
+- **HubSpot Integration:** Corey Sneesby (Head of CRM)
+- **Testing & Feedback:** Corey Sneesby & Logan Stanford (Managing Director) 
 - **Project Management:** Stanford Legal
 
 ---
