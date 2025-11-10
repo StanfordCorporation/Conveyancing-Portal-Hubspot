@@ -48,11 +48,29 @@ export async function storeTokens(tokenData) {
   try {
     const redis = await getRedisClient();
 
+    // Load existing tokens to preserve refresh_token if not provided
+    // (Some OAuth providers only send refresh_token on initial auth, not on refresh)
+    let existingTokens = null;
+    try {
+      const tokensStr = await redis.get('smokeball:tokens');
+      if (tokensStr) {
+        existingTokens = JSON.parse(tokensStr);
+      }
+    } catch (err) {
+      // Ignore errors loading existing tokens
+    }
+
     const tokens = {
       access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
+      // Preserve existing refresh_token if new one not provided
+      refresh_token: tokenData.refresh_token || existingTokens?.refresh_token,
       expires_at: Date.now() + (tokenData.expires_in * 1000),
     };
+
+    // Ensure we have a refresh token
+    if (!tokens.refresh_token) {
+      throw new Error('No refresh token available. Cannot store tokens without refresh token.');
+    }
 
     await redis.set('smokeball:tokens', JSON.stringify(tokens));
 
