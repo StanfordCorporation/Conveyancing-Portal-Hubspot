@@ -247,7 +247,7 @@ async function handleMatterConverted(req, res, payload) {
     if (matterNumber) {
       await dealsIntegration.updateDeal(deal.id, {
         matter_uid: matterNumber,
-        smokeball_sync_status: 'Successfull',
+        smokeball_sync_status: 'Successful',
         smokeball_last_sync: new Date().toISOString(),
       });
 

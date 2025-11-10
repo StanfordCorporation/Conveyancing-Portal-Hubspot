@@ -136,7 +136,7 @@ export async function handleQuoteAccepted(dealId) {
         if (currentMatter.number) {
           await dealsIntegration.updateDeal(dealId, {
             matter_uid: currentMatter.number,
-            smokeball_sync_status: 'Successfull',
+            smokeball_sync_status: 'Successful',
           });
         }
 
@@ -157,7 +157,7 @@ export async function handleQuoteAccepted(dealId) {
 
       // Update sync status (awaiting webhook for matter number)
       await dealsIntegration.updateDeal(dealId, {
-        smokeball_sync_status: 'Successfull',
+        smokeball_sync_status: 'Successful',
         smokeball_last_sync: new Date().toISOString(),
       });
 
