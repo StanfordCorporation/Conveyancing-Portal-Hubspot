@@ -104,7 +104,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                     type="email"
                     className="field-input"
                     value={additionalSeller?.email || ''}
-                    onChange((e) => onChange('additionalSeller', 'email', e.target.value)}
+                    onChange={(e) => onChange('additionalSeller', 'email', e.target.value)}
                   />
                 ) : (
                   <p className="field-value">{additionalSeller?.email || 'N/A'}</p>
