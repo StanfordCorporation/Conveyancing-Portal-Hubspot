@@ -57,7 +57,7 @@ export default function PropertyDetails({
           <div className="info-row full-width">
             <label className="field-label">Title Search Document</label>
             <a 
-              href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/files/${agentTitleSearchFile}`}
+              href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/${agentTitleSearchFile}`}
               target="_blank"
               rel="noopener noreferrer"
               className="file-download-link"

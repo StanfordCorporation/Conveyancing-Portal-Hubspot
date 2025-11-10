@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../../services/api.js';
 import './dynamic-quote.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 /**
  * DynamicQuote Component
@@ -37,7 +38,7 @@ export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submi
 
       console.log(`[DynamicQuote] 🔄 Fetching fresh quote from backend for deal: ${dealId}`);
 
-      const response = await axios.post(`${API_BASE_URL}/api/quote/calculate`, {
+      const response = await axios.post(`${API_BASE_URL}/quote/calculate`, {
         dealId
       });
 
@@ -65,21 +66,14 @@ export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submi
     try {
       setAccepting(true);
       console.log(`[DynamicQuote] ✅ Accepting quote for deal: ${dealId}`);
-
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
       
       // Update deal stage to Awaiting Retainer (Step 4 - Signature)
-      const response = await axios.patch(
-        `${API_BASE_URL}/api/client/property/${dealId}/stage`,
+      // Using api instance which automatically adds Authorization header
+      const response = await api.patch(
+        `/client/property/${dealId}/stage`,
         {
           stage: '1923682792', // AWAITING_RETAINER stage ID
           stepNumber: 4
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
 

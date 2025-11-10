@@ -84,6 +84,7 @@ export default function PropertyQuestionnaireAgent({
   const [errors, setErrors] = useState({});
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [existingFiles, setExistingFiles] = useState({});
+  const [skipRatesNotice, setSkipRatesNotice] = useState(false);
 
   // Initialize form data from props (no API call needed!)
   useEffect(() => {
@@ -104,6 +105,11 @@ export default function PropertyQuestionnaireAgent({
 
       console.log(`[Questionnaire] ✅ Loaded ${Object.keys(normalizedData).length} questionnaire fields (no API call)`);
       setFormData(normalizedData);
+
+      // Check if skip rates notice was previously selected
+      if (normalizedData.skip_rates_notice === 'yes' || normalizedData.skip_rates_notice === 'Yes') {
+        setSkipRatesNotice(true);
+      }
 
       // Initialize conditional fields based on loaded data
       initializeConditionalFields(normalizedData);
@@ -455,6 +461,11 @@ export default function PropertyQuestionnaireAgent({
     const value = formData[fieldName] || '';
     const error = errors[fieldName];
 
+    // Skip skip_rates_notice field - it's rendered as a custom checkbox
+    if (fieldName === 'skip_rates_notice') {
+      return null;
+    }
+
     // Skip conditional fields that are not visible
     if (config.conditional && !conditionalFields[fieldName]) {
       return null;
@@ -645,6 +656,16 @@ export default function PropertyQuestionnaireAgent({
     );
   };
 
+  // Handle skip rates notice checkbox change
+  const handleSkipRatesNoticeChange = (checked) => {
+    setSkipRatesNotice(checked);
+    
+    // Store in form data for persistence (yes/null for HubSpot enumeration)
+    handleFieldChange('skip_rates_notice', checked ? 'yes' : '');
+    
+    console.log(`[Questionnaire] ${checked ? '✅' : '❌'} Skip rates notice: ${checked}`);
+  };
+
   // Render section
   const renderSection = (sectionNumber) => {
     // Get section from schema to maintain original question order (with sub-questions following their parents)
@@ -659,7 +680,56 @@ export default function PropertyQuestionnaireAgent({
         <h3 className="section-title">{section.section_title}</h3>
         <p className="section-description">{sectionConfig[sectionNumber]?.description || ''}</p>
 
-        <div className="section-fields">
+        {/* Special checkbox for Section 5 - Skip Rates Notice */}
+        {sectionNumber === 5 && (
+          <div className="form-group" style={{ 
+            backgroundColor: '#f8f9fa', 
+            padding: '16px', 
+            borderRadius: '8px', 
+            border: '2px solid #dee2e6',
+            marginBottom: '24px'
+          }}>
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              cursor: 'pointer',
+              fontSize: '15px',
+              fontWeight: '500'
+            }}>
+              <input
+                type="checkbox"
+                checked={skipRatesNotice}
+                onChange={(e) => handleSkipRatesNoticeChange(e.target.checked)}
+                style={{ 
+                  marginRight: '12px', 
+                  marginTop: '3px',
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer'
+                }}
+              />
+              <span style={{ flex: 1, lineHeight: '1.5' }}>
+                Client doesn't have rates notice currently, they'll send it to Stanford Legal Team or Agency by Email
+              </span>
+            </label>
+            {skipRatesNotice && (
+              <div style={{
+                marginTop: '12px',
+                marginLeft: '30px',
+                padding: '12px',
+                backgroundColor: '#d1ecf1',
+                borderLeft: '4px solid #0c5460',
+                color: '#0c5460',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}>
+                <strong>📧 Note:</strong> Client will email rates notice to Stanford Legal Team or Agency.
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="section-fields" style={skipRatesNotice && sectionNumber === 5 ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
           {section.questions.map((question) => {
             const fieldName = question.form_field_name;
             const config = propertyMapping[fieldName];

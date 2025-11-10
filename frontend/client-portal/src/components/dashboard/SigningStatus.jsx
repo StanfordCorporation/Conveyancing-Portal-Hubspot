@@ -3,7 +3,7 @@ import axios from 'axios';
 import EmbeddedSigning from './EmbeddedSigning.jsx';
 import './signing-status.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 /**
  * SigningStatus Component
@@ -31,7 +31,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
       setLoading(true);
       console.log('[SigningStatus] Checking for existing envelope for deal:', dealId);
 
-      const response = await axios.get(`${API_BASE_URL}/api/docusign/check-envelope/${dealId}`);
+      const response = await axios.get(`${API_BASE_URL}/docusign/check-envelope/${dealId}`);
 
       if (response.data.hasEnvelope) {
         console.log('[SigningStatus] Found existing envelope:', response.data.envelopeId);
@@ -95,7 +95,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
       });
 
       // This will either create a new envelope or return existing one
-      const response = await axios.post(`${API_BASE_URL}/api/docusign/create-signing-session`, {
+      const response = await axios.post(`${API_BASE_URL}/docusign/create-signing-session`, {
         dealId,
         signers: signersToSend  // Send sellers to avoid backend fetch
       });
@@ -132,7 +132,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
 
   const checkEnvelopeStatus = async (envId) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/docusign/envelope-status`, {
+      const response = await axios.post(`${API_BASE_URL}/docusign/envelope-status`, {
         envelopeId: envId,
         dealId: dealId // Pass dealId to update HubSpot status
       });

@@ -3,7 +3,7 @@ import axios from 'axios';
 import PaymentForm from './PaymentForm.jsx';
 import './payment-instructions.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 /**
  * Payment Instructions Component
@@ -27,7 +27,7 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
       setLoading(true);
       console.log(`[Payment Instructions] 🔄 Fetching quote for deal: ${dealId}`);
 
-      const response = await axios.post(`${API_BASE_URL}/api/quote/calculate`, {
+      const response = await axios.post(`${API_BASE_URL}/quote/calculate`, {
         dealId
       });
 

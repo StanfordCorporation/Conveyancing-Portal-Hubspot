@@ -7,7 +7,7 @@ import AgencyDetails from './AgencyDetails.jsx';
 import ListingAgent from './ListingAgent.jsx';
 import './property-info.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 /**
  * PropertyInformation Component
@@ -94,20 +94,14 @@ export default function PropertyInformation({ dealId, initialData }) {
     try {
       setReviewingInfo(true);
       console.log(`[PropertyInfo] ✅ Information reviewed for deal: ${dealId}`);
-
-      const token = localStorage.getItem('auth_token');
       
       // Update deal stage to Awaiting Questionnaire (Step 2)
-      const response = await axios.patch(
-        `${API_BASE_URL}/api/client/property/${dealId}/stage`,
+      // Using api instance which automatically adds Authorization header
+      const response = await api.patch(
+        `/client/property/${dealId}/stage`,
         {
           stage: '1923713520', // AWAITING_QUESTIONNAIRE stage ID
           stepNumber: 2
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
 

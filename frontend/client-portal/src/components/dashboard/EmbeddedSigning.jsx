@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './embedded-signing.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 /**
  * EmbeddedSigning Component
@@ -45,7 +45,7 @@ export default function EmbeddedSigning({ dealId, signers, onComplete}) {
       }
 
       // No need to send accessToken - JWT authentication handles it on backend!
-      const response = await axios.post(`${API_BASE_URL}/api/docusign/create-signing-session`, requestBody);
+      const response = await axios.post(`${API_BASE_URL}/docusign/create-signing-session`, requestBody);
 
       if (response.data.success) {
         console.log(`[EmbeddedSigning] 📦 Response data:`, response.data);

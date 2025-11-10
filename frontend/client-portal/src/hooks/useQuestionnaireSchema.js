@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const CACHE_KEY = 'questionnaire_schema';
 const CACHE_VERSION_KEY = 'questionnaire_schema_version';
 const CACHE_EXPIRY_KEY = 'questionnaire_schema_expiry';
@@ -84,7 +84,7 @@ export function useQuestionnaireSchema() {
   const fetchSchema = async () => {
     try {
       console.log('[useQuestionnaireSchema] Fetching schema from API...');
-      const response = await axios.get(`${API_BASE_URL}/api/questionnaire/schema`);
+      const response = await axios.get(`${API_BASE_URL}/questionnaire/schema`);
       const schemaData = response.data;
 
       // Check if cached version is different from fetched version

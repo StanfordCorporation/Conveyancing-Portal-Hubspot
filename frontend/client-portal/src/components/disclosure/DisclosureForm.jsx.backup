@@ -572,69 +572,43 @@ export default function DisclosureForm() {
             </div>
           )}
 
-          {/* Navigation Footer with Enhancements */}
-          <div className="relative bg-gradient-to-b from-white to-slate-50/30 backdrop-blur-xl border border-border rounded-3xl shadow-xl overflow-hidden">
-            {/* Progress Bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
-              <div
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${(currentStep / steps.length) * 100}%` }}
-              ></div>
+          {/* Navigation Buttons */}
+          <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl p-8">
+            <div className="flex items-center justify-between gap-4">
+              {currentStep > 1 && (
+                <button
+                  onClick={handleBack}
+                  className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
+                >
+                  <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                  <span>Back</span>
+                </button>
+              )}
+
+              {currentStep < steps.length ? (
+                <button
+                  onClick={handleNext}
+                  disabled={!isStepValid(currentStep)}
+                  className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
+                >
+                  <span>Next Step</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!isStepValid(3) || isSubmitting}
+                  className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
+                >
+                  <span>Submit Disclosure Form</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
             </div>
 
-            <div className="p-8 pt-10">
-              {/* Contextual Help Text - Left aligned above buttons */}
-              <div className="mb-4 animate-fade-in">
-                {currentStep === 1 && (
-                  <p className="text-sm text-slate-500">
-                    💡 Enter the address exactly as it appears on the property title.
-                  </p>
-                )}
-                {currentStep === 2 && (
-                  <p className="text-sm text-slate-500">
-                    💡 Each seller must have a valid email and mobile number.
-                  </p>
-                )}
-                {currentStep === 3 && (
-                  <p className="text-sm text-slate-500">
-                    💡 You can search for your agents if they're registered with us, if not you can create one and they'll get notified to track your application progress with us.
-                  </p>
-                )}
-              </div>
-
-              {/* Navigation Buttons */}
-              <div className="flex items-center justify-between gap-4">
-                {currentStep > 1 && (
-                  <button
-                    onClick={handleBack}
-                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
-                  >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                    <span>Back</span>
-                  </button>
-                )}
-
-                {currentStep < steps.length ? (
-                  <button
-                    onClick={handleNext}
-                    disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
-                  >
-                    <span>Next Step</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!isStepValid(3) || isSubmitting}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
-                  >
-                    <span>Submit Disclosure Form</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              <span className="text-red-500">*</span> Required fields
+            </p>
           </div>
         </div>
       </main>
