@@ -39,6 +39,10 @@ router.post('/webhook', async (req, res) => {
       matterId: payload.payload?.id || payload.data?.id,
     });
 
+    // Log all headers for debugging
+    console.log('[Smokeball Webhook] 📋 Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('[Smokeball Webhook] 📦 Full payload:', JSON.stringify(payload, null, 2));
+
     // Verify webhook signature or API key
     if (!verifyWebhookAuth(req)) {
       console.error('[Smokeball Webhook] ❌ Unauthorized webhook request');
