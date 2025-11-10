@@ -188,6 +188,7 @@ export const processClientDisclosure = async (formData) => {
       dealstage: '1923713518', // First stage ID from HubSpot pipeline
       pipeline: 'default',
       property_address: formData.property.address,
+      transaction_type: 'sale', // Disclosure form is always for selling property
       number_of_owners: (additionalSellerIds.length + 1).toString(),
       ...initializeDisclosureFields()
     };
