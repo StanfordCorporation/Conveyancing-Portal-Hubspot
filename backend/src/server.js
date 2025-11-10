@@ -26,6 +26,7 @@ import docusignRoutes from './routes/docusign.js';
 import paymentRoutes from './routes/payment.js';
 import webhookRoutes from './routes/webhook.js';
 import smokeballRoutes from './routes/smokeball.js';
+import smokeballWebhookRoutes from './routes/smokeball-webhook.js';
 
 dotenv.config();
 
@@ -149,6 +150,7 @@ app.use('/api/payment', paymentRoutes);
  * OAuth2 + PKCE authentication and CRM operations
  */
 app.use('/api/smokeball', smokeballRoutes);
+app.use('/api/smokeball', smokeballWebhookRoutes); // Webhook handlers
 
 // ============================================================================
 // HEALTH CHECK & INFO ROUTES

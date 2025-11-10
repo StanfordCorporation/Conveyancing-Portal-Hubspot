@@ -34,7 +34,8 @@ export async function getAllStaff(forceRefresh = false) {
 
     const response = await client.get(SMOKEBALL_API.endpoints.staff);
 
-    const results = Array.isArray(response) ? response : response.items || [];
+    // Smokeball API wraps responses in 'value' field (OData format)
+    const results = Array.isArray(response) ? response : response.value || [];
 
     // Update cache
     staffCache = results;
@@ -104,43 +105,75 @@ export async function findStaffByName(firstName, lastName = null) {
 
 /**
  * Find Laura (specific staff member for welcome tasks)
+ * Based on old PHP: smokeball_get_staff_id('Laura', 'Stuart')
  *
  * @returns {Promise<Object|null>} Laura's staff object
  */
 export async function findLaura() {
-  // Try to find Laura by first name
-  // Adjust this based on actual staff member's name in Smokeball
-  return await findStaffByName('Laura');
+  return await findStaffByName('Laura', 'Stuart');
+}
+
+/**
+ * Find Sean (default responsible solicitor)
+ * Based on old PHP: smokeball_get_staff_id('Sean', 'Kerswill')
+ *
+ * @returns {Promise<Object|null>} Sean's staff object
+ */
+export async function findSean() {
+  return await findStaffByName('Sean', 'Kerswill');
 }
 
 /**
  * Get default staff assignments for new matters
  * Returns staff IDs for responsible and assistant solicitors
+ * Based on old PHP implementation
  *
- * @returns {Promise<Object>} { responsibleSolicitor: UUID, assistantSolicitor: UUID }
+ * @returns {Promise<Object>} { personResponsibleStaffId: UUID, personAssistingStaffId: UUID }
  */
 export async function getDefaultStaffAssignments() {
   try {
+    console.log('[Smokeball Staff] 👨‍💼 Getting default staff assignments...');
+
+    // Find Sean Kerswill as responsible solicitor
+    const sean = await findSean();
+    if (!sean) {
+      throw new Error('Could not find Sean Kerswill in staff list');
+    }
+
+    // Find Laura Stuart as assistant (optional)
+    const laura = await findLaura();
+    if (!laura) {
+      console.warn('[Smokeball Staff] ⚠️ Could not find Laura Stuart - proceeding without assistant');
+    }
+
+    console.log(`[Smokeball Staff] ✅ Responsible: ${sean.firstName} ${sean.lastName} (${sean.id})`);
+    if (laura) {
+      console.log(`[Smokeball Staff] ✅ Assistant: ${laura.firstName} ${laura.lastName} (${laura.id})`);
+    }
+
+    return {
+      personResponsibleStaffId: sean.id,
+      personAssistingStaffId: laura?.id || null,
+    };
+
+  } catch (error) {
+    console.error('[Smokeball Staff] ❌ Error getting default staff assignments:', error.message);
+    
+    // Fallback: use first available staff if specific staff not found
+    console.warn('[Smokeball Staff] ⚠️ Falling back to first available staff member');
     const allStaff = await getAllStaff();
 
     if (allStaff.length === 0) {
       throw new Error('No staff members found in Smokeball');
     }
 
-    // For now, assign first available staff member as responsible solicitor
-    // TODO: Implement logic to determine appropriate staff based on matter type, workload, etc.
-    const responsibleSolicitor = allStaff[0];
-
-    console.log(`[Smokeball Staff] 👨‍💼 Default staff assignment: ${responsibleSolicitor.firstName} ${responsibleSolicitor.lastName}`);
+    const fallbackStaff = allStaff[0];
+    console.log(`[Smokeball Staff] ⚠️ Using fallback: ${fallbackStaff.firstName} ${fallbackStaff.lastName}`);
 
     return {
-      responsibleSolicitor: responsibleSolicitor.id,
-      assistantSolicitor: null, // Optional
+      personResponsibleStaffId: fallbackStaff.id,
+      personAssistingStaffId: null,
     };
-
-  } catch (error) {
-    console.error('[Smokeball Staff] ❌ Error getting default staff assignments:', error.message);
-    throw error;
   }
 }
 
@@ -158,6 +191,7 @@ export default {
   getStaffMember,
   findStaffByName,
   findLaura,
+  findSean,
   getDefaultStaffAssignments,
   clearStaffCache,
 };

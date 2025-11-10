@@ -108,6 +108,19 @@ export const updateDeal = async (dealId, updates) => {
 };
 
 /**
+ * Search for deals
+ * @param {Object} searchParams - HubSpot search parameters
+ * @param {Array} searchParams.filterGroups - Filter groups
+ * @param {Array} searchParams.properties - Properties to fetch
+ * @param {number} searchParams.limit - Limit results
+ * @returns {Promise<Object>} Search results
+ */
+export const searchDeals = async (searchParams) => {
+  const response = await hubspotClient.post('/crm/v3/objects/deals/search', searchParams);
+  return response.data;
+};
+
+/**
  * Update deal stage
  */
 export const updateDealStage = async (dealId, stage) => {
@@ -164,5 +177,6 @@ export default {
   getDeal,
   updateDeal,
   updateDealStage,
+  searchDeals,
   createDealWithAssociations
 };

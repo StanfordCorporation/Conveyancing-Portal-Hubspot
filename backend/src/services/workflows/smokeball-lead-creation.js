@@ -2,23 +2,27 @@
  * Smokeball Lead Creation Workflow
  * Creates a lead in Smokeball when a deal is created in HubSpot
  *
+ * Based on old PHP implementation: smokeball_create_lead()
+ *
  * Trigger: Deal created in HubSpot
  * Actions:
  * 1. Fetch deal and associated contacts from HubSpot
  * 2. Extract property state from address
- * 3. Determine matter type (purchase vs sale)
- * 4. Create contacts in Smokeball
- * 5. Create lead in Smokeball
- * 6. Update HubSpot deal with lead_uid and sync status
+ * 3. Lookup actual matter type from Smokeball by category/name/state
+ * 4. Create contacts in Smokeball with correct 'person' wrapper
+ * 5. Get staff assignments (Sean Kerswill, Laura Stuart)
+ * 6. Create lead in Smokeball with correct API payload
+ * 7. Update HubSpot deal with lead_uid and sync status
  */
 
 import * as dealsIntegration from '../../integrations/hubspot/deals.js';
 import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
+import * as associationsIntegration from '../../integrations/hubspot/associations.js';
 import * as smokeballMatters from '../../integrations/smokeball/matters.js';
 import * as smokeballContacts from '../../integrations/smokeball/contacts.js';
 import * as smokeballStaff from '../../integrations/smokeball/staff.js';
+import * as smokeballMatterTypes from '../../integrations/smokeball/matter-types.js';
 import { extractStateFromAddress } from '../../utils/stateExtractor.js';
-import { MATTER_TYPES } from '../../config/smokeball.js';
 
 /**
  * Create Smokeball lead from HubSpot deal
@@ -59,27 +63,36 @@ export async function createSmokeballLeadFromDeal(dealId) {
     console.log(`[Smokeball Lead Workflow] 🗺️ State: ${state}`);
 
     // ========================================
-    // STEP 3: Determine matter type
+    // STEP 3: Determine transaction type and lookup matter type
     // ========================================
     const transactionType = props.transaction_type?.toLowerCase();
-    const matterType = determineMatterType(transactionType);
+    console.log(`[Smokeball Lead Workflow] 📂 Transaction Type: ${transactionType}`);
 
-    console.log(`[Smokeball Lead Workflow] 📂 Matter Type: ${matterType}`);
+    // Lookup actual matter type from Smokeball API (not hardcoded)
+    const matterTypeName = transactionType === 'sale' ? 'Sale' : 'Purchase';
+    const matterTypeInfo = await smokeballMatterTypes.findMatterType(state, 'Conveyancing', matterTypeName);
+
+    if (!matterTypeInfo) {
+      throw new Error(`Could not find matter type for Conveyancing > ${matterTypeName} in state: ${state}`);
+    }
+
+    console.log(`[Smokeball Lead Workflow] ✅ Matter Type: ${matterTypeInfo.name} (ID: ${matterTypeInfo.id})`);
+    console.log(`[Smokeball Lead Workflow] ✅ Client Role: ${matterTypeInfo.clientRole}`);
 
     // ========================================
     // STEP 4: Get associated contacts from HubSpot
     // ========================================
     console.log('[Smokeball Lead Workflow] 👥 Fetching associated contacts...');
 
-    const associations = await dealsIntegration.getDealAssociations(dealId, 'contacts');
-    const hubspotContactIds = associations.results?.map(assoc => assoc.id) || [];
+    const contacts = await associationsIntegration.getDealContacts(dealId);
+    const hubspotContactIds = contacts.map(contact => contact.id);
 
     console.log(`[Smokeball Lead Workflow] Found ${hubspotContactIds.length} associated contacts`);
 
     // ========================================
     // STEP 5: Create contacts in Smokeball
     // ========================================
-    const smokeballContactsWithRoles = [];
+    const smokeballContactIds = [];
 
     for (const contactId of hubspotContactIds) {
       try {
@@ -89,21 +102,15 @@ export async function createSmokeballLeadFromDeal(dealId) {
         // Build Smokeball contact data
         const contactData = smokeballContacts.buildContactFromHubSpot(hubspotContact);
 
-        // Create or get existing contact
+        // Create or get existing contact (now uses correct 'person' wrapper)
         const smokeballContact = await smokeballContacts.getOrCreateContact(contactData);
 
-        // Determine role based on transaction type
-        const role = determineContactRole(transactionType);
-
-        smokeballContactsWithRoles.push({
-          contactId: smokeballContact.id,
-          role,
-        });
+        smokeballContactIds.push(smokeballContact.id);
 
         // Update HubSpot contact with Smokeball ID
         await contactsIntegration.updateContact(contactId, {
           smokeball_contact_id: smokeballContact.id,
-          smokeball_sync_status: 'synced',
+          smokeball_sync_status: 'Successfull',
         });
 
         console.log(`[Smokeball Lead Workflow] ✅ Contact synced: ${smokeballContact.id}`);
@@ -114,6 +121,10 @@ export async function createSmokeballLeadFromDeal(dealId) {
       }
     }
 
+    if (smokeballContactIds.length === 0) {
+      throw new Error('Failed to create any contacts in Smokeball');
+    }
+
     // ========================================
     // STEP 6: Get default staff assignments
     // ========================================
@@ -122,38 +133,23 @@ export async function createSmokeballLeadFromDeal(dealId) {
     const staffAssignments = await smokeballStaff.getDefaultStaffAssignments();
 
     // ========================================
-    // STEP 7: Create lead in Smokeball
+    // STEP 7: Create lead in Smokeball with correct payload structure
     // ========================================
     console.log('[Smokeball Lead Workflow] 📝 Creating lead in Smokeball...');
 
-    const shortName = smokeballMatters.buildMatterShortName(deal);
-
     const leadData = {
-      matterType,
-      shortName,
-      state,
-      contacts: smokeballContactsWithRoles,
-      staff: staffAssignments,
+      matterTypeId: matterTypeInfo.id,
+      clientRole: matterTypeInfo.clientRole,
+      clientIds: smokeballContactIds,
+      description: '', // Leave empty as per old PHP code
+      personResponsibleStaffId: staffAssignments.personResponsibleStaffId,
+      personAssistingStaffId: staffAssignments.personAssistingStaffId,
+      referralType: 'Real Estate Agent', // Default referral type
     };
 
     const smokeballLead = await smokeballMatters.createLead(leadData);
 
     console.log(`[Smokeball Lead Workflow] ✅ Lead created: ${smokeballLead.id}`);
-
-    // ========================================
-    // STEP 7.5: Fill in property address in Smokeball
-    // ========================================
-    console.log('[Smokeball Lead Workflow] 📍 Updating property address in Smokeball...');
-
-    try {
-      await smokeballMatters.updateMatter(smokeballLead.id, {
-        propertyAddress: props.property_address,
-      });
-      console.log('[Smokeball Lead Workflow] ✅ Property address updated in Smokeball');
-    } catch (addressError) {
-      console.error('[Smokeball Lead Workflow] ⚠️ Failed to update property address:', addressError.message);
-      // Don't fail the entire workflow - property address can be updated later
-    }
 
     // ========================================
     // STEP 8: Update HubSpot deal with lead_uid
@@ -163,7 +159,7 @@ export async function createSmokeballLeadFromDeal(dealId) {
     await dealsIntegration.updateDeal(dealId, {
       lead_uid: smokeballLead.id,
       matter_uid: null, // Will be populated on conversion
-      smokeball_sync_status: 'synced',
+      smokeball_sync_status: 'Successfull',
       smokeball_last_sync: new Date().toISOString(),
     });
 
@@ -173,19 +169,21 @@ export async function createSmokeballLeadFromDeal(dealId) {
       success: true,
       leadId: smokeballLead.id,
       dealId,
-      shortName,
       state,
-      matterType,
-      contactsCreated: smokeballContactsWithRoles.length,
+      matterType: matterTypeInfo.name,
+      matterTypeId: matterTypeInfo.id,
+      clientRole: matterTypeInfo.clientRole,
+      contactsCreated: smokeballContactIds.length,
     };
 
   } catch (error) {
     console.error('[Smokeball Lead Workflow] ❌ Workflow failed:', error.message);
+    console.error('[Smokeball Lead Workflow] Stack:', error.stack);
 
     // Update HubSpot with error status
     try {
       await dealsIntegration.updateDeal(dealId, {
-        smokeball_sync_status: 'error',
+        smokeball_sync_status: 'Failed',
         smokeball_sync_error: error.message,
       });
     } catch (updateError) {
@@ -193,40 +191,6 @@ export async function createSmokeballLeadFromDeal(dealId) {
     }
 
     throw error;
-  }
-}
-
-/**
- * Determine matter type based on transaction type
- *
- * @param {string} transactionType - 'purchase' or 'sale'
- * @returns {string} Smokeball matter type ID
- */
-function determineMatterType(transactionType) {
-  if (transactionType === 'purchase') {
-    return MATTER_TYPES.CONVEYANCING_PURCHASE;
-  } else if (transactionType === 'sale') {
-    return MATTER_TYPES.CONVEYANCING_SALE;
-  } else {
-    // Default to purchase
-    console.warn('[Smokeball Lead Workflow] ⚠️ Unknown transaction type, defaulting to purchase');
-    return MATTER_TYPES.CONVEYANCING_PURCHASE;
-  }
-}
-
-/**
- * Determine contact role based on transaction type
- *
- * @param {string} transactionType - 'purchase' or 'sale'
- * @returns {string} Contact role
- */
-function determineContactRole(transactionType) {
-  if (transactionType === 'purchase') {
-    return 'Purchaser';
-  } else if (transactionType === 'sale') {
-    return 'Vendor';
-  } else {
-    return 'Client';
   }
 }
 

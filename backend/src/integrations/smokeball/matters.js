@@ -13,27 +13,54 @@ import { SMOKEBALL_API, MATTER_TYPES } from '../../config/smokeball.js';
 
 /**
  * Create a lead in Smokeball
+ * Based on old PHP implementation: smokeball_create_lead()
  *
  * @param {Object} leadData - Lead information
- * @param {string} leadData.matterType - Matter type ID (e.g., 'conveyancing-purchase')
- * @param {string} leadData.shortName - Short description (e.g., "John Smith - 123 Main St")
- * @param {string} leadData.state - Australian state (e.g., "New South Wales")
- * @param {Array<Object>} leadData.contacts - Array of contact objects with roles
- * @param {Object} leadData.staff - Responsible staff assignments
+ * @param {string} leadData.matterTypeId - Full matter type ID with state suffix (e.g., '..._QLD')
+ * @param {string} leadData.clientRole - Client role (e.g., 'Vendor', 'Purchaser')
+ * @param {Array<string>} leadData.clientIds - Array of contact UUIDs
+ * @param {string} leadData.description - Lead description (optional)
+ * @param {string} leadData.personResponsibleStaffId - Staff UUID for responsible solicitor
+ * @param {string} leadData.personAssistingStaffId - Staff UUID for assistant (optional)
+ * @param {string} leadData.referralType - Referral type string (e.g., 'Real Estate Agent')
+ * @param {Object} leadData.referrer - Referrer contact object (optional)
  * @returns {Promise<Object>} Created lead with { id: UUID, number: null }
  */
 export async function createLead(leadData) {
   try {
-    console.log('[Smokeball Matters] 📝 Creating lead:', leadData.shortName);
+    console.log('[Smokeball Matters] 📝 Creating lead...');
+    console.log('[Smokeball Matters] Matter Type ID:', leadData.matterTypeId);
+    console.log('[Smokeball Matters] Client Role:', leadData.clientRole);
+    console.log('[Smokeball Matters] Client IDs:', leadData.clientIds);
 
+    // Build payload matching Smokeball API structure (from old PHP code)
     const payload = {
-      isLead: true, // Critical: marks as lead (no matter number)
-      matterType: leadData.matterType,
-      shortName: leadData.shortName,
-      state: leadData.state,
-      contacts: leadData.contacts || [],
-      staff: leadData.staff || {},
+      matterTypeId: leadData.matterTypeId,
+      clientIds: leadData.clientIds || [],
+      clientRole: leadData.clientRole,
+      description: leadData.description || '',
+      status: 'Open',
+      leadOpenedDate: new Date().toISOString(),
+      personResponsibleStaffId: leadData.personResponsibleStaffId,
+      isLead: true,
     };
+
+    // Add person assisting if provided
+    if (leadData.personAssistingStaffId) {
+      payload.personAssistingStaffId = leadData.personAssistingStaffId;
+    }
+
+    // Add referral type as string (not ID)
+    if (leadData.referralType) {
+      payload.referralType = leadData.referralType;
+    }
+
+    // Add referrer contact if provided
+    if (leadData.referrer) {
+      payload.referrer = leadData.referrer;
+    }
+
+    console.log('[Smokeball Matters] Payload:', JSON.stringify(payload, null, 2));
 
     const response = await client.post(SMOKEBALL_API.endpoints.matters, payload);
 
@@ -45,6 +72,9 @@ export async function createLead(leadData) {
 
   } catch (error) {
     console.error('[Smokeball Matters] ❌ Error creating lead:', error.message);
+    if (error.response?.data) {
+      console.error('[Smokeball Matters] API Error:', JSON.stringify(error.response.data, null, 2));
+    }
     throw error;
   }
 }
@@ -115,7 +145,8 @@ export async function searchMatters(searchParams = {}) {
 
     const response = await client.get(SMOKEBALL_API.endpoints.matters, searchParams);
 
-    const results = Array.isArray(response) ? response : response.items || [];
+    // Smokeball API wraps responses in 'value' field (OData format)
+    const results = Array.isArray(response) ? response : response.value || [];
 
     console.log(`[Smokeball Matters] ✅ Found ${results.length} matters`);
 
@@ -233,6 +264,101 @@ export function buildMatterShortName(dealData) {
   return shortName.substring(0, 100); // Limit to 100 characters
 }
 
+/**
+ * Update matter layout with property details
+ * Based on old PHP: smokeball_update_property_details_layout()
+ *
+ * @param {string} matterId - Matter UUID
+ * @param {string} layoutId - Layout UUID
+ * @param {Object} layoutData - Layout update data
+ * @returns {Promise<Object>} Updated layout
+ */
+export async function updateMatterLayout(matterId, layoutId, layoutData) {
+  try {
+    console.log(`[Smokeball Matters] 📋 Updating layout ${layoutId} for matter ${matterId}`);
+
+    const response = await client.patch(
+      `/matters/${matterId}/layouts/${layoutId}`,
+      layoutData
+    );
+
+    console.log('[Smokeball Matters] ✅ Layout updated successfully');
+
+    return response;
+
+  } catch (error) {
+    console.error('[Smokeball Matters] ❌ Error updating layout:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Register webhook subscription with Smokeball
+ * Based on old PHP: smokeball_register_webhook_subscription()
+ *
+ * @param {Object} subscriptionData - Webhook subscription data
+ * @param {string} subscriptionData.key - Webhook key for signature verification
+ * @param {string} subscriptionData.name - Subscription name
+ * @param {Array<string>} subscriptionData.eventTypes - Event types to subscribe to
+ * @param {string} subscriptionData.eventNotificationUrl - Webhook URL
+ * @returns {Promise<Object>} Created subscription
+ */
+export async function registerWebhook(subscriptionData) {
+  try {
+    console.log('[Smokeball Matters] 📡 Registering webhook subscription');
+    console.log('[Smokeball Matters] 🔗 URL:', subscriptionData.eventNotificationUrl);
+
+    const response = await client.post(SMOKEBALL_API.endpoints.webhooks, subscriptionData);
+
+    console.log('[Smokeball Matters] ✅ Webhook registered successfully');
+    console.log(`[Smokeball Matters] 🆔 Subscription ID: ${response.id}`);
+
+    return response;
+
+  } catch (error) {
+    console.error('[Smokeball Matters] ❌ Error registering webhook:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * List webhook subscriptions
+ *
+ * @returns {Promise<Array>} Webhook subscriptions
+ */
+export async function listWebhooks() {
+  try {
+    const response = await client.get(SMOKEBALL_API.endpoints.webhooks);
+    const webhooks = Array.isArray(response) ? response : response.value || [];
+    
+    console.log(`[Smokeball Matters] 📡 Found ${webhooks.length} webhook subscriptions`);
+    
+    return webhooks;
+  } catch (error) {
+    console.error('[Smokeball Matters] ❌ Error listing webhooks:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Delete webhook subscription
+ *
+ * @param {string} subscriptionId - Subscription UUID
+ * @returns {Promise<void>}
+ */
+export async function deleteWebhook(subscriptionId) {
+  try {
+    console.log(`[Smokeball Matters] 🗑️ Deleting webhook: ${subscriptionId}`);
+    
+    await client.del(`${SMOKEBALL_API.endpoints.webhooks}/${subscriptionId}`);
+    
+    console.log('[Smokeball Matters] ✅ Webhook deleted');
+  } catch (error) {
+    console.error('[Smokeball Matters] ❌ Error deleting webhook:', error.message);
+    throw error;
+  }
+}
+
 export default {
   createLead,
   getMatter,
@@ -242,4 +368,8 @@ export default {
   assignStaff,
   findMatterByShortName,
   buildMatterShortName,
+  updateMatterLayout,
+  registerWebhook,
+  listWebhooks,
+  deleteWebhook,
 };

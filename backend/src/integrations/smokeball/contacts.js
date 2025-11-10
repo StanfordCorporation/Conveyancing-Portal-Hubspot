@@ -22,19 +22,32 @@ export async function createContact(contactData) {
   try {
     console.log('[Smokeball Contacts] 👤 Creating contact:', `${contactData.firstName} ${contactData.lastName}`);
 
+    // Smokeball API requires contact data wrapped in 'person' object
     const payload = {
+      person: {
       firstName: contactData.firstName,
       lastName: contactData.lastName,
-      email: contactData.email || null,
-      phone: contactData.phone || null,
-      address: contactData.address || null,
-      companyName: contactData.companyName || null,
+      }
     };
 
-    // Remove null values to keep payload clean
-    Object.keys(payload).forEach(key => {
-      if (payload[key] === null) delete payload[key];
-    });
+    // Add optional fields to person object
+    if (contactData.email) {
+      payload.person.email = contactData.email;
+    }
+    
+    if (contactData.phone) {
+      payload.person.phone = {
+        number: contactData.phone
+      };
+    }
+
+    if (contactData.address) {
+      payload.person.residentialAddress = contactData.address;
+    }
+
+    if (contactData.companyName) {
+      payload.person.companyName = contactData.companyName;
+    }
 
     const response = await client.post(SMOKEBALL_API.endpoints.contacts, payload);
 
@@ -45,6 +58,9 @@ export async function createContact(contactData) {
 
   } catch (error) {
     console.error('[Smokeball Contacts] ❌ Error creating contact:', error.message);
+    if (error.response?.data) {
+      console.error('[Smokeball Contacts] API Error:', JSON.stringify(error.response.data, null, 2));
+    }
     throw error;
   }
 }
@@ -112,7 +128,8 @@ export async function searchContacts(searchParams = {}) {
 
     const response = await client.get(SMOKEBALL_API.endpoints.contacts, searchParams);
 
-    const results = Array.isArray(response) ? response : response.items || [];
+    // Smokeball API wraps responses in 'value' field (OData format)
+    const results = Array.isArray(response) ? response : response.value || [];
 
     console.log(`[Smokeball Contacts] ✅ Found ${results.length} contacts`);
 
