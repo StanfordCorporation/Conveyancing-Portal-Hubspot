@@ -21,7 +21,6 @@ import * as associationsIntegration from '../../integrations/hubspot/association
 import * as smokeballMatters from '../../integrations/smokeball/matters.js';
 import * as smokeballContacts from '../../integrations/smokeball/contacts.js';
 import * as smokeballStaff from '../../integrations/smokeball/staff.js';
-import * as smokeballMatterTypes from '../../integrations/smokeball/matter-types.js';
 import { extractStateFromAddress } from '../../utils/stateExtractor.js';
 
 /**
@@ -42,7 +41,6 @@ export async function createSmokeballLeadFromDeal(dealId) {
     const deal = await dealsIntegration.getDeal(dealId, [
       'dealname',
       'property_address',
-      'transaction_type',
       'client_name',
     ]);
 
@@ -63,21 +61,31 @@ export async function createSmokeballLeadFromDeal(dealId) {
     console.log(`[Smokeball Lead Workflow] 🗺️ State: ${state}`);
 
     // ========================================
-    // STEP 3: Determine transaction type and lookup matter type
+    // STEP 3: Get matter type ID for Conveyancing > Sale
     // ========================================
-    const transactionType = props.transaction_type?.toLowerCase();
-    console.log(`[Smokeball Lead Workflow] 📂 Transaction Type: ${transactionType}`);
+    // Client disclosure is ALWAYS for selling property (Vendor/Sale)
+    // Hardcoded matter type IDs by state:
+    const MATTER_TYPE_IDS = {
+      'Queensland': '0623643a-48a4-41d7-8c91-d35915b291cd_QLD',
+      'New South Wales': '0623643a-48a4-41d7-8c91-d35915b291cd_NSW',
+      'Victoria': '0623643a-48a4-41d7-8c91-d35915b291cd_VIC',
+      'South Australia': '0623643a-48a4-41d7-8c91-d35915b291cd_SA',
+      'Western Australia': '0623643a-48a4-41d7-8c91-d35915b291cd_WA',
+      'Tasmania': '0623643a-48a4-41d7-8c91-d35915b291cd_TAS',
+      'Northern Territory': '0623643a-48a4-41d7-8c91-d35915b291cd_NT',
+      'Australian Capital Territory': '0623643a-48a4-41d7-8c91-d35915b291cd_ACT',
+    };
 
-    // Lookup actual matter type from Smokeball API (not hardcoded)
-    const matterTypeName = transactionType === 'sale' ? 'Sale' : 'Purchase';
-    const matterTypeInfo = await smokeballMatterTypes.findMatterType(state, 'Conveyancing', matterTypeName);
-
-    if (!matterTypeInfo) {
-      throw new Error(`Could not find matter type for Conveyancing > ${matterTypeName} in state: ${state}`);
+    const matterTypeId = MATTER_TYPE_IDS[state];
+    if (!matterTypeId) {
+      throw new Error(`No matter type configured for state: ${state}`);
     }
 
-    console.log(`[Smokeball Lead Workflow] ✅ Matter Type: ${matterTypeInfo.name} (ID: ${matterTypeInfo.id})`);
-    console.log(`[Smokeball Lead Workflow] ✅ Client Role: ${matterTypeInfo.clientRole}`);
+    const clientRole = 'Vendor'; // Always Vendor for Sale
+
+    console.log(`[Smokeball Lead Workflow] ✅ Matter Type: Conveyancing > Sale`);
+    console.log(`[Smokeball Lead Workflow] ✅ Matter Type ID: ${matterTypeId}`);
+    console.log(`[Smokeball Lead Workflow] ✅ Client Role: ${clientRole}`);
 
     // ========================================
     // STEP 4: Get associated contacts from HubSpot
@@ -110,7 +118,7 @@ export async function createSmokeballLeadFromDeal(dealId) {
         // Update HubSpot contact with Smokeball ID
         await contactsIntegration.updateContact(contactId, {
           smokeball_contact_id: smokeballContact.id,
-          smokeball_sync_status: 'Successfull',
+          smokeball_sync_status: 'Successful',
         });
 
         console.log(`[Smokeball Lead Workflow] ✅ Contact synced: ${smokeballContact.id}`);
@@ -138,8 +146,8 @@ export async function createSmokeballLeadFromDeal(dealId) {
     console.log('[Smokeball Lead Workflow] 📝 Creating lead in Smokeball...');
 
     const leadData = {
-      matterTypeId: matterTypeInfo.id,
-      clientRole: matterTypeInfo.clientRole,
+      matterTypeId: matterTypeId,
+      clientRole: clientRole,
       clientIds: smokeballContactIds,
       description: '', // Leave empty as per old PHP code
       personResponsibleStaffId: staffAssignments.personResponsibleStaffId,
@@ -159,7 +167,7 @@ export async function createSmokeballLeadFromDeal(dealId) {
     await dealsIntegration.updateDeal(dealId, {
       lead_uid: smokeballLead.id,
       matter_uid: null, // Will be populated on conversion
-      smokeball_sync_status: 'Successfull',
+      smokeball_sync_status: 'Successful',
       smokeball_last_sync: new Date().toISOString(),
     });
 
@@ -170,9 +178,9 @@ export async function createSmokeballLeadFromDeal(dealId) {
       leadId: smokeballLead.id,
       dealId,
       state,
-      matterType: matterTypeInfo.name,
-      matterTypeId: matterTypeInfo.id,
-      clientRole: matterTypeInfo.clientRole,
+      matterType: 'Sale',
+      matterTypeId: matterTypeId,
+      clientRole: clientRole,
       contactsCreated: smokeballContactIds.length,
     };
 
