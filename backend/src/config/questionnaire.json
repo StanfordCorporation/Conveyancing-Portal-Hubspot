@@ -276,9 +276,9 @@
           "HubSpot_Property_Label": "Tenancy Agreement Upload"
         },
         {
-          "form_question": "Current rent amount",
+          "form_question": "Weekly Rent amount",
           "form_field_name": "formal_current_rent_amount",
-          "HubSpot_Property_Name": "current_rent_amount",
+          "HubSpot_Property_Name": "weekly_rent",
           "form_field_type": "number",
           "required": false,
           "conditional": true,
@@ -450,7 +450,7 @@
         {
           "form_question": "Current rent amount",
           "form_field_name": "informal_current_rent_amount",
-          "HubSpot_Property_Name": "informal_current_rent_amount",
+          "HubSpot_Property_Name": "informal_weekly_rent",
           "form_field_type": "number",
           "required": false,
           "conditional": true,
@@ -843,6 +843,27 @@
       "section_number": "5",
       "section_title": "Rates & Services",
       "questions": [
+        {
+          "form_question": "Skip rates notice (will send separately)",
+          "form_field_name": "skip_rates_notice",
+          "HubSpot_Property_Name": "skip_rates_notice",
+          "form_field_type": "radio",
+          "required": false,
+          "conditional": false,
+          "conditional_on": {
+            "question": null,
+            "value": null
+          },
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "hs_property_value": "Yes"
+            }
+          ],
+          "HubSpot_Property_Type": "enumeration",
+          "HubSpot_Property_Label": "Skip Rates Notice"
+        },
         {
           "form_question": "If available, please upload your most recent Rates Notice",
           "form_field_name": "rates_notice_upload",

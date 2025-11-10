@@ -68,7 +68,7 @@ export async function handleFundsProvided(dealId) {
       if (smokeballLead.number) {
         await dealsIntegration.updateDeal(dealId, {
           matter_uid: smokeballLead.number,
-          smokeball_sync_status: 'synced',
+          smokeball_sync_status: 'Successfull',
         });
       }
 
@@ -88,7 +88,7 @@ export async function handleFundsProvided(dealId) {
 
     // Update sync status
     await dealsIntegration.updateDeal(dealId, {
-      smokeball_sync_status: 'pending',
+      smokeball_sync_status: 'Successfull',
       smokeball_last_sync: new Date().toISOString(),
     });
 
@@ -109,7 +109,7 @@ export async function handleFundsProvided(dealId) {
     // Update HubSpot with error status
     try {
       await dealsIntegration.updateDeal(dealId, {
-        smokeball_sync_status: 'error',
+        smokeball_sync_status: 'Failed',
         smokeball_sync_error: error.message,
       });
     } catch (updateError) {

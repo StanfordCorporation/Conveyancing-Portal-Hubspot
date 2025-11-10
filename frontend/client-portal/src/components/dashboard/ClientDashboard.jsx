@@ -8,7 +8,6 @@ import PropertyQuestionnaire from './PropertyQuestionnaire.jsx';
 import DynamicQuote from './DynamicQuote.jsx';
 import SigningStatus from './SigningStatus.jsx';
 import PaymentInstructions from './PaymentInstructions.jsx';
-import StatusTracking from './StatusTracking.jsx';
 import './dashboard.css';
 
 export default function ClientDashboard() {
@@ -21,7 +20,7 @@ export default function ClientDashboard() {
   // Prevent StrictMode double-execution
   const hasFetchedDashboardRef = useRef(false);
 
-  const [expandedProperties, setExpandedProperties] = useState(new Set([0])); // Allow multiple expansions, start with first property expanded
+  const [expandedProperty, setExpandedProperty] = useState(0);
   const [activeSection, setActiveSection] = useState('information');
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
   const [propertyStages, setPropertyStages] = useState({});
@@ -95,35 +94,15 @@ export default function ClientDashboard() {
 
         if (response.data.deals && response.data.deals.length > 0) {
           console.log(`[Dashboard] ✅ Loaded ${response.data.deals.length} deals with ALL data (questionnaire + property details)`);
-
-          // Calculate progress percentage for each deal based on stage progression
-          // Convert HubSpot stage to step number first to calculate progress
-          const TOTAL_STAGES = 12; // Total number of stages in the workflow
-
-          const dealsWithProgress = response.data.deals.map(deal => {
-            // Get current stage/step number from HubSpot deal stage
-            const currentStage = getStepFromStage(deal.status);
-
-            // Calculate progress: (current stage / total stages) * 100
-            const progressPercentage = Math.round((currentStage / TOTAL_STAGES) * 100);
-
-            console.log(`[Dashboard] 📊 Deal "${deal.title}": Stage ${currentStage}/${TOTAL_STAGES} = ${progressPercentage}%`);
-
-            return {
-              ...deal,
-              progressPercentage
-            };
-          });
-
-          setProperties(dealsWithProgress);
-          setCurrentProperty(dealsWithProgress[0]); // Auto-select first property
+          setProperties(response.data.deals);
+          setCurrentProperty(response.data.deals[0]); // Auto-select first property
 
           // Store questionnaire data by dealId for quick lookup
           const questionnaireDataLookup = {};
           const propertyDetailsLookup = {};
           const filesLookup = {};
 
-          dealsWithProgress.forEach((deal) => {
+          response.data.deals.forEach((deal) => {
             if (deal.questionnaire) {
               questionnaireDataLookup[deal.id] = deal.questionnaire;
               console.log(`[Dashboard] 📋 Stored ${Object.keys(deal.questionnaire).length} questionnaire fields for deal ${deal.id}`);
@@ -145,7 +124,7 @@ export default function ClientDashboard() {
 
           // Initialize stages for each property from HubSpot dealstage
           const initialStages = {};
-          dealsWithProgress.forEach((deal) => {
+          response.data.deals.forEach((deal) => {
             console.log(`[Dashboard] 🔍 Raw deal data:`, {
               id: deal.id,
               title: deal.title,
@@ -161,8 +140,8 @@ export default function ClientDashboard() {
           setPropertyStages(initialStages);
 
           // Set initial section based on first property's stage
-          if (dealsWithProgress.length > 0) {
-            const firstDeal = dealsWithProgress[0];
+          if (response.data.deals.length > 0) {
+            const firstDeal = response.data.deals[0];
             const firstDealStage = initialStages[firstDeal.id] || 1;
 
             const sectionMap = {
@@ -170,8 +149,7 @@ export default function ClientDashboard() {
               2: 'questionnaire',
               3: 'quote',
               4: 'signature',
-              5: 'payment',
-              6: 'status'
+              5: 'payment'
             };
 
             const initialSection = sectionMap[firstDealStage];
@@ -202,26 +180,14 @@ export default function ClientDashboard() {
     navigate('/login');
   };
 
-  const togglePropertyExpansion = (idx) => {
-    setExpandedProperties(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(idx)) {
-        newExpanded.delete(idx);
-      } else {
-        newExpanded.add(idx);
-      }
-      return newExpanded;
-    });
-  };
-
   const switchProperty = (property) => {
     console.log(`[Dashboard] 🔄 Switching to property: ${property.id}`);
     setCurrentProperty(property);
-
+    
     // Reset to the appropriate section based on property's current stage
     const currentStage = propertyStages[property.id] || 1;
     const hasSigned = envelopeStatus[property.id]?.status === 'signed';
-
+    
     const sectionMap = {
       1: 'information',
       2: 'questionnaire',
@@ -229,11 +195,11 @@ export default function ClientDashboard() {
       4: 'signature',
       5: 'payment'
     };
-
+    
     // If signed, go to payment, otherwise go to property's current stage
     const targetSection = hasSigned ? 'payment' : sectionMap[currentStage];
     setActiveSection(targetSection);
-
+    
     console.log(`[Dashboard] 📍 Property stage: ${currentStage}, Section: ${targetSection}, Signed: ${hasSigned}`);
   };
 
@@ -321,8 +287,7 @@ export default function ClientDashboard() {
       2: 'questionnaire',
       3: 'quote',
       4: 'signature',
-      5: 'payment',
-      6: 'status'
+      5: 'payment'
     };
     setActiveSection(sectionMap[stageNumber]);
   };
@@ -472,7 +437,7 @@ export default function ClientDashboard() {
                     className="property-card-header"
                     onClick={() => {
                       switchProperty(prop);
-                      togglePropertyExpansion(idx);
+                      setExpandedProperty(expandedProperty === idx ? -1 : idx);
                     }}
                   >
                     <div className="property-card-content">
@@ -483,23 +448,17 @@ export default function ClientDashboard() {
                       </div>
                       <div className="property-progress">
                         <div className="progress-bar">
-                          <div
-                            className="progress-fill"
-                            style={{
-                              width: `${prop.progressPercentage || 0}%`,
-                              minWidth: (prop.progressPercentage || 0) === 0 ? '0px' : '2px'
-                            }}
-                          ></div>
+                          <div className="progress-fill" style={{ width: `${prop.progressPercentage || 60}%` }}></div>
                         </div>
-                        <span className="progress-label">{prop.progressPercentage !== undefined ? prop.progressPercentage : 0}%</span>
+                        <span className="progress-label">{prop.progressPercentage || 60}%</span>
                       </div>
                     </div>
-                    <svg className={`chevron-icon ${expandedProperties.has(idx) ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`chevron-icon ${expandedProperty === idx ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
 
-                  {expandedProperties.has(idx) && (
+                  {expandedProperty === idx && (
                     <div className="property-card-details">
                       {/* Stage 1: Review Property Information */}
                       <button
@@ -639,35 +598,6 @@ export default function ClientDashboard() {
                             </svg>
                           )}
                           {getStageStatus(5, prop.id) === 'locked' && (
-                            <svg fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Stage 6: Status Tracking (Post-Workflow) */}
-                      <button
-                        className={`stage-item stage-${getStageStatus(6, prop.id)} ${!isStageAccessible(6, prop.id) ? 'stage-locked' : ''}`}
-                        onClick={() => handleStageClick(6, prop.id)}
-                      >
-                        <div className="stage-number">6</div>
-                        <div className="stage-content">
-                          <h4>In Progress</h4>
-                          <p>Track conveyancing progress</p>
-                        </div>
-                        <div className="stage-indicator">
-                          {getStageStatus(6, prop.id) === 'completed' && (
-                            <svg fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                            </svg>
-                          )}
-                          {getStageStatus(6, prop.id) === 'current' && (
-                            <svg fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                          )}
-                          {getStageStatus(6, prop.id) === 'locked' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
                             </svg>
@@ -823,18 +753,6 @@ export default function ClientDashboard() {
                 </div>
               )}
             </div>
-          </section>
-        )}
-
-        {activeSection === 'status' && (
-          <section id="status" className="content-section active">
-            {currentProperty && currentProperty.id ? (
-              <StatusTracking deal={currentProperty} />
-            ) : (
-              <div className="empty-state">
-                <p>Select a property to view status</p>
-              </div>
-            )}
           </section>
         )}
 

@@ -11,6 +11,7 @@
 
 import * as dealsIntegration from '../../integrations/hubspot/deals.js';
 import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
+import * as associationsIntegration from '../../integrations/hubspot/associations.js';
 import * as smokeballMatters from '../../integrations/smokeball/matters.js';
 import * as smokeballContacts from '../../integrations/smokeball/contacts.js';
 import * as smokeballStaff from '../../integrations/smokeball/staff.js';
@@ -63,8 +64,8 @@ export async function handleQuoteAccepted(dealId) {
     // ========================================
     console.log('[Smokeball Quote Workflow] 👥 Fetching associated contacts...');
 
-    const associations = await dealsIntegration.getDealAssociations(dealId, 'contacts');
-    const hubspotContactIds = associations.results?.map(assoc => assoc.id) || [];
+    const contacts = await associationsIntegration.getDealContacts(dealId);
+    const hubspotContactIds = contacts.map(contact => contact.id);
 
     console.log(`[Smokeball Quote Workflow] Found ${hubspotContactIds.length} associated contacts`);
 
@@ -135,7 +136,7 @@ export async function handleQuoteAccepted(dealId) {
         if (currentMatter.number) {
           await dealsIntegration.updateDeal(dealId, {
             matter_uid: currentMatter.number,
-            smokeball_sync_status: 'synced',
+            smokeball_sync_status: 'Successfull',
           });
         }
 
@@ -154,9 +155,9 @@ export async function handleQuoteAccepted(dealId) {
       console.log('[Smokeball Quote Workflow] ✅ Lead to matter conversion initiated');
       console.log('[Smokeball Quote Workflow] ℹ️ matter.converted webhook will provide matter number');
 
-      // Update sync status to pending (awaiting webhook)
+      // Update sync status (awaiting webhook for matter number)
       await dealsIntegration.updateDeal(dealId, {
-        smokeball_sync_status: 'pending',
+        smokeball_sync_status: 'Successfull',
         smokeball_last_sync: new Date().toISOString(),
       });
 
@@ -206,7 +207,7 @@ export async function handleQuoteAccepted(dealId) {
     // Update HubSpot with error status
     try {
       await dealsIntegration.updateDeal(dealId, {
-        smokeball_sync_status: 'error',
+        smokeball_sync_status: 'Failed',
         smokeball_sync_error: error.message,
       });
     } catch (updateError) {

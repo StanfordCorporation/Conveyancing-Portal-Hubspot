@@ -33,11 +33,11 @@ const pkceStore = new Map();
  * GET /api/smokeball/setup
  * Initial setup page - displays OAuth setup instructions
  */
-router.get('/setup', requireSmokeballEnabled, (req, res) => {
-  const isAuthenticated = smokeballAuth.isAuthenticated();
+router.get('/setup', requireSmokeballEnabled, async (req, res) => {
+  const isAuthenticated = await smokeballAuth.isAuthenticated();
 
   if (isAuthenticated) {
-    const status = smokeballAuth.getTokenStatus();
+    const status = await smokeballAuth.getTokenStatus();
     return res.json({
       message: 'Smokeball integration is already authenticated',
       status,
@@ -188,8 +188,8 @@ router.get('/oauth-callback', requireSmokeballEnabled, async (req, res) => {
  * GET /api/smokeball/status
  * Check authentication status
  */
-router.get('/status', requireSmokeballEnabled, (req, res) => {
-  const status = smokeballAuth.getTokenStatus();
+router.get('/status', requireSmokeballEnabled, async (req, res) => {
+  const status = await smokeballAuth.getTokenStatus();
 
   if (status.authenticated) {
     res.json({
@@ -210,8 +210,8 @@ router.get('/status', requireSmokeballEnabled, (req, res) => {
  * POST /api/smokeball/logout
  * Clear authentication tokens
  */
-router.post('/logout', requireSmokeballEnabled, (req, res) => {
-  smokeballAuth.clearTokens();
+router.post('/logout', requireSmokeballEnabled, async (req, res) => {
+  await smokeballAuth.clearTokens();
 
   res.json({
     success: true,
@@ -226,7 +226,8 @@ router.post('/logout', requireSmokeballEnabled, (req, res) => {
  */
 router.get('/test', requireSmokeballEnabled, async (req, res) => {
   try {
-    if (!smokeballAuth.isAuthenticated()) {
+    const isAuthenticated = await smokeballAuth.isAuthenticated();
+    if (!isAuthenticated) {
       return res.status(401).json({
         error: 'Not authenticated',
         setupUrl: '/api/smokeball/setup',

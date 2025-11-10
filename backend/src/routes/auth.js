@@ -108,7 +108,9 @@ export const verifyOTP = async (req, res) => {
         lastname: result.user.lastname,
         email: result.user.email,
         phone: result.user.phone,
-        role: result.user.role
+        role: result.user.role,
+        permissionLevel: result.user.permissionLevel,  // admin | view_all | standard (agents only)
+        agencyId: result.user.agencyId                  // agency company ID (agents only)
       }
     });
   } catch (error) {

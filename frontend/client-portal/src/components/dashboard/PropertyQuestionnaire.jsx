@@ -139,10 +139,35 @@ export default function PropertyQuestionnaire({ dealId, initialData = {}, initia
   const initializeConditionalFields = (data) => {
     const conditionals = {};
 
+    // Helper function to check if a field should be visible (handles nested conditionals)
+    const shouldFieldBeVisible = (fieldName, config, checkedFields = new Set()) => {
+      // Prevent infinite loops
+      if (checkedFields.has(fieldName)) return false;
+      checkedFields.add(fieldName);
+
+      if (!config.conditional || !config.conditionalOn) {
+        return true; // Non-conditional fields are always visible
+      }
+
+      const { field, value } = config.conditionalOn;
+      
+      // Check if parent field has the required value
+      if (data[field] !== value) {
+        return false;
+      }
+
+      // Recursively check if parent field is visible
+      const parentConfig = propertyMapping[field];
+      if (parentConfig) {
+        return shouldFieldBeVisible(field, parentConfig, checkedFields);
+      }
+
+      return true;
+    };
+
     Object.entries(propertyMapping).forEach(([fieldName, config]) => {
       if (config.conditional && config.conditionalOn) {
-        const { field, value } = config.conditionalOn;
-        conditionals[fieldName] = data[field] === value;
+        conditionals[fieldName] = shouldFieldBeVisible(fieldName, config);
       }
     });
 

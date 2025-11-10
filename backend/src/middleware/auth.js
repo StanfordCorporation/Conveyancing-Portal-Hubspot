@@ -10,6 +10,7 @@ export const authenticateJWT = (req, res, next) => {
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.log('[Auth Middleware] ⚠️ No JWT token provided');
+    console.log('[Auth Middleware] 🔍 Received header:', authHeader);
     return res.status(401).json({
       error: 'Unauthorized',
       message: 'JWT token required'
@@ -17,6 +18,10 @@ export const authenticateJWT = (req, res, next) => {
   }
 
   const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+  console.log('[Auth Middleware] 🔍 Attempting to verify token...');
+  console.log('[Auth Middleware] 🔍 Token length:', token.length);
+  console.log('[Auth Middleware] 🔍 Token preview:', token.substring(0, 50) + '...');
 
   try {
     const decoded = jwt.verify(
@@ -29,6 +34,8 @@ export const authenticateJWT = (req, res, next) => {
     next();
   } catch (error) {
     console.error('[Auth Middleware] ❌ Token verification failed:', error.message);
+    console.error('[Auth Middleware] 🔍 Error name:', error.name);
+    console.error('[Auth Middleware] 🔍 Full token:', token);
 
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({

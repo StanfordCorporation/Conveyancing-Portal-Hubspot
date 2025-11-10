@@ -59,8 +59,9 @@ export const agentAuth = async (req, res, next) => {
         );
 
         // Find the association for this specific company
+        // Note: toObjectId is a number, but agencyId might be a string from v3 API
         const companyAssoc = associationTypesResponse.data.results.find(
-          r => r.toObjectId === agencyId
+          r => String(r.toObjectId) === String(agencyId)
         );
         const types = companyAssoc?.associationTypes || [];
 

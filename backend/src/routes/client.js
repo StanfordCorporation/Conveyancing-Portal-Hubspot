@@ -236,11 +236,19 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
 
           if (isAgentType && !agent) {
             agent = contactData;
-          } else if (!primarySeller) {
-            primarySeller = contactData;
           } else {
-            additionalSellers.push(contactData);
+            // Check if this is the authenticated user
+            if (contact.id === contactId) {
+              primarySeller = contactData;
+            } else {
+              additionalSellers.push(contactData);
+            }
           }
+        }
+
+        // If authenticated user is not in the contacts, fallback to first non-agent contact
+        if (!primarySeller && additionalSellers.length > 0) {
+          primarySeller = additionalSellers.shift();
         }
 
         // If no primary seller found, use authenticated contact
@@ -511,10 +519,29 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
         }
       }
 
+      // IMPORTANT: Override with authenticated user if they're marked as additional seller
+      // The authenticated user should ALWAYS be the primary seller in the client portal
+      if (primarySeller && primarySeller.id !== contactId) {
+        // Check if authenticated user is in additional sellers
+        const authUserIndex = additionalSellers.findIndex(s => s.id === contactId);
+        if (authUserIndex !== -1) {
+          console.log(`[Client Dashboard] 🔄 Swapping authenticated user to primary seller`);
+          // Move current primary to additional sellers
+          additionalSellers.push(primarySeller);
+          // Make authenticated user the primary seller
+          primarySeller = additionalSellers[authUserIndex];
+          // Remove authenticated user from additional sellers
+          additionalSellers.splice(authUserIndex, 1);
+          console.log(`[Client Dashboard] ✅ Authenticated user is now primary seller: ${primarySeller.firstname} ${primarySeller.lastname}`);
+        }
+      }
+
       // Fallback: if no roles assigned by type, use heuristic based on contact properties
       if (!primarySeller && dealContacts.length > 0) {
         console.log(`[Client Dashboard] ℹ️ No type metadata found, using heuristic assignment`);
 
+        let tempAdditionalSellers = [];
+        
         for (let i = 0; i < dealContacts.length; i++) {
           const contact = dealContacts[i];
           const props = contact.properties;
@@ -537,20 +564,27 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             // Contact marked as Agent type
             agent = contactData;
             console.log(`[Client Dashboard] 👤 Agent identified by contact_type: ${contactData.firstname} ${contactData.lastname}`);
-          } else if (!primarySeller) {
-            // First non-agent contact is primary seller
-            primarySeller = contactData;
-            console.log(`[Client Dashboard] 👤 Primary seller (heuristic): ${contactData.firstname} ${contactData.lastname}`);
-          } else if (isAgentType) {
-            // Agent type contact
-            agent = contactData;
-            console.log(`[Client Dashboard] 👤 Agent (heuristic): ${contactData.firstname} ${contactData.lastname}`);
-          } else {
-            // Additional seller
-            additionalSellers.push(contactData);
-            console.log(`[Client Dashboard] 👥 Additional seller (heuristic): ${contactData.firstname} ${contactData.lastname}`);
+          } else if (!isAgentType) {
+            // Check if this is the authenticated user - they should be primary seller
+            if (contact.id === contactId) {
+              primarySeller = contactData;
+              console.log(`[Client Dashboard] 👤 Primary seller (authenticated user): ${contactData.firstname} ${contactData.lastname}`);
+            } else {
+              // All other non-agent contacts are additional sellers
+              tempAdditionalSellers.push(contactData);
+              console.log(`[Client Dashboard] 👥 Additional seller (heuristic): ${contactData.firstname} ${contactData.lastname}`);
+            }
           }
         }
+        
+        // If authenticated user is not in contacts, use first non-agent as primary seller
+        if (!primarySeller && tempAdditionalSellers.length > 0) {
+          primarySeller = tempAdditionalSellers.shift();
+          console.log(`[Client Dashboard] 👤 Primary seller (fallback to first): ${primarySeller.firstname} ${primarySeller.lastname}`);
+        }
+        
+        // Add remaining contacts to additionalSellers
+        additionalSellers.push(...tempAdditionalSellers);
       }
 
       // If we have no primary seller, use authenticated contact
@@ -707,6 +741,19 @@ router.post('/property/:dealId/questionnaire', authenticateJWT, async (req, res)
       }
     });
 
+    // Clear all hidden conditional fields (Bug Fix: Q2.1 and Q2.2 sub-questions)
+    Object.entries(propertyMapping).forEach(([fieldName, config]) => {
+      if (config.conditional && config.conditionalOn) {
+        const { field, value } = config.conditionalOn;
+        
+        // If parent field doesn't match required value, nullify this field
+        if (formData[field] !== value) {
+          properties[config.hsPropertyName] = '';
+          console.log(`[Questionnaire] 🧹 Clearing hidden field: ${fieldName} (parent: ${field})`);
+        }
+      }
+    });
+
     // Update deal in HubSpot
     await dealsIntegration.updateDeal(dealId, properties);
 
@@ -730,12 +777,24 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
 
     console.log(`[Questionnaire] ✅ Submitting complete questionnaire for deal: ${dealId}`);
 
+    // Check if user opted to skip rates notice (HubSpot enumeration: 'Yes' or null)
+    const skipRatesNotice = formData.skip_rates_notice === 'yes' || formData.skip_rates_notice === 'Yes';
+    if (skipRatesNotice) {
+      console.log(`[Questionnaire] ⏭️ User opted to send rates notice separately`);
+    }
+
     // Validate all required fields
     const propertyMapping = getAllMappings();
     const missingFields = [];
 
     Object.entries(propertyMapping).forEach(([fieldName, config]) => {
       if (config.required && (!formData[fieldName] || formData[fieldName] === '')) {
+        // Skip rates notice fields if user opted to send separately
+        if (skipRatesNotice && (fieldName === 'rates_notice_upload' || fieldName === 'water_notice_upload')) {
+          console.log(`[Questionnaire] ⏭️ Skipping validation for ${fieldName} (will send separately)`);
+          return;
+        }
+
         // Skip conditional fields that are not visible
         if (config.conditional && config.conditionalOn) {
           const { field, value } = config.conditionalOn;
@@ -767,6 +826,19 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
           hubspotValue = value.charAt(0).toUpperCase() + value.slice(1);
         }
         properties[config.hsPropertyName] = hubspotValue;
+      }
+    });
+
+    // Clear all hidden conditional fields (Bug Fix: Q2.1 and Q2.2 sub-questions)
+    Object.entries(propertyMapping).forEach(([fieldName, config]) => {
+      if (config.conditional && config.conditionalOn) {
+        const { field, value } = config.conditionalOn;
+        
+        // If parent field doesn't match required value, nullify this field
+        if (formData[field] !== value) {
+          properties[config.hsPropertyName] = '';
+          console.log(`[Questionnaire] 🧹 Clearing hidden field: ${fieldName} (parent: ${field})`);
+        }
       }
     });
 

@@ -19,7 +19,7 @@ export const getSchema = (req, res) => {
 
     // Add version for cache invalidation
     // Increment this version whenever questionnaire.json changes to force frontend cache refresh
-    schema.schema_version = '1.0.3';
+    schema.schema_version = '1.0.5';
 
     res.json(schema);
   } catch (error) {

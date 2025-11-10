@@ -111,7 +111,7 @@ export async function receiptStripePayment(paymentIntent) {
     if (dealId) {
       try {
         await dealsIntegration.updateDeal(dealId, {
-          smokeball_sync_status: 'error',
+          smokeball_sync_status: 'Failed',
           smokeball_sync_error: `Payment receipt failed: ${error.message}`,
         });
       } catch (updateError) {

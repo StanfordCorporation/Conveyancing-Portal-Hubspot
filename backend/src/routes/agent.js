@@ -491,6 +491,19 @@ router.post('/leads/:dealId/questionnaire', async (req, res) => {
       }
     });
 
+    // Clear all hidden conditional fields (Bug Fix: Q2.1 and Q2.2 sub-questions)
+    Object.entries(propertyMapping).forEach(([fieldName, config]) => {
+      if (config.conditional && config.conditionalOn) {
+        const { field, value } = config.conditionalOn;
+        
+        // If parent field doesn't match required value, nullify this field
+        if (formData[field] !== value) {
+          properties[config.hsPropertyName] = '';
+          console.log(`[Agent Questionnaire] 🧹 Clearing hidden field: ${fieldName} (parent: ${field})`);
+        }
+      }
+    });
+
     // Update deal in HubSpot
     await hubspotClient.patch(`/crm/v3/objects/deals/${dealId}`, {
       properties
@@ -519,6 +532,12 @@ router.post('/leads/:dealId/questionnaire/submit', async (req, res) => {
 
     console.log(`[Agent Questionnaire] ✅ Submitting complete questionnaire for deal: ${dealId}`);
 
+    // Check if user opted to skip rates notice (HubSpot enumeration: 'Yes' or null)
+    const skipRatesNotice = formData.skip_rates_notice === 'yes' || formData.skip_rates_notice === 'Yes';
+    if (skipRatesNotice) {
+      console.log(`[Agent Questionnaire] ⏭️ User opted to send rates notice separately`);
+    }
+
     // Import questionnaireHelper
     const { getAllMappings } = await import('../utils/questionnaireHelper.js');
     const propertyMapping = getAllMappings();
@@ -528,6 +547,12 @@ router.post('/leads/:dealId/questionnaire/submit', async (req, res) => {
 
     Object.entries(propertyMapping).forEach(([fieldName, config]) => {
       if (config.required && (!formData[fieldName] || formData[fieldName] === '')) {
+        // Skip rates notice fields if user opted to send separately
+        if (skipRatesNotice && (fieldName === 'rates_notice_upload' || fieldName === 'water_notice_upload')) {
+          console.log(`[Agent Questionnaire] ⏭️ Skipping validation for ${fieldName} (will send separately)`);
+          return;
+        }
+
         // Skip conditional fields that are not visible
         if (config.conditional && config.conditionalOn) {
           const { field, value } = config.conditionalOn;
@@ -557,6 +582,19 @@ router.post('/leads/:dealId/questionnaire/submit', async (req, res) => {
           hubspotValue = value.charAt(0).toUpperCase() + value.slice(1);
         }
         properties[config.hsPropertyName] = hubspotValue;
+      }
+    });
+
+    // Clear all hidden conditional fields (Bug Fix: Q2.1 and Q2.2 sub-questions)
+    Object.entries(propertyMapping).forEach(([fieldName, config]) => {
+      if (config.conditional && config.conditionalOn) {
+        const { field, value } = config.conditionalOn;
+        
+        // If parent field doesn't match required value, nullify this field
+        if (formData[field] !== value) {
+          properties[config.hsPropertyName] = '';
+          console.log(`[Agent Questionnaire] 🧹 Clearing hidden field: ${fieldName} (parent: ${field})`);
+        }
       }
     });
 

@@ -1,6 +1,7 @@
 /**
  * Cloudflare Worker - Smokeball Webhook Handler
  * Receives Smokeball matter events and updates HubSpot deals
+ * Enhanced version: Also forwards to backend for advanced processing
  */
 
 export default {
@@ -14,10 +15,10 @@ export default {
 
     try {
       const payload = await request.json();
-      console.info({ message: 'Received Smokeball webhook', eventType: payload.eventType });
+      console.info({ message: 'Received Smokeball webhook', eventType: payload.eventType || payload.type });
 
-      const eventType = payload.eventType;
-      const matterData = payload.data;
+      const eventType = payload.eventType || payload.type;
+      const matterData = payload.data || payload.payload;
       
       if (!matterData || !matterData.id) {
         console.warn({ message: 'Invalid Smokeball payload - missing data.id' });

@@ -50,7 +50,8 @@ export const getAgentsWithPermissions = async (agencyId) => {
     const agentId = result.from.id;
     const agent = agents.find(a => a.id === agentId);
 
-    const companyAssoc = result.to?.find(t => t.toObjectId === agencyId);
+    // Note: toObjectId is a number, but agencyId might be a string
+    const companyAssoc = result.to?.find(t => String(t.toObjectId) === String(agencyId));
     const types = companyAssoc?.associationTypes || [];
 
     // Determine permission level (priority: admin > view_all > standard)
@@ -261,8 +262,9 @@ export const promoteAgentToAdmin = async (adminId, agencyId, targetAgentId) => {
     `/crm/v4/objects/contacts/${targetAgentId}/associations/companies`
   );
 
+  // Note: toObjectId is a number, but agencyId might be a string
   const companyAssoc = currentAssociationsResponse.data.results.find(
-    r => r.toObjectId === agencyId
+    r => String(r.toObjectId) === String(agencyId)
   );
   const currentTypes = companyAssoc?.associationTypes || [];
 
@@ -334,8 +336,9 @@ export const demoteAgent = async (adminId, agencyId, targetAgentId, newPermissio
     `/crm/v4/objects/contacts/${targetAgentId}/associations/companies`
   );
 
+  // Note: toObjectId is a number, but agencyId might be a string
   const companyAssoc = currentAssociationsResponse.data.results.find(
-    r => r.toObjectId === agencyId
+    r => String(r.toObjectId) === String(agencyId)
   );
   const currentTypes = companyAssoc?.associationTypes || [];
 

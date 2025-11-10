@@ -170,7 +170,7 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
 
 /**
  * Verify OTP for agent
- * Returns user data and JWT token on success
+ * Returns user data with permission level and agency info
  */
 export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
   // Verify OTP
@@ -215,6 +215,52 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
     };
   }
 
+  // Get agent's company association to determine agency and permission level
+  let agencyId = null;
+  let permissionLevel = 'standard'; // Default to standard
+
+  try {
+    const hubspotClient = (await import('../../integrations/hubspot/client.js')).default;
+
+    // Step 1: Get company associations (v3 endpoint for basic company association)
+    const companyAssocResponse = await hubspotClient.get(
+      `/crm/v3/objects/contacts/${contact.id}/associations/companies`
+    );
+
+    agencyId = companyAssocResponse.data.results[0]?.id || null;
+
+    // Step 2: Get association types (v4 endpoint for permission level)
+    if (agencyId) {
+      const associationTypesResponse = await hubspotClient.get(
+        `/crm/v4/objects/contacts/${contact.id}/associations/companies`
+      );
+
+      // Find the association for this specific company
+      // Note: toObjectId is a number, but agencyId might be a string from v3 API
+      const companyAssoc = associationTypesResponse.data.results.find(
+        r => String(r.toObjectId) === String(agencyId)
+      );
+      const types = companyAssoc?.associationTypes || [];
+
+      // Determine permission level based on association type
+      // Priority: Admin (7) > View All (9) > Standard (279)
+      if (types.some(t => t.typeId === HUBSPOT.PERMISSION_TYPES.ADMIN)) {
+        permissionLevel = 'admin';
+      } else if (types.some(t => t.typeId === HUBSPOT.PERMISSION_TYPES.VIEW_ALL)) {
+        permissionLevel = 'view_all';
+      } else {
+        permissionLevel = 'standard';
+      }
+
+      console.log(`[Auth] Permission level: ${permissionLevel} for agency ${agencyId}`);
+    } else {
+      console.log('[Auth] ⚠️ Agent has no agency association');
+    }
+  } catch (error) {
+    console.warn('[Auth] Could not fetch permission level:', error.message);
+    // Default to 'standard' if fetch fails - don't block authentication
+  }
+
   return {
     success: true,
     user: {
@@ -223,7 +269,9 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
       lastname: contact.properties.lastname,
       email: contact.properties.email,
       phone: contact.properties.phone,
-      role: 'agent'
+      role: 'agent',
+      permissionLevel: permissionLevel,  // admin | view_all | standard
+      agencyId: agencyId                  // agency company ID
     }
   };
 };

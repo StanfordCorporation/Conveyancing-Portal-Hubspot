@@ -351,8 +351,8 @@ export const getAgentDeals = async (agentId) => {
             console.log(`[Agent Service] No primary seller found by type ID for deal ${deal.id}, using fallback logic`);
 
             for (const assoc of sellerAssocs) {
-              // Skip the agent
-              if (assoc.toObjectId === agentId) continue;
+              // Skip the agent (note: toObjectId is a number, agentId might be a string)
+              if (String(assoc.toObjectId) === String(agentId)) continue;
 
               try {
                 const contactData = await hubspotClient.get(

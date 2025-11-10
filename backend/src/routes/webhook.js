@@ -167,6 +167,69 @@ async function handlePaymentCanceled(paymentIntent) {
 }
 
 /**
+ * POST /api/webhook/docusign
+ * Handle DocuSign webhook events (envelope status updates)
+ * Updates HubSpot deal with envelope status and recipient information
+ */
+router.post('/docusign', express.json(), async (req, res) => {
+  try {
+    const payload = req.body;
+    console.log('[DocuSign Webhook] 📥 Received envelope status update');
+
+    // Extract envelope status
+    const envelope_status = payload.data?.envelopeSummary?.status;
+
+    // Extract deal ID from custom fields
+    const customFields = payload.data?.envelopeSummary?.customFields?.textCustomFields || [];
+    const dealIdField = customFields.find((obj) => obj.name === 'hs_deal_id');
+    const dealId = dealIdField?.value;
+
+    // Extract recipient status
+    const signers = payload.data?.envelopeSummary?.recipients?.signers || [];
+    const recipient_status = signers.map(({ email, status }) => ({ email, status }));
+
+    if (!dealId) {
+      console.warn('[DocuSign Webhook] ⚠️ No hs_deal_id found in custom fields');
+      return res.status(400).json({ error: 'Missing hs_deal_id in envelope custom fields' });
+    }
+
+    console.log(`[DocuSign Webhook] 📋 Deal ID: ${dealId}`);
+    console.log(`[DocuSign Webhook] ✍️ Envelope Status: ${envelope_status}`);
+    console.log(`[DocuSign Webhook] 👥 Recipients:`, recipient_status);
+
+    // Update HubSpot deal with envelope status
+    await dealsIntegration.updateDeal(dealId, {
+      envelope_status,
+      recipient_status: JSON.stringify(recipient_status),
+    });
+
+    console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with envelope status`);
+
+    // If all signers completed, progress to next stage
+    const allCompleted = signers.every(signer => signer.status === 'completed');
+    if (allCompleted && envelope_status === 'completed') {
+      console.log(`[DocuSign Webhook] 🎉 All signatures completed - progressing deal to Funds Requested`);
+      await dealsIntegration.updateDeal(dealId, {
+        dealstage: DEAL_STAGES.FUNDS_REQUESTED.id, // Stage 5
+      });
+      console.log(`[DocuSign Webhook] 🎯 Deal stage progressed to: ${DEAL_STAGES.FUNDS_REQUESTED.label}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'Envelope status updated successfully',
+      dealId,
+      envelope_status,
+      recipient_status
+    });
+
+  } catch (error) {
+    console.error('[DocuSign Webhook] ❌ Error processing webhook:', error.message);
+    res.status(500).json({ error: 'Webhook processing failed', details: error.message });
+  }
+});
+
+/**
  * POST /api/webhook/smokeball
  * Handle Smokeball webhook events (matter.converted, etc.)
  * Note: Smokeball webhook signature verification may vary - check Smokeball docs

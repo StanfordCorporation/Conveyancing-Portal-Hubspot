@@ -1,23 +1,31 @@
-# 🎯 Next Steps - Manual Tasks Required
+# 🎯 Next Steps - Vercel Deployment & GitHub Integration
 
 ## Overview
 
-The automated implementation is **COMPLETE**! 
+Your backend and frontend are **already deployed on Vercel**! ✅
 
-All code, documentation, and CI/CD pipelines have been created. The remaining tasks require **manual intervention** and access to external services.
+The remaining tasks will:
+1. **Connect your Vercel projects to GitHub** (enables automatic deployments)
+2. **Configure webhooks** to use your Vercel backend
+3. **Set up production monitoring**
+
+This is a simplified guide focusing on **Vercel-only deployment** (no Cloudflare needed).
 
 ---
 
-## ✅ What's Been Completed (Automated)
+## ✅ What's Been Completed
 
-1. ✅ **Documentation Consolidation** - 60 files → 6 comprehensive guides
-2. ✅ **GitHub Repository Structure** - Professional folder organization
-3. ✅ **CI/CD Pipelines** - 3 GitHub Actions workflows configured
-4. ✅ **Cloudflare Workers** - DocuSign webhook handler created
-5. ✅ **EventNotification** - Added to DocuSign envelope creation
-6. ✅ **Enhanced .gitignore** - Sensitive files excluded
-7. ✅ **Comprehensive README** - Professional project documentation
-8. ✅ **Agency Owner Features** - First agent auto-admin, team management, and permission system (November 7, 2025)
+1. ✅ **Backend deployed to Vercel** - conveyancing-portal-backend.vercel.app
+2. ✅ **Frontend deployed to Vercel** - frontend-blue-sigma-57.vercel.app
+3. ✅ **DocuSign webhook endpoint created** - `/api/webhook/docusign`
+4. ✅ **Stripe webhook endpoint** - `/api/webhook/stripe`
+5. ✅ **Smokeball webhook endpoint** - `/api/smokeball/webhook` (November 10, 2025)
+6. ✅ **Smokeball Integration Fixed** - Complete rewrite matching old PHP code (November 10, 2025)
+7. ✅ **DocuSign Primary Seller Bug Fixed** - Authenticated user always shown as primary signer (November 10, 2025)
+8. ✅ **Agency Owner Features** - First agent auto-admin, team management (November 7, 2025)
+9. ✅ **Client Dashboard Auth Fix** - Fixed localStorage key mismatch (November 7, 2025)
+10. ✅ **Rates Notice Skip Option** - Added checkbox to skip section 5 (November 7, 2025)
+11. ✅ **GitHub Repository** - https://github.com/StanfordCorporation/Conveyancing-Portal-Hubspot.git
 
 ---
 
@@ -25,371 +33,248 @@ All code, documentation, and CI/CD pipelines have been created. The remaining ta
 
 Complete these tasks in order:
 
-### Step 1: Upload to GitHub ⏳
+### Step 1: Connect Vercel Projects to GitHub ⏳
 
-**Priority:** CRITICAL  
+**Priority:** CRITICAL
 **Time Required:** 10 minutes
 
-```bash
-# Check git status
-git status
+This enables **automatic deployments** whenever you push to GitHub.
 
-# Add all new/modified files
-git add .
+#### Backend Connection:
 
-# Create initial commit
-git commit -m "feat: Documentation consolidation and CI/CD setup
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+2. Click on **conveyancing-portal-backend** project
+3. Click **"Connect Git Repository"** button (shown in your screenshot)
+4. Select **GitHub**
+5. Select repository: **StanfordCorporation/Conveyancing-Portal-Hubspot**
+6. Configure:
+   - **Root Directory:** `backend`
+   - **Framework Preset:** Other
+   - **Build Command:** (leave blank - no build needed for Node.js)
+   - **Output Directory:** (leave blank)
+   - **Install Command:** `npm install`
+7. Click **Connect**
 
-- Consolidated 60 markdown files into 6 comprehensive guides
-- Created GitHub Actions workflows for Vercel and Cloudflare deployments
-- Added DocuSign webhook with EventNotification
-- Created Cloudflare Worker for webhook handling
-- Updated .gitignore for production security
-- Added comprehensive deployment and testing guides"
+#### Frontend Connection:
 
-# Create GitHub repository (via GitHub web interface)
-# Then add remote and push:
-git remote add origin https://github.com/your-org/conveyancing-portal-hubspot.git
-git branch -M main
-git push -u origin main
-```
+1. Go back to Vercel Dashboard
+2. Click on **frontend** project
+3. Click **"Connect Git Repository"**
+4. Select **GitHub**
+5. Select repository: **StanfordCorporation/Conveyancing-Portal-Hubspot**
+6. Configure:
+   - **Root Directory:** `frontend/client-portal`
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+   - **Install Command:** `npm install`
+7. Click **Connect**
 
 **Verification:**
-- [ ] All files uploaded to GitHub
-- [ ] No sensitive files (`.env`, private keys) in repository
-- [ ] README.md displays correctly on GitHub
+- [ ] Backend project shows GitHub icon and repo name
+- [ ] Frontend project shows GitHub icon and repo name
+- [ ] Both projects show "Connected to Git"
 
 ---
 
-### Step 2: Configure GitHub Secrets ⏳
+### Step 2: Configure Backend Environment Variables ⏳
 
-**Priority:** CRITICAL  
-**Time Required:** 15 minutes
+**Priority:** CRITICAL
+**Time Required:** 10 minutes
 
-Go to: **GitHub Repository → Settings → Secrets and variables → Actions**
+Ensure all environment variables are set in Vercel:
 
-#### Add Repository Secrets:
-
-**NOTE:** Complete Step 3 (Deploy Backend) FIRST to get Vercel IDs, then come back here.
-
-```
-Backend Deployment (Vercel):
-☐ VERCEL_TOKEN               → vercel.com/account/tokens
-                                 1. Login to vercel.com
-                                 2. Go to Settings → Tokens
-                                 3. Create new token with full access
-                                 
-☐ VERCEL_ORG_ID              → Get from .vercel/project.json after running "vercel link"
-                                 (format: team_xxx)
-                                 
-☐ VERCEL_PROJECT_ID          → Get from .vercel/project.json after running "vercel link"
-                                 (format: prj_xxx)
-
-Frontend Deployment (Cloudflare):
-☐ CLOUDFLARE_API_TOKEN       → dash.cloudflare.com → My Profile → API Tokens
-                                 1. Click "Create Token"
-                                 2. Use "Edit Cloudflare Workers" template
-                                 3. Copy token (starts with: xxx_xxx)
-                                 
-☐ CLOUDFLARE_ACCOUNT_ID      → dash.cloudflare.com → Account ID (right sidebar)
-                                 (format: 32-character hex string)
-                                 
-☐ STRIPE_PUBLISHABLE_KEY     → stripe.com/dashboard → Developers → API Keys
-                                 (format: pk_live_xxx or pk_test_xxx)
-
-Webhook Deployment (Cloudflare):
-☐ HUBSPOT_ACCESS_TOKEN       → Your existing HubSpot private access token
-                                 (format: pat-au-xxx)
-                                 
-☐ STRIPE_WEBHOOK_SECRET      → Get after creating Stripe webhook endpoint in Step 7
-                                 (format: whsec_xxx)
-```
-
-**How to Get Vercel IDs (Do Step 3 First):**
-```bash
-# After running "vercel link" in Step 3:
-cd backend
-cat .vercel/project.json
-
-# Copy the values:
-# "orgId": "team_xxx"      → VERCEL_ORG_ID for GitHub Secrets
-# "projectId": "prj_xxx"   → VERCEL_PROJECT_ID for GitHub Secrets
-```
-
-**Verification:**
-- [ ] All secrets added to GitHub
-- [ ] No secrets visible in repository code
-- [ ] Secrets available to GitHub Actions
-
----
-
-### Step 3: Deploy Backend to Vercel ⏳
-
-**Priority:** HIGH  
-**Time Required:** 20 minutes
+1. Go to **conveyancing-portal-backend** → Settings → Environment Variables
+2. Verify these variables exist (if not, add them):
 
 ```bash
-# Install Vercel CLI (if not already)
-npm install -g vercel
-
-# Login to Vercel with company account
-vercel login
-
-# Link to new project (FIRST TIME SETUP)
-cd backend
-vercel link
-
-# When prompted:
-# ? Set up and deploy? YES
-# ? Which scope? Select "Stanford Corporation's projects" (company account)
-# ? Link to existing project? NO (creating new)
-# ? What's your project's name? conveyancing-portal-backend (LOWERCASE, no spaces)
-# ? In which directory is your code located? ./ (just press Enter)
-# ? Do you want to change additional project settings? NO
-
-# This creates .vercel/project.json with your IDs
-```
-
-**IMPORTANT: Vercel Project Name Rules**
-- ✅ Must be lowercase
-- ✅ Can use: letters, digits, `.`, `_`, `-`
-- ❌ Cannot contain uppercase
-- ❌ Cannot contain spaces
-- ❌ Cannot contain `---` sequence
-
-**Good names:**
-- `conveyancing-portal-backend` ✅
-- `stanford-portal-api` ✅
-- `stanford.portal.backend` ✅
-
-**Bad names:**
-- `Conveyancing-Portal` ❌ (uppercase)
-- `Conveyancing Portal` ❌ (space)
-- `portal---backend` ❌ (triple dash)
-
-```bash
-# After linking successfully, verify your IDs were created
-# PowerShell:
-Get-Content .vercel/project.json
-
-# Mac/Linux:
-cat .vercel/project.json
-
-# Should show:
-# {
-#   "orgId": "team_xxx",          ← Save this for GitHub Secrets
-#   "projectId": "prj_xxx"        ← Save this for GitHub Secrets
-# }
-
-# COPY THESE VALUES - you'll need them for Step 2 (GitHub Secrets)
-
-# Now deploy to production
-vercel --prod
-
-# Follow prompts, confirm deployment
-# Note the deployment URL that appears:
-# https://conveyancing-portal-backend-xxx.vercel.app
-
-# Test the deployment
-# PowerShell:
-curl https://conveyancing-portal-backend-xxx.vercel.app
-
-# Should return HTML or JSON (not 404)
-```
-
-#### Troubleshooting Vercel Link
-
-**Error: "Project names must be lowercase"**
-- Use: `conveyancing-portal-backend` (not `Conveyancing-Portal`)
-
-**Error: "Cannot contain ---"**
-- Use single or double dash: `portal-backend` or `portal--backend`
-
-**Error: "Organization not found"**
-- Make sure you selected "Stanford Corporation's projects" (company account)
-- Not your personal account
-
-**Already linked but need to re-link?**
-```bash
-# PowerShell: Delete .vercel folder
-Remove-Item -Recurse -Force .vercel
-
-# Then run vercel link again
-vercel link
-```
-
-#### Configure Environment Variables in Vercel:
-
-1. Go to: https://vercel.com → Your Project → Settings → Environment Variables
-2. Add all variables from `backend/.env`:
-
-```
+# HubSpot
 HUBSPOT_ACCESS_TOKEN=pat-au-xxx
+
+# DocuSign
 DOCUSIGN_INTEGRATION_KEY=34d08817-3cbe-43ea-922f-348ae0dcd358
 DOCUSIGN_USER_ID=9bdab216-34d5-4f33-ab31-a72f850fde78
 DOCUSIGN_ACCOUNT_ID=af8995ad-b134-4144-acc0-5ca58db8f759
 DOCUSIGN_KEYPAIR_ID=69fb5ec8-a1e3-4b06-bdd4-0fb5c154a800
 DOCUSIGN_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
-DOCUSIGN_BASE_PATH=https://na3.docusign.net/restapi (PRODUCTION URL)
-DOCUSIGN_OAUTH_BASE_PATH=https://account.docusign.com (PRODUCTION URL)
-STRIPE_SECRET_KEY=sk_live_xxx (PRODUCTION KEY)
-STRIPE_PUBLISHABLE_KEY=pk_live_xxx (PRODUCTION KEY)
-STRIPE_WEBHOOK_SECRET=whsec_xxx (configure after Step 5)
+
+# IMPORTANT: Use PRODUCTION URLs (not demo)
+DOCUSIGN_BASE_PATH=https://na3.docusign.net/restapi
+DOCUSIGN_OAUTH_BASE_PATH=https://account.docusign.com
+
+# Stripe (use PRODUCTION keys)
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx  # Configure after Step 5
+
+# Smokeball
 SMOKEBALL_CLIENT_ID=xxx
 SMOKEBALL_CLIENT_SECRET=xxx
 SMOKEBALL_API_KEY=xxx
+
+# Security
 JWT_SECRET=your-secure-random-secret
-DOCUSIGN_WEBHOOK_URL=https://webhooks.stanfordlegal.com.au/docusign
+
+# CORS (add Vercel frontend URL)
+FRONTEND_URL=https://frontend-blue-sigma-57.vercel.app
 ```
 
-3. Redeploy: `vercel --prod`
+3. Click **Save**
+4. **Redeploy:** Go to Deployments tab → Click "⋯" on latest → Redeploy
 
 **Verification:**
-- [ ] Backend deployed successfully
-- [ ] Test: `curl https://your-backend.vercel.app/api/health`
 - [ ] All environment variables configured
 - [ ] Production URLs used (not demo/test)
+- [ ] Redeployment successful
 
 ---
 
-### Step 4: Deploy Frontend to Cloudflare Pages ⏳
+### Step 3: Configure Frontend Environment Variables ⏳
 
-**Priority:** HIGH  
-**Time Required:** 15 minutes
+**Priority:** HIGH
+**Time Required:** 5 minutes
 
-**Option A: GitHub Integration (Recommended)**
-
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Workers & Pages → Create application → Connect to Git
-3. Select repository: `conveyancing-portal-hubspot`
-4. Configure build:
-   - **Production branch:** `main`
-   - **Build command:** `npm run build`
-   - **Build output directory:** `dist`
-   - **Root directory:** `frontend`
-5. Environment variables:
-   - `VITE_API_BASE_URL` = `https://api.stanfordlegal.com.au`
-   - `VITE_STRIPE_PUBLISHABLE_KEY` = `pk_live_xxx`
-6. Click "Save and Deploy"
-
-**Option B: Wrangler CLI**
+1. Go to **frontend** project → Settings → Environment Variables
+2. Add these variables:
 
 ```bash
-npm install -g wrangler
-wrangler login
-cd frontend
-npm run build
-wrangler pages deploy dist --project-name=stanford-portal
+# Backend API (your Vercel backend URL)
+VITE_API_BASE_URL=https://conveyancing-portal-backend.vercel.app
+
+# Stripe (production publishable key)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_xxx
 ```
 
+3. Click **Save**
+4. **Redeploy:** Deployments tab → Redeploy latest
+
 **Verification:**
-- [ ] Frontend deployed successfully
-- [ ] Available at: `https://stanford-portal.pages.dev`
-- [ ] Test: Open URL in browser
-- [ ] API calls work
+- [ ] Frontend can connect to backend API
+- [ ] Stripe checkout works
+- [ ] No CORS errors in browser console
 
 ---
 
-### Step 5: Deploy DocuSign Webhook Worker ⏳
+### Step 4: Update DocuSign Webhook URL ⏳
 
-**Priority:** HIGH  
-**Time Required:** 10 minutes
+**Priority:** HIGH
+**Time Required:** 5 minutes
 
-```bash
-# Deploy DocuSign webhook
-cd workers/docusign-webhook
+Point DocuSign webhooks to your Vercel backend:
 
-# Set HubSpot token as secret
-wrangler secret put HUBSPOT_ACCESS_TOKEN
-# When prompted, paste your HubSpot access token
+1. **Update your backend `.env` file:**
+   ```bash
+   # backend/.env
+   DOCUSIGN_WEBHOOK_URL=https://conveyancing-portal-backend.vercel.app/api/webhook/docusign
+   ```
 
-# Deploy worker
-wrangler deploy
+2. **Commit and push to GitHub:**
+   ```bash
+   git add backend/.env
+   git commit -m "chore: Update DocuSign webhook URL to Vercel backend"
+   git push origin main
+   ```
 
-# Note the worker URL:
-# https://stanford-docusign-webhook.workers.dev
-```
+3. **Auto-deployment will trigger!** ✨
+   - Vercel will detect the push
+   - Automatically rebuild and redeploy
+   - Check Deployments tab to monitor progress
 
 **Verification:**
-- [ ] Worker deployed successfully
-- [ ] Test: `curl https://stanford-docusign-webhook.workers.dev`
-- [ ] Should return: `{"error":"Method not allowed. Use POST."}`
+- [ ] Webhook URL updated
+- [ ] GitHub push triggered auto-deployment
+- [ ] Deployment successful
+- [ ] DocuSign sends events to Vercel endpoint
 
 ---
 
-### Step 6: Configure DNS Records ⏳
+### Step 5: Configure Smokeball Webhook ⏳
 
-**Priority:** HIGH  
-**Time Required:** 30 minutes (+ 1-24 hours propagation)
+**Priority:** MEDIUM (Optional - integration works without it)
+**Time Required:** 2 minutes
 
-See **[DNS_SETUP_GUIDE.md](./DNS_SETUP_GUIDE.md)** for detailed instructions.
+**Note:** Smokeball integration is **fully functional without webhooks**. Webhooks add optional background enhancements.
 
-**Quick Summary:**
+**Setup:**
 
-Add these CNAME records:
+1. **Verify Smokeball OAuth is authenticated:**
+   ```bash
+   curl https://conveyancing-portal-backend.vercel.app/api/smokeball/status
+   ```
+   
+   Should return: `{ "authenticated": true }`
+   
+   If not, complete OAuth first at: `https://conveyancing-portal-backend.vercel.app/api/smokeball/setup`
 
-```
-portal.stanfordlegal.com.au    → stanford-portal.pages.dev
-api.stanfordlegal.com.au       → your-backend.vercel.app
-webhooks.stanfordlegal.com.au  → stanford-docusign-webhook.workers.dev
-```
+2. **Register webhook with Smokeball (ONE CLICK):**
+   
+   Visit in your browser:
+   ```
+   https://conveyancing-portal-backend.vercel.app/api/smokeball/webhook/register
+   ```
 
-**Where to Configure:**
-- **Option A:** Cloudflare DNS (recommended)
-- **Option B:** WP Engine DNS
+3. **Save the subscription ID** from the response
+
+4. **Test it:**
+   - Create a test lead in HubSpot from agent portal
+   - Check Vercel logs: `conveyancing-portal-backend → Logs`
+   - Look for: `[Smokeball Webhook] 📨 Received webhook`
+
+**What Webhook Adds:**
+- ✨ Property details auto-populated in Smokeball UI
+- ✨ Welcome call task created immediately at Stage 1
+- ✨ Matter number auto-synced when conversion happens
 
 **Verification:**
-- [ ] DNS records added
-- [ ] Wait 1-24 hours for propagation
-- [ ] Test: `nslookup portal.stanfordlegal.com.au`
-- [ ] Test: Visit `https://portal.stanfordlegal.com.au`
+- [ ] Smokeball webhook registered
+- [ ] Subscription ID saved
+- [ ] Webhook receives events (check Vercel logs)
+- [ ] Property details populate automatically
+- [ ] Tasks created for Laura
+
+**📚 Detailed Guide:** See `SMOKEBALL_WEBHOOK_VERCEL_SETUP.md`
 
 ---
 
-### Step 7: Configure Stripe Webhook ⏳
+### Step 6: Configure Stripe Webhook ⏳
 
-**Priority:** HIGH  
+**Priority:** HIGH
 **Time Required:** 10 minutes
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com) → **Developers** → **Webhooks**
 2. Click **Add endpoint**
 3. Endpoint URL:
    ```
-   https://api.stanfordlegal.com.au/api/webhook/stripe
+   https://conveyancing-portal-backend.vercel.app/api/webhook/stripe
    ```
 4. Select events:
    - `payment_intent.succeeded`
    - `payment_intent.payment_failed`
    - `payment_intent.canceled`
 5. Click **Add endpoint**
-6. **Copy the Signing Secret** (whsec_xxx)
-7. Add to Vercel:
-   ```bash
-   vercel env add STRIPE_WEBHOOK_SECRET production
-   # Paste: whsec_xxx
-   ```
-8. Redeploy: `vercel --prod`
+6. **Copy the Signing Secret** (starts with `whsec_`)
+7. Add to Vercel backend:
+   - Go to backend project → Settings → Environment Variables
+   - Add: `STRIPE_WEBHOOK_SECRET` = `whsec_xxx`
+8. Redeploy backend (Deployments → Redeploy)
 
 **Verification:**
 - [ ] Webhook endpoint created in Stripe
 - [ ] Signing secret configured in Vercel
-- [ ] Backend redeployed
-- [ ] Test payment triggers webhook
+- [ ] Test payment triggers webhook successfully
 
 ---
 
-### Step 8: Test DocuSign Webhook ⏳
+### Step 7: Test Webhooks ⏳
 
-**Priority:** MEDIUM  
+**Priority:** MEDIUM
 **Time Required:** 20 minutes
 
-See **[WEBHOOK_TESTING_GUIDE.md](./WEBHOOK_TESTING_GUIDE.md)** for detailed instructions.
+#### Test DocuSign Webhook:
 
-**Quick Test:**
-
-1. **Use webhook.site for testing:**
+1. **Use webhook.site for initial testing:**
    ```bash
-   # backend/.env
+   # Temporarily change in backend/.env
    DOCUSIGN_WEBHOOK_URL=https://webhook.site/your-unique-url
    ```
 
@@ -404,52 +289,137 @@ See **[WEBHOOK_TESTING_GUIDE.md](./WEBHOOK_TESTING_GUIDE.md)** for detailed inst
    - `data.envelopeSummary.customFields.textCustomFields` (contains `hs_deal_id`)
    - `data.envelopeSummary.recipients.signers`
 
-4. **Switch to production URL:**
+4. **Switch back to Vercel URL:**
    ```bash
-   # Remove test URL
-   # DOCUSIGN_WEBHOOK_URL will default to webhooks.stanfordlegal.com.au
+   DOCUSIGN_WEBHOOK_URL=https://conveyancing-portal-backend.vercel.app/api/webhook/docusign
    ```
 
+#### Test Stripe Webhook:
+
+1. Go to Stripe Dashboard → Developers → Webhooks
+2. Click on your webhook endpoint
+3. Click **Send test webhook**
+4. Select `payment_intent.succeeded`
+5. Check Vercel logs for successful processing
+
 **Verification:**
-- [ ] webhook.site receives DocuSign events
-- [ ] Payload structure matches worker expectations
-- [ ] Custom field `hs_deal_id` present
-- [ ] All expected events received
+- [ ] DocuSign webhook receives events
+- [ ] HubSpot deal updates with envelope status
+- [ ] Stripe webhook processes payments
+- [ ] All webhook logs show success
 
 ---
 
-### Step 9: Test CI/CD Pipeline ⏳
+### Step 8: Set Up Custom Domains (Optional) ⏳
 
-**Priority:** MEDIUM  
+**Priority:** LOW
+**Time Required:** 30 minutes + DNS propagation
+
+If you want custom domains like `portal.stanfordlegal.com.au`:
+
+#### Backend Domain:
+
+1. Go to **conveyancing-portal-backend** → Settings → Domains
+2. Click **Add Domain**
+3. Enter: `api.stanfordlegal.com.au`
+4. Add DNS record (CNAME):
+   ```
+   api.stanfordlegal.com.au → cname.vercel-dns.com
+   ```
+5. Wait for SSL certificate (automatic)
+
+#### Frontend Domain:
+
+1. Go to **frontend** → Settings → Domains
+2. Click **Add Domain**
+3. Enter: `portal.stanfordlegal.com.au`
+4. Add DNS record (CNAME):
+   ```
+   portal.stanfordlegal.com.au → cname.vercel-dns.com
+   ```
+5. Wait for SSL certificate
+
+#### Update URLs After Domain Setup:
+
+1. Backend `.env`:
+   ```bash
+   DOCUSIGN_WEBHOOK_URL=https://api.stanfordlegal.com.au/api/webhook/docusign
+   FRONTEND_URL=https://portal.stanfordlegal.com.au
+   ```
+
+2. Frontend env variables:
+   ```bash
+   VITE_API_BASE_URL=https://api.stanfordlegal.com.au
+   ```
+
+3. Update Stripe webhook URL to `https://api.stanfordlegal.com.au/api/webhook/stripe`
+
+**Verification:**
+- [ ] Custom domains resolve correctly
+- [ ] SSL certificates issued (automatic)
+- [ ] All services use custom domains
+
+---
+
+### Step 9: Enable Vercel Production Protection ⏳
+
+**Priority:** MEDIUM
+**Time Required:** 5 minutes
+
+Protect your production environment:
+
+1. Go to each project → Settings → Deployment Protection
+2. Enable:
+   - **Vercel Authentication** - Require login to access deployments
+   - **Password Protection** - Add password for preview deployments
+3. Configure allowed domains for production
+
+**Verification:**
+- [ ] Preview deployments require password
+- [ ] Production deployment accessible
+- [ ] No unauthorized access
+
+---
+
+### Step 10: Set Up Production Monitoring ⏳
+
+**Priority:** MEDIUM
 **Time Required:** 15 minutes
 
-```bash
-# Make a test change
-echo "# CI/CD Test" >> backend/README.md
+Monitor your Vercel deployments:
 
-# Commit and push
-git add .
-git commit -m "test: Verify CI/CD pipeline"
-git push origin main
+#### Vercel Built-in Monitoring:
 
-# Check GitHub Actions tab
-# Should see 3 workflows running:
-# - Deploy Backend to Vercel
-# - Deploy Frontend to Cloudflare Pages
-# - Deploy Webhooks to Cloudflare Workers
-```
+1. Go to each project → **Analytics**
+2. Enable:
+   - Function invocations tracking
+   - Error tracking
+   - Performance monitoring
+
+#### Logging:
+
+1. Go to each project → **Logs**
+2. Configure log drains (optional):
+   - Send logs to external service (Datadog, Logtail, etc.)
+
+#### Alerts:
+
+1. Go to **Integrations** → **Add Integration**
+2. Add **Slack** or **Email** notifications for:
+   - Deployment failures
+   - Function errors
+   - Performance issues
 
 **Verification:**
-- [ ] GitHub Actions triggered automatically
-- [ ] All 3 workflows complete successfully
-- [ ] Deployments visible in Vercel/Cloudflare dashboards
-- [ ] Changes reflected in production
+- [ ] Analytics enabled
+- [ ] Error tracking active
+- [ ] Alerts configured
 
 ---
 
-### Step 10: End-to-End Testing ⏳
+### Step 11: End-to-End Testing ⏳
 
-**Priority:** HIGH  
+**Priority:** HIGH
 **Time Required:** 30 minutes
 
 **Test Complete Workflow:**
@@ -458,21 +428,21 @@ git push origin main
 1. Create Deal in HubSpot
    ↓
    Verify: Smokeball lead created
-   
+
 2. Progress to Stage 3 (Quote Accepted)
    ↓
    Verify: Smokeball tasks created for Laura
-   
+
 3. Progress to Stage 4 (Awaiting Retainer)
    ↓
    Sign document via DocuSign
    ↓
-   Verify: Webhook received by Cloudflare Worker
+   Verify: Webhook received by Vercel backend
    ↓
    Verify: HubSpot deal updated with envelope_status
    ↓
    Verify: Deal progressed to Stage 5 (Funds Requested)
-   
+
 4. Make Payment via Stripe
    ↓
    Verify: Stripe webhook received
@@ -480,12 +450,10 @@ git push origin main
    Verify: Deal progressed to Stage 6 (Funds Provided)
    ↓
    Verify: Payment receipted in Smokeball
-   
+
 5. Check All Logs
    ↓
    Vercel: Function execution logs
-   ↓
-   Cloudflare: Worker invocation logs
    ↓
    Stripe: Webhook delivery status
    ↓
@@ -504,47 +472,81 @@ git push origin main
 
 ---
 
-## 🎯 Recommended Execution Order
+## 🚀 GitHub Actions for Auto-Deployment (Optional)
 
-**Week 1:**
-1. ☐ Upload to GitHub (Step 1)
-2. ☐ Configure GitHub Secrets (Step 2)
-3. ☐ Deploy Backend to Vercel (Step 3)
-4. ☐ Deploy Frontend to Cloudflare (Step 4)
-5. ☐ Test DocuSign webhook with webhook.site (Step 8)
+If you want GitHub Actions to trigger Vercel deployments (alternative to Vercel's built-in Git integration):
 
-**Week 2:**
-6. ☐ Deploy DocuSign Webhook Worker (Step 5)
-7. ☐ Configure DNS Records (Step 6) - Start propagation
-8. ☐ Configure Stripe Webhook (Step 7)
+### Create `.github/workflows/deploy-vercel.yml`:
 
-**Week 3:** (After DNS propagation)
-9. ☐ Test CI/CD Pipeline (Step 9)
-10. ☐ End-to-End Testing (Step 10)
-11. ☐ Production Monitoring Setup
-12. ☐ Go Live! 🎉
+```yaml
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy Backend to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./backend
+          vercel-args: '--prod'
+
+      - name: Deploy Frontend to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID_FRONTEND }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}
+          working-directory: ./frontend/client-portal
+          vercel-args: '--prod'
+```
+
+### GitHub Secrets Needed:
+
+```
+VERCEL_TOKEN                 # From vercel.com/account/tokens
+VERCEL_ORG_ID               # Backend org ID
+VERCEL_PROJECT_ID           # Backend project ID
+VERCEL_ORG_ID_FRONTEND      # Frontend org ID
+VERCEL_PROJECT_ID_FRONTEND  # Frontend project ID
+```
+
+**Note:** Vercel's built-in GitHub integration is simpler and recommended for most use cases.
 
 ---
 
-## 📞 Support Resources
+## 🎯 Recommended Execution Order
 
-**Documentation:**
-- Deployment: `docs/DEPLOYMENT.md`
-- DNS Setup: `DNS_SETUP_GUIDE.md`
-- Webhook Testing: `WEBHOOK_TESTING_GUIDE.md`
-- Architecture: `docs/ARCHITECTURE.md`
-- Integrations: `docs/INTEGRATIONS.md`
+**Week 1:**
+1. ☐ Connect Vercel Projects to GitHub (Step 1)
+2. ☐ Configure Backend Environment Variables (Step 2)
+3. ☐ Configure Frontend Environment Variables (Step 3)
+4. ☐ Update DocuSign Webhook URL (Step 4)
+5. ☐ Configure Smokeball Webhook (Step 5) - Optional but recommended
+6. ☐ Configure Stripe Webhook (Step 6)
 
-**External Resources:**
-- [Vercel Documentation](https://vercel.com/docs)
-- [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
-- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
-- [GitHub Actions Docs](https://docs.github.com/actions)
+**Week 2:**
+7. ☐ Test All Webhooks (Step 7)
+8. ☐ Set Up Custom Domains (Step 8) - Optional
+9. ☐ Enable Production Protection (Step 9)
+10. ☐ Set Up Monitoring (Step 10)
 
-**Troubleshooting:**
-- See `docs/DEPLOYMENT.md#troubleshooting`
-- Check GitHub Actions logs for deployment issues
-- Check Vercel/Cloudflare dashboards for runtime errors
+**Week 3:**
+11. ☐ End-to-End Testing (Step 11)
+12. ☐ Go Live! 🎉
 
 ---
 
@@ -553,42 +555,75 @@ git push origin main
 ### Before Going Live
 
 1. **Use Production Credentials:**
-   - DocuSign: Change from `demo.docusign.net` to `na3.docusign.net`
-   - Stripe: Use `sk_live_xxx` and `pk_live_xxx` keys
-   - HubSpot: Verify using production account (not sandbox)
+   - ✅ DocuSign: Use `na3.docusign.net` (NOT demo)
+   - ✅ Stripe: Use `sk_live_xxx` and `pk_live_xxx` (NOT test keys)
+   - ✅ HubSpot: Verify production account
 
 2. **Security Check:**
    - [ ] All `.env` files in `.gitignore`
    - [ ] No sensitive data in repository
    - [ ] Webhook signatures verified
    - [ ] HTTPS enforced on all domains
-   - [ ] API rate limiting configured
+   - [ ] Environment variables in Vercel (not in code)
 
 3. **Backup Current System:**
-   - Export current WordPress data (if migrating)
+   - Export current data
    - Document current HubSpot configuration
    - Take screenshots of current workflows
 
-### Testing Before Production
+### Webhook URLs Reference
 
-- Test with real data in staging environment
-- Verify all integrations work end-to-end
-- Load test critical endpoints
-- Review error handling
-- Test rollback procedures
+Once deployed, your webhook endpoints will be:
+
+```bash
+# DocuSign
+https://conveyancing-portal-backend.vercel.app/api/webhook/docusign
+
+# Stripe
+https://conveyancing-portal-backend.vercel.app/api/webhook/stripe
+
+# Smokeball (if using)
+https://conveyancing-portal-backend.vercel.app/api/webhook/smokeball
+```
+
+After custom domain setup:
+```bash
+https://api.stanfordlegal.com.au/api/webhook/docusign
+https://api.stanfordlegal.com.au/api/webhook/stripe
+https://api.stanfordlegal.com.au/api/webhook/smokeball
+```
 
 ---
 
-## 🎉 You're 71% Complete!
+## 📞 Support Resources
 
-**Completed:** 10/14 tasks (all automation complete)  
-**Remaining:** 4/14 tasks (all manual)
+**Vercel Documentation:**
+- [Deploying with Git](https://vercel.com/docs/deployments/git)
+- [Environment Variables](https://vercel.com/docs/environment-variables)
+- [Custom Domains](https://vercel.com/docs/custom-domains)
+- [Serverless Functions](https://vercel.com/docs/serverless-functions)
 
-The hard work is done - the system is built and ready to deploy!
+**External Resources:**
+- [GitHub Actions Docs](https://docs.github.com/actions)
+- [Stripe Webhooks](https://stripe.com/docs/webhooks)
+- [DocuSign Connect](https://developers.docusign.com/platform/webhooks/connect/)
+
+**Troubleshooting:**
+- Check Vercel function logs: Project → Logs
+- Check Vercel deployment logs: Project → Deployments
+- Monitor webhook delivery: Stripe/DocuSign dashboards
+
+---
+
+## 🎉 You're 80% Complete!
+
+**Completed:** Backend + Frontend deployed on Vercel ✅
+**Remaining:** Connect to GitHub & configure webhooks
+
+Everything is already built and deployed - just needs to be connected!
 
 ---
 
 **Ready to proceed? Start with Step 1 and work through the checklist above.**
 
-Good luck with your deployment! 🚀
-
+Good luck! 🚀

@@ -12,17 +12,16 @@
 
 import axios from 'axios';
 import { SMOKEBALL_CONFIG } from '../../config/smokeball.js';
+import * as tokenStorage from '../../services/storage/token-storage.js';
 
 /**
- * In-memory token store
- * TODO: Move to database for production (supports multiple users)
+ * Token storage moved to Vercel KV (Redis)
+ * Benefits:
+ * - Persists across server restarts
+ * - Auto-managed by Vercel
+ * - Fast sub-millisecond reads
+ * - No manual connection management
  */
-const tokenStore = {
-  accessToken: null,
-  refreshToken: null,
-  expiresAt: null, // Unix timestamp (ms)
-  tokenType: 'Bearer',
-};
 
 /**
  * Exchange authorization code for access token
@@ -54,11 +53,10 @@ export async function exchangeCodeForToken(authorizationCode, codeVerifier) {
 
     const tokenData = response.data;
 
-    // Store tokens
-    storeTokens(tokenData);
+    // Store tokens in Vercel KV
+    await tokenStorage.storeTokens(tokenData);
 
     console.log('[Smokeball Auth] ✅ Tokens obtained and stored successfully');
-    console.log(`[Smokeball Auth] ⏰ Token expires at: ${new Date(tokenStore.expiresAt).toISOString()}`);
 
     return tokenData;
 
@@ -71,10 +69,11 @@ export async function exchangeCodeForToken(authorizationCode, codeVerifier) {
 /**
  * Refresh the access token using refresh token
  *
+ * @param {string} refreshToken - Refresh token to use
  * @returns {Promise<Object>} New token response
  */
-export async function refreshAccessToken() {
-  if (!tokenStore.refreshToken) {
+export async function refreshAccessToken(refreshToken) {
+  if (!refreshToken) {
     throw new Error('No refresh token available. Please re-authenticate.');
   }
 
@@ -87,7 +86,7 @@ export async function refreshAccessToken() {
         grant_type: 'refresh_token',
         client_id: SMOKEBALL_CONFIG.clientId,
         client_secret: SMOKEBALL_CONFIG.clientSecret,
-        refresh_token: tokenStore.refreshToken,
+        refresh_token: refreshToken,
       }),
       {
         headers: {
@@ -98,11 +97,10 @@ export async function refreshAccessToken() {
 
     const tokenData = response.data;
 
-    // Update stored tokens
-    storeTokens(tokenData);
+    // Update stored tokens in Vercel KV
+    await tokenStorage.storeTokens(tokenData);
 
     console.log('[Smokeball Auth] ✅ Token refreshed successfully');
-    console.log(`[Smokeball Auth] ⏰ New token expires at: ${new Date(tokenStore.expiresAt).toISOString()}`);
 
     return tokenData;
 
@@ -110,7 +108,7 @@ export async function refreshAccessToken() {
     console.error('[Smokeball Auth] ❌ Error refreshing token:', error.response?.data || error.message);
 
     // Clear invalid tokens
-    clearTokens();
+    await clearTokens();
 
     throw new Error(`Token refresh failed: ${error.response?.data?.error_description || error.message}. Please re-authenticate.`);
   }
@@ -123,63 +121,36 @@ export async function refreshAccessToken() {
  * @returns {Promise<string>} Valid access token
  */
 export async function getCurrentAccessToken() {
-  if (!tokenStore.accessToken) {
-    throw new Error('Not authenticated with Smokeball. Please visit: /api/smokeball/setup');
-  }
-
-  // Check if token needs refresh (within buffer time)
-  const bufferMs = SMOKEBALL_CONFIG.tokenRefreshBuffer * 1000;
-  const needsRefresh = Date.now() >= (tokenStore.expiresAt - bufferMs);
-
-  if (needsRefresh) {
-    console.log('[Smokeball Auth] ⏰ Token expiring soon, refreshing...');
-    await refreshAccessToken();
-  }
-
-  return tokenStore.accessToken;
-}
-
-/**
- * Store tokens in memory
- *
- * @param {Object} tokenData - Token response from Smokeball
- */
-function storeTokens(tokenData) {
-  tokenStore.accessToken = tokenData.access_token;
-  tokenStore.refreshToken = tokenData.refresh_token || tokenStore.refreshToken; // Preserve if not returned
-  tokenStore.tokenType = tokenData.token_type || 'Bearer';
-
-  // Calculate expiry timestamp (current time + expires_in seconds)
-  const expiresInMs = tokenData.expires_in * 1000;
-  tokenStore.expiresAt = Date.now() + expiresInMs;
+  // Use token storage service which handles auto-refresh
+  return await tokenStorage.getValidAccessToken(refreshAccessToken);
 }
 
 /**
  * Clear stored tokens (logout)
  */
-export function clearTokens() {
-  tokenStore.accessToken = null;
-  tokenStore.refreshToken = null;
-  tokenStore.expiresAt = null;
-  console.log('[Smokeball Auth] 🗑️ Tokens cleared');
+export async function clearTokens() {
+  await tokenStorage.clearTokens();
 }
 
 /**
  * Check if currently authenticated
  *
- * @returns {boolean} True if has valid tokens
+ * @returns {Promise<boolean>} True if has valid tokens
  */
-export function isAuthenticated() {
-  return !!(tokenStore.accessToken && tokenStore.refreshToken);
+export async function isAuthenticated() {
+  const tokens = await tokenStorage.loadTokens();
+  return !!(tokens && tokens.access_token && tokens.refresh_token);
 }
 
 /**
  * Get token info (for debugging/status)
  *
- * @returns {Object} Token status (without exposing actual tokens)
+ * @returns {Promise<Object>} Token status (without exposing actual tokens)
  */
-export function getTokenStatus() {
-  if (!isAuthenticated()) {
+export async function getTokenStatus() {
+  const tokens = await tokenStorage.loadTokens();
+
+  if (!tokens || !tokens.access_token) {
     return {
       authenticated: false,
       message: 'Not authenticated with Smokeball',
@@ -187,13 +158,13 @@ export function getTokenStatus() {
   }
 
   const now = Date.now();
-  const expiresIn = Math.floor((tokenStore.expiresAt - now) / 1000); // seconds
+  const expiresIn = Math.floor((tokens.expires_at - now) / 1000); // seconds
   const expiresInMinutes = Math.floor(expiresIn / 60);
 
   return {
     authenticated: true,
-    tokenType: tokenStore.tokenType,
-    expiresAt: new Date(tokenStore.expiresAt).toISOString(),
+    tokenType: 'Bearer',
+    expiresAt: new Date(tokens.expires_at).toISOString(),
     expiresIn: `${expiresInMinutes} minutes`,
     needsRefresh: expiresIn < SMOKEBALL_CONFIG.tokenRefreshBuffer,
   };
@@ -204,8 +175,8 @@ export function getTokenStatus() {
  *
  * @param {Object} tokens - { accessToken, refreshToken, expiresIn }
  */
-export function setTokens(tokens) {
-  storeTokens({
+export async function setTokens(tokens) {
+  await tokenStorage.storeTokens({
     access_token: tokens.accessToken,
     refresh_token: tokens.refreshToken,
     expires_in: tokens.expiresIn || 3600,
@@ -214,9 +185,6 @@ export function setTokens(tokens) {
 
   console.log('[Smokeball Auth] 📝 Tokens manually set');
 }
-
-// Export token store for testing (use with caution)
-export { tokenStore };
 
 export default {
   exchangeCodeForToken,

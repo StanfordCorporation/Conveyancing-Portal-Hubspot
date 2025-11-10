@@ -64,7 +64,18 @@
       "Bash(findstr:*)",
       "Bash(taskkill //F //PID 35056)",
       "Bash(npm install:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(mkdir:*)",
+      "Bash(move:*)",
+      "Bash(mv:*)",
+      "Bash(nul)",
+      "Bash(del \"c:\\Users\\PrathamManochaStanfo\\OneDrive - The Stanford Corporation\\Desktop\\Conveyancing-Portal-Hubspot\\backend\\check-association.js\")",
+      "Bash(/tmp/disclosure_part1.txt)",
+      "Bash(/tmp/disc_new.jsx)",
+      "Bash(vercel link:*)",
+      "Bash(vercel env pull:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
