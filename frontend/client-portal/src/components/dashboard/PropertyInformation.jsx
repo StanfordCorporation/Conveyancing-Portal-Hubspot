@@ -19,6 +19,11 @@ export default function PropertyInformation({ dealId, initialData }) {
   const [error, setError] = useState(null);
   const [reviewingInfo, setReviewingInfo] = useState(false);
 
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false);
+  const [editedData, setEditedData] = useState(null);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     // Use pre-loaded data if available (no API call needed!)
     if (initialData) {
@@ -119,9 +124,99 @@ export default function PropertyInformation({ dealId, initialData }) {
     }
   };
 
-  // Handle edit - TODO: Implement edit functionality
+  // Handle edit - Enter edit mode
   const handleEdit = () => {
-    alert('Edit functionality coming soon! Please contact your conveyancer to update property information.');
+    setEditMode(true);
+    setEditedData({
+      primarySeller: {
+        id: propertyData.primarySeller?.id,
+        firstname: propertyData.primarySeller?.fullName?.split(' ')[0] || '',
+        lastname: propertyData.primarySeller?.fullName?.split(' ').slice(1).join(' ') || '',
+        email: propertyData.primarySeller?.email || '',
+        phone: propertyData.primarySeller?.phone || '',
+        address: propertyData.primarySeller?.residentialAddress || ''
+      },
+      additionalSeller: propertyData.additionalSeller?.id ? {
+        id: propertyData.additionalSeller?.id,
+        firstname: propertyData.additionalSeller?.fullName?.split(' ')[0] || '',
+        lastname: propertyData.additionalSeller?.fullName?.split(' ').slice(1).join(' ') || '',
+        email: propertyData.additionalSeller?.email || '',
+        phone: propertyData.additionalSeller?.phone || ''
+      } : null,
+      propertyAddress: propertyData.propertyAddress || '',
+      agentTitleSearch: propertyData.agentTitleSearch || 'No'
+    });
+  };
+
+  // Handle cancel - Exit edit mode without saving
+  const handleCancel = () => {
+    setEditMode(false);
+    setEditedData(null);
+  };
+
+  // Handle save - Save all changes
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      console.log('[PropertyInfo] 💾 Saving changes...');
+
+      // Update primary seller contact
+      if (editedData.primarySeller?.id) {
+        await api.patch(`/client/contact/${editedData.primarySeller.id}`, {
+          firstname: editedData.primarySeller.firstname,
+          lastname: editedData.primarySeller.lastname,
+          email: editedData.primarySeller.email,
+          phone: editedData.primarySeller.phone,
+          address: editedData.primarySeller.address
+        });
+        console.log('[PropertyInfo] ✅ Primary seller updated');
+      }
+
+      // Update additional seller if exists
+      if (editedData.additionalSeller?.id) {
+        await api.patch(`/client/contact/${editedData.additionalSeller.id}`, {
+          firstname: editedData.additionalSeller.firstname,
+          lastname: editedData.additionalSeller.lastname,
+          email: editedData.additionalSeller.email,
+          phone: editedData.additionalSeller.phone
+        });
+        console.log('[PropertyInfo] ✅ Additional seller updated');
+      }
+
+      // Update deal (property address, agent title search)
+      await api.patch(`/client/property/${dealId}/info`, {
+        property_address: editedData.propertyAddress,
+        agent_title_search: editedData.agentTitleSearch
+      });
+      console.log('[PropertyInfo] ✅ Deal info updated');
+
+      // Reload to show fresh data
+      window.location.reload();
+
+    } catch (error) {
+      console.error('[PropertyInfo] ❌ Error saving:', error);
+      alert(error.response?.data?.error || 'Failed to save changes. Please try again.');
+      setSaving(false);
+    }
+  };
+
+  // Handle field changes
+  const handleFieldChange = (section, field, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle direct property changes (not nested)
+  const handlePropertyChange = (field, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Helper function to check if seller data exists and is not N/A
@@ -140,17 +235,24 @@ export default function PropertyInformation({ dealId, initialData }) {
       {/* Top Row: Seller Information & Property Details */}
       <div className="info-grid-row">
         <SellerInformation
-          primarySeller={propertyData.primarySeller}
-          additionalSeller={propertyData.additionalSeller}
+          primarySeller={editMode ? editedData?.primarySeller : propertyData.primarySeller}
+          additionalSeller={editMode ? editedData?.additionalSeller : propertyData.additionalSeller}
           hasAdditional={hasAdditionalSellerData()}
+          editMode={editMode}
+          onChange={handleFieldChange}
         />
         <PropertyDetails
-          propertyAddress={propertyData.propertyAddress}
+          dealId={dealId}
+          propertyAddress={editMode ? editedData?.propertyAddress : propertyData.propertyAddress}
           dealStage={propertyData.dealStage}
           nextStep={propertyData.nextStep}
-          clientResidentialAddress={propertyData.primarySeller?.residentialAddress}
-          agentTitleSearch={propertyData.agentTitleSearch}
+          clientResidentialAddress={editMode ? editedData?.primarySeller?.address : propertyData.primarySeller?.residentialAddress}
+          agentTitleSearch={editMode ? editedData?.agentTitleSearch : propertyData.agentTitleSearch}
           agentTitleSearchFile={propertyData.agentTitleSearchFile}
+          editMode={editMode}
+          onChangePropertyAddress={(value) => handlePropertyChange('propertyAddress', value)}
+          onChangeResidentialAddress={(value) => handleFieldChange('primarySeller', 'address', value)}
+          onChangeAgentTitleSearch={(value) => handlePropertyChange('agentTitleSearch', value)}
         />
       </div>
 
@@ -162,19 +264,40 @@ export default function PropertyInformation({ dealId, initialData }) {
 
       {/* Action Buttons */}
       <div className="property-info-actions">
-        <button
-          onClick={handleEdit}
-          className="btn-secondary edit-btn"
-        >
-          Edit
-        </button>
-        <button
-          onClick={handleInformationReviewed}
-          className="btn-primary review-btn"
-          disabled={reviewingInfo}
-        >
-          {reviewingInfo ? 'Processing...' : 'Information Reviewed ✓'}
-        </button>
+        {editMode ? (
+          <>
+            <button
+              onClick={handleCancel}
+              className="btn-secondary cancel-btn"
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="btn-primary save-btn"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={handleEdit}
+              className="btn-secondary edit-btn"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleInformationReviewed}
+              className="btn-primary review-btn"
+              disabled={reviewingInfo}
+            >
+              {reviewingInfo ? 'Processing...' : 'Information Reviewed ✓'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

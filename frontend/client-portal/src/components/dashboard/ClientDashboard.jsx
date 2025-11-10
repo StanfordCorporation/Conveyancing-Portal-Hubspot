@@ -26,11 +26,15 @@ export default function ClientDashboard() {
   const [propertyStages, setPropertyStages] = useState({});
   const [quoteRefreshKey, setQuoteRefreshKey] = useState(Date.now());
 
+  // Check if user is additional seller
+  const isAdditionalSeller = storedUser?.sellerType === 'additional';
+
   // Client data from login
   const [clientData, setClientData] = useState({
     fullName: storedUser ? `${storedUser.firstname} ${storedUser.lastname}`.trim() : 'Client',
     email: storedUser?.email || '',
-    phone: storedUser?.phone || ''
+    phone: storedUser?.phone || '',
+    sellerType: storedUser?.sellerType || 'primary'
   });
 
   // Dynamically loaded properties
@@ -149,7 +153,8 @@ export default function ClientDashboard() {
               2: 'questionnaire',
               3: 'quote',
               4: 'signature',
-              5: 'payment'
+              5: 'payment',
+              6: 'tracking'  // Step 6: Status Tracking
             };
 
             const initialSection = sectionMap[firstDealStage];
@@ -287,7 +292,8 @@ export default function ClientDashboard() {
       2: 'questionnaire',
       3: 'quote',
       4: 'signature',
-      5: 'payment'
+      5: 'payment',
+      6: 'tracking'  // Step 6: Status Tracking
     };
     setActiveSection(sectionMap[stageNumber]);
   };
@@ -409,7 +415,7 @@ export default function ClientDashboard() {
             </div>
             <div className="user-info">
               <h4>{clientData.fullName}</h4>
-              <p>Client Account</p>
+              <p>{isAdditionalSeller ? 'Additional Seller' : 'Client Account'}</p>
             </div>
           </div>
 
@@ -421,6 +427,19 @@ export default function ClientDashboard() {
 
       <aside className="sidebar" id="sidebar">
         <div className="property-header">
+          {isAdditionalSeller && (
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              color: '#856404'
+            }}>
+              <strong>Additional Seller Access:</strong> You can view information and sign documents. Only the primary seller can modify property details.
+            </div>
+          )}
           <div className="properties-section">
             <div className="properties-header">
               <h2>Properties</h2>
@@ -604,6 +623,35 @@ export default function ClientDashboard() {
                           )}
                         </div>
                       </button>
+
+                      {/* Stage 6: Status Tracking */}
+                      <button
+                        className={`stage-item stage-${getStageStatus(6, prop.id)} ${!isStageAccessible(6, prop.id) ? 'stage-locked' : ''}`}
+                        onClick={() => handleStageClick(6, prop.id)}
+                      >
+                        <div className="stage-number">6</div>
+                        <div className="stage-content">
+                          <h4>Status Tracking</h4>
+                          <p>Track your progress</p>
+                        </div>
+                        <div className="stage-indicator">
+                          {getStageStatus(6, prop.id) === 'completed' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(6, prop.id) === 'current' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          )}
+                          {getStageStatus(6, prop.id) === 'locked' && (
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -750,6 +798,40 @@ export default function ClientDashboard() {
               ) : (
                 <div className="empty-state">
                   <p>Select a property to proceed with payment</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'tracking' && (
+          <section id="tracking" className="content-section active">
+            <div className="content-header">
+              <h1 className="content-title">Status Tracking</h1>
+              <p className="content-subtitle">Monitor the progress of your conveyancing transaction</p>
+            </div>
+            <div className="content-card">
+              {currentProperty && currentProperty.id ? (
+                <div className="tracking-info">
+                  <h3>Transaction Progress</h3>
+                  <p>Your transaction is being processed. We'll keep you updated on each milestone.</p>
+                  <div className="status-info" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+                    <p><strong>Current Status:</strong> {currentProperty.status || 'In Progress'}</p>
+                    <p><strong>Property:</strong> {currentProperty.title}</p>
+                    <p><strong>Address:</strong> {currentProperty.subtitle}</p>
+                  </div>
+                  <div className="next-steps" style={{ marginTop: '20px' }}>
+                    <h4>What Happens Next?</h4>
+                    <ul style={{ lineHeight: '1.8' }}>
+                      <li>Your conveyancer will process your searches</li>
+                      <li>You'll receive updates via email as progress is made</li>
+                      <li>Contact your agent if you have any questions</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>Loading tracking information...</p>
                 </div>
               )}
             </div>

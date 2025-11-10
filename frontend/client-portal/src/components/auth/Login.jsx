@@ -121,7 +121,7 @@ const Index = () => {
 
       console.log('✅ OTP verified successfully:', response.data);
 
-      // Store auth token and user data (including contactId, firstname, lastname)
+      // Store auth token and user data (including contactId, firstname, lastname, sellerType)
       localStorage.setItem('authToken', response.data.token);
       localStorage.setItem('user', JSON.stringify({
         id: response.data.user.id,
@@ -130,7 +130,8 @@ const Index = () => {
         lastname: response.data.user.lastname,
         email: response.data.user.email,
         phone: response.data.user.phone,
-        role: response.data.user.role
+        role: response.data.user.role,
+        sellerType: response.data.user.sellerType  // 'primary' or 'additional'
       }));
 
       setError("");

@@ -13,6 +13,7 @@ import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import * as filesIntegration from '../integrations/hubspot/files.js';
 import { getAllHubSpotProperties, getAllMappings, getFieldMapping } from '../utils/questionnaireHelper.js';
 import { shouldShowToClient } from '../config/stageHelpers.js';
+import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
 
 const router = express.Router();
 
@@ -175,6 +176,8 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       'dealstage',
       'number_of_owners',
       'is_draft', // Include is_draft to filter out draft deals
+      'agent_title_search', // Did agent complete title search?
+      'agent_title_search_file', // Agent's title search file ID
       ...questionnaireProperties
     ];
 
@@ -322,6 +325,20 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         // Continue with empty files object
       }
 
+      // Fetch agent title search file if it exists
+      let agentTitleSearchFileData = null;
+      const agentTitleSearchFileId = deal.properties.agent_title_search_file;
+
+      if (agentTitleSearchFileId && agentTitleSearchFileId !== 'null' && agentTitleSearchFileId !== '') {
+        try {
+          agentTitleSearchFileData = await filesIntegration.getFileSignedUrl(agentTitleSearchFileId);
+          console.log(`[Dashboard Complete] 📄 Deal ${deal.id} - Fetched agent title search file: ${agentTitleSearchFileData?.name}`);
+        } catch (agentFileErr) {
+          console.error(`[Dashboard Complete] ⚠️ Error fetching agent title search file ${agentTitleSearchFileId}:`, agentFileErr.message);
+          // Continue without file data
+        }
+      }
+
       const dealstage = deal.properties.dealstage || 'Unknown';
       console.log(`[Dashboard Complete] 📊 Deal ${deal.id} - Stage: ${dealstage}`);
 
@@ -336,7 +353,9 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         progressPercentage: Math.round((Object.keys(questionnaireData).length / Object.keys(propertyMapping).length) * 100),
         questionnaire: questionnaireData,
         propertyDetails: propertyDetails,
-        files: files
+        files: files,
+        agentTitleSearch: deal.properties.agent_title_search || null,
+        agentTitleSearchFile: agentTitleSearchFileData
       };
     }));
 
@@ -854,6 +873,166 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
 });
 
 /**
+ * PATCH /api/client/contact/:contactId
+ * Update contact information (for Step 1 editing)
+ */
+router.patch('/contact/:contactId', authenticateJWT, async (req, res) => {
+  try {
+    const { contactId } = req.params;
+    const { firstname, lastname, email, phone, address } = req.body;
+
+    // Verify user has permission to update this contact
+    // User can update themselves or additional sellers on their deals
+    const userContactId = req.user.contactId;
+
+    console.log(`[Update Contact] 📝 Updating contact ${contactId} (requested by ${userContactId})`);
+
+    // Get user's deals to verify they have access to this contact
+    const userDeals = await associationsIntegration.getContactDeals(userContactId);
+    let hasAccess = false;
+
+    if (contactId === userContactId) {
+      hasAccess = true; // User updating themselves
+    } else {
+      // Check if this contact is on any of the user's deals
+      for (const dealId of userDeals) {
+        const dealContacts = await associationsIntegration.getDealContacts(dealId);
+        if (dealContacts.some(c => c.id === contactId)) {
+          hasAccess = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasAccess) {
+      console.log(`[Update Contact] ❌ Access denied for contact ${contactId}`);
+      return res.status(403).json({ error: 'You do not have permission to update this contact' });
+    }
+
+    // Update contact in HubSpot
+    const updates = {};
+    if (firstname !== undefined) updates.firstname = firstname;
+    if (lastname !== undefined) updates.lastname = lastname;
+    if (email !== undefined) updates.email = email;
+    if (phone !== undefined) updates.phone = phone;
+    if (address !== undefined) updates.address = address;
+
+    await contactsIntegration.updateContact(contactId, updates);
+
+    console.log(`[Update Contact] ✅ Contact ${contactId} updated successfully`);
+    res.json({ success: true, message: 'Contact updated successfully' });
+
+  } catch (error) {
+    console.error(`[Update Contact] ❌ Error:`, error.message);
+    res.status(500).json({ error: 'Failed to update contact information' });
+  }
+});
+
+/**
+ * PATCH /api/client/property/:dealId/info
+ * Update deal property information (property address, agent title search status)
+ */
+router.patch('/property/:dealId/info', authenticateJWT, async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const { property_address, agent_title_search } = req.body;
+
+    console.log(`[Update Deal Info] 📝 Updating deal ${dealId}`);
+
+    // Verify user has access to this deal
+    const userContactId = req.user.contactId;
+    const userDeals = await associationsIntegration.getContactDeals(userContactId);
+
+    if (!userDeals.includes(dealId)) {
+      console.log(`[Update Deal Info] ❌ Access denied for deal ${dealId}`);
+      return res.status(403).json({ error: 'You do not have permission to update this deal' });
+    }
+
+    // Build update payload
+    const updates = {};
+    if (property_address !== undefined) {
+      updates.property_address = property_address;
+      console.log(`[Update Deal Info] 🏠 Updating property address: ${property_address}`);
+    }
+    if (agent_title_search !== undefined) {
+      updates.agent_title_search = agent_title_search;
+      console.log(`[Update Deal Info] 📋 Updating agent title search: ${agent_title_search}`);
+
+      // If setting to "No", clear the file
+      if (agent_title_search === 'No') {
+        updates.agent_title_search_file = '';
+        console.log(`[Update Deal Info] 🗑️  Clearing agent title search file`);
+      }
+    }
+
+    await dealsIntegration.updateDeal(dealId, updates);
+
+    console.log(`[Update Deal Info] ✅ Deal ${dealId} updated successfully`);
+    res.json({ success: true, message: 'Property information updated successfully' });
+
+  } catch (error) {
+    console.error(`[Update Deal Info] ❌ Error:`, error.message);
+    res.status(500).json({ error: 'Failed to update property information' });
+  }
+});
+
+/**
+ * POST /api/client/property/:dealId/agent-title-search-file
+ * Upload agent title search file (when client has it)
+ */
+router.post('/property/:dealId/agent-title-search-file', authenticateJWT, upload.single('file'), async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log(`[Agent Title Search Upload] 📤 Uploading file for deal ${dealId}: ${file.originalname}`);
+
+    // Verify user has access to this deal
+    const userContactId = req.user.contactId;
+    const userDeals = await associationsIntegration.getContactDeals(userContactId);
+
+    if (!userDeals.includes(dealId)) {
+      console.log(`[Agent Title Search Upload] ❌ Access denied for deal ${dealId}`);
+      return res.status(403).json({ error: 'You do not have permission to upload files for this deal' });
+    }
+
+    // Upload file to HubSpot
+    const uploadedFiles = await filesIntegration.uploadMultipleFiles([file], {
+      folderPath: `/agent-title-search/${dealId}`,
+      access: 'PRIVATE'
+    });
+
+    const fileId = uploadedFiles[0];
+    console.log(`[Agent Title Search Upload] ✅ File uploaded to HubSpot: ${fileId}`);
+
+    // Update deal with file ID
+    await dealsIntegration.updateDeal(dealId, {
+      agent_title_search: 'Yes',
+      agent_title_search_file: fileId
+    });
+
+    console.log(`[Agent Title Search Upload] ✅ Deal ${dealId} updated with file ID`);
+
+    // Get signed URL for immediate display
+    const fileData = await filesIntegration.getFileSignedUrl(fileId);
+
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      file: fileData
+    });
+
+  } catch (error) {
+    console.error(`[Agent Title Search Upload] ❌ Error:`, error.message);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+/**
  * PATCH /api/client/property/:dealId/stage
  * Update deal stage (step progression)
  * Valid stages: 1923713518 (Step 1), 1923713520 (Step 2), 1923682791 (Step 3), 1923682792 (Step 4), 1924069846 (Step 5)
@@ -882,8 +1061,125 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
 
     console.log(`[Deal Stage] 📊 Updating deal ${dealId} to step ${stepNumber} (stage: ${dealstage})`);
 
-    // Update deal stage in HubSpot
-    await dealsIntegration.updateDeal(dealId, { dealstage });
+    // Prepare update payload
+    const updatePayload = { dealstage };
+
+    // If moving to Step 4 (Quote Accepted - Awaiting Retainer), determine which searches to order
+    if (stepNumber === 4) {
+      console.log(`[Deal Stage] 🔍 Quote accepted - determining which searches to order`);
+
+      try {
+        // Fetch deal data with all questionnaire properties
+        const propertiesToFetch = [
+          'dealname',
+          'property_address',
+          'hs_contact_id',
+          'contact_id',
+          'agent_title_search', // Check if agent already did title search
+          ...getAllHubSpotProperties()
+        ];
+
+        const deal = await dealsIntegration.getDeal(dealId, propertiesToFetch);
+        const mappings = getAllMappings();
+
+        // Extract questionnaire data from deal properties
+        const propertyData = {};
+        Object.entries(mappings).forEach(([formField, config]) => {
+          const hsPropertyName = config.hsPropertyName;
+          const rawValue = deal.properties[hsPropertyName];
+
+          if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
+            const normalizedValue = typeof rawValue === 'string' ? rawValue.toLowerCase() : rawValue;
+            propertyData[formField] = normalizedValue;
+          }
+        });
+
+        // Get client data (for title_search_done exclusion from contact)
+        const clientData = {};
+        const contactId = deal.properties.hs_contact_id || deal.properties.contact_id;
+
+        if (contactId) {
+          try {
+            const contact = await contactsIntegration.getContact(contactId);
+            if (contact && contact.properties.title_search_done) {
+              const value = contact.properties.title_search_done;
+              clientData.title_search_done = typeof value === 'string' ? value.toLowerCase() : value;
+            }
+          } catch (err) {
+            console.warn('[Deal Stage] Could not fetch contact data:', err.message);
+          }
+        }
+
+        // Get deal-specific data (for agent_title_search exclusion from deal)
+        const dealData = {};
+        if (deal.properties.agent_title_search) {
+          dealData.agent_title_search = deal.properties.agent_title_search; // Keep original case
+        }
+
+        // Calculate quote to determine which searches are included
+        const quote = calculateQuote(propertyData, clientData, dealData);
+
+        console.log(`[Deal Stage] 📋 Quote breakdown:`, JSON.stringify(quote.breakdown, null, 2));
+
+        // Map search names to HubSpot property names
+        const searchNameToPropertyMap = {
+          'Title Search': 'title_search',
+          'Plan Image Search': 'plan_image_search',
+          'Information Certificate': 'information_certificate',
+          'CMS + Dealing Certificate': 'cms_and_dealing_certificate',
+          'TMR Search': 'tmr_search',
+          'DES: Contaminated Land Search': 'des_contaminated_land_search',
+          'DES: Heritage Search': 'des_heritage_search'
+        };
+
+        // Initialize all search properties to "No" / "Not Required"
+        const searchProperties = {
+          cms_and_dealing_certificate: "No",
+          cms_and_dealing_certificate_status: "Not Required",
+          des_contaminated_land_search: "No",
+          des_contaminated_land_search_status: "Not Required",
+          des_heritage_search: "No",
+          des_heritage_search_status: "Not Required",
+          tmr_search: "No",
+          tmr_search_status: "Not Required",
+          information_certificate: "No",
+          information_certificate_status: "Not Required",
+          plan_image_search: "No",
+          plan_image_search_status: "Not Required",
+          title_search: "No",
+          title_search_status: "Not Required"
+        };
+
+        // Update only the searches that are included in the quote
+        quote.breakdown.forEach(search => {
+          if (search.included) {
+            const propertyName = searchNameToPropertyMap[search.name];
+            if (propertyName) {
+              searchProperties[propertyName] = "Yes";
+              searchProperties[`${propertyName}_status`] = "Ordered";
+              console.log(`[Deal Stage]   ✓ ${search.name} → ${propertyName} = Yes/Ordered`);
+            }
+          } else {
+            const propertyName = searchNameToPropertyMap[search.name];
+            if (propertyName) {
+              console.log(`[Deal Stage]   ✗ ${search.name} → ${propertyName} = No/Not Required (${search.reason})`);
+            }
+          }
+        });
+
+        // Add search properties to update payload
+        Object.assign(updatePayload, searchProperties);
+
+        console.log(`[Deal Stage] ✅ Property search fields determined based on quote`);
+
+      } catch (error) {
+        console.error(`[Deal Stage] ⚠️  Error calculating searches, skipping search updates:`, error.message);
+        // Continue with stage update even if search calculation fails
+      }
+    }
+
+    // Update deal stage (and searches if applicable) in HubSpot
+    await dealsIntegration.updateDeal(dealId, updatePayload);
 
     console.log(`[Deal Stage] ✅ Deal stage updated successfully`);
     res.json({

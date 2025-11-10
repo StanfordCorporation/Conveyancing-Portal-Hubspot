@@ -31,6 +31,7 @@ router.post('/calculate', async (req, res) => {
       'property_address',
       'hs_contact_id',
       'contact_id',
+      'agent_title_search', // Check if agent already did title search
       ...getAllHubSpotProperties() // All questionnaire properties
     ];
 
@@ -84,11 +85,18 @@ router.post('/calculate', async (req, res) => {
       }
     }
 
+    // Get deal-specific data (e.g., agent_title_search)
+    const dealData = {};
+    if (deal.properties.agent_title_search) {
+      dealData.agent_title_search = deal.properties.agent_title_search; // Keep original case (HubSpot returns "Yes"/"No")
+    }
+
     // Calculate quote
     console.log(`[Quote] 📊 Property data for calculation:`, JSON.stringify(propertyData, null, 2));
     console.log(`[Quote] 👤 Client data for calculation:`, JSON.stringify(clientData, null, 2));
+    console.log(`[Quote] 📋 Deal data for calculation:`, JSON.stringify(dealData, null, 2));
 
-    const quote = calculateQuote(propertyData, clientData);
+    const quote = calculateQuote(propertyData, clientData, dealData);
 
     console.log(`[Quote] ✅ Quote calculated: $${quote.grandTotal}`);
 

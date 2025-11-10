@@ -75,7 +75,8 @@
       "Bash(vercel link:*)",
       "Bash(vercel env pull:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []

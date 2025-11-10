@@ -11,13 +11,17 @@ const baseSearches = [
     name: 'Title Search',
     cost: 39.49,
     condition: 'title_search_done', // Excluded if title_search_done = 'yes' in client data
-    excludeWhen: 'yes'
+    excludeWhen: 'yes',
+    dealCondition: 'agent_title_search', // Also excluded if agent did title search
+    dealExcludeWhen: 'Yes' // Note: HubSpot returns capitalized "Yes"
   },
   {
     name: 'Plan Image Search',
     cost: 40.85,
     condition: null, // Always included
-    excludeWhen: null
+    excludeWhen: null,
+    dealCondition: null,
+    dealExcludeWhen: null
   }
 ];
 
@@ -69,10 +73,11 @@ const conditionalSearches = [
  * Calculate quote based on property questionnaire data
  *
  * @param {Object} propertyData - Questionnaire answers from the deal
- * @param {Object} clientData - Client-specific data (e.g., title_search_done)
+ * @param {Object} clientData - Client-specific data (e.g., title_search_done from contact)
+ * @param {Object} dealData - Deal-specific data (e.g., agent_title_search from deal)
  * @returns {Object} Quote breakdown with total cost and itemized searches
  */
-export function calculateQuote(propertyData = {}, clientData = {}) {
+export function calculateQuote(propertyData = {}, clientData = {}, dealData = {}) {
   const quote = {
     baseSearches: [],
     conditionalSearches: [],
@@ -85,12 +90,23 @@ export function calculateQuote(propertyData = {}, clientData = {}) {
   // Calculate base searches
   baseSearches.forEach(search => {
     let isIncluded = true;
+    let exclusionReason = null;
 
-    // Check if this search should be excluded
+    // Check contact-level exclusion (e.g., title_search_done on contact)
     if (search.condition && search.excludeWhen) {
       const clientFieldValue = clientData[search.condition];
       if (clientFieldValue === search.excludeWhen) {
         isIncluded = false;
+        exclusionReason = `Excluded: ${search.condition} = ${clientFieldValue} (contact)`;
+      }
+    }
+
+    // Check deal-level exclusion (e.g., agent_title_search on deal)
+    if (isIncluded && search.dealCondition && search.dealExcludeWhen) {
+      const dealFieldValue = dealData[search.dealCondition];
+      if (dealFieldValue === search.dealExcludeWhen) {
+        isIncluded = false;
+        exclusionReason = `Excluded: ${search.dealCondition} = ${dealFieldValue} (agent completed)`;
       }
     }
 
@@ -114,7 +130,7 @@ export function calculateQuote(propertyData = {}, clientData = {}) {
         cost: 0,
         type: 'base',
         included: false,
-        reason: `Excluded: ${search.condition} = ${clientData[search.condition]}`
+        reason: exclusionReason
       });
     }
   });

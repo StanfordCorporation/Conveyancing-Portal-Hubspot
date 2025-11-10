@@ -155,6 +155,36 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
     };
   }
 
+  // Determine seller type by checking deal associations
+  let sellerType = 'primary'; // Default to primary
+  try {
+    const hubspotClient = (await import('../../integrations/hubspot/client.js')).default;
+    
+    // Get all deals associated with this contact
+    const dealsResponse = await hubspotClient.get(
+      `/crm/v4/objects/contacts/${contact.id}/associations/deals`
+    );
+    
+    if (dealsResponse.data.results && dealsResponse.data.results.length > 0) {
+      // Check the association type for the first deal
+      // If they're associated as type 4 (Additional Seller) to ANY deal, mark them as additional
+      const hasAdditionalSellerAssociation = dealsResponse.data.results.some(dealAssoc => {
+        const types = dealAssoc.associationTypes || [];
+        return types.some(t => t.typeId === 4 || t.typeId === '4');
+      });
+      
+      if (hasAdditionalSellerAssociation) {
+        sellerType = 'additional';
+        console.log(`[Auth] Contact ${contact.id} identified as additional seller`);
+      } else {
+        console.log(`[Auth] Contact ${contact.id} identified as primary seller`);
+      }
+    }
+  } catch (error) {
+    console.warn('[Auth] Could not determine seller type, defaulting to primary:', error.message);
+    // Default to 'primary' if fetch fails - more permissive
+  }
+
   return {
     success: true,
     user: {
@@ -163,7 +193,8 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
       lastname: contact.properties.lastname,
       email: contact.properties.email,
       phone: contact.properties.phone,
-      role: 'client'
+      role: 'client',
+      sellerType: sellerType  // Add seller type: 'primary' or 'additional'
     }
   };
 };

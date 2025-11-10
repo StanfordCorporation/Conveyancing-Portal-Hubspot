@@ -92,7 +92,8 @@ export const verifyOTP = async (req, res) => {
         userId: result.user.id,
         contactId: result.user.id,
         email: result.user.email,
-        role: result.user.role
+        role: result.user.role,
+        sellerType: result.user.sellerType  // 'primary' or 'additional' (clients only)
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
@@ -109,6 +110,7 @@ export const verifyOTP = async (req, res) => {
         email: result.user.email,
         phone: result.user.phone,
         role: result.user.role,
+        sellerType: result.user.sellerType,             // 'primary' or 'additional' (clients only)
         permissionLevel: result.user.permissionLevel,  // admin | view_all | standard (agents only)
         agencyId: result.user.agencyId                  // agency company ID (agents only)
       }

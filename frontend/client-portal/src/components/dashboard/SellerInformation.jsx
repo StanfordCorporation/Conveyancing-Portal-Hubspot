@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function SellerInformation({ primarySeller, additionalSeller, hasAdditional }) {
+export default function SellerInformation({ primarySeller, additionalSeller, hasAdditional, editMode, onChange }) {
   return (
     <div className="property-tile">
       <div className="tile-header">
@@ -12,16 +12,56 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
           <h4 className="seller-heading">Primary Seller</h4>
           <div className="seller-content">
             <div className="info-row">
-              <label className="field-label">Full Name</label>
-              <p className="field-value">{primarySeller?.fullName || 'N/A'}</p>
+              <label className="field-label">First Name</label>
+              {editMode ? (
+                <input
+                  type="text"
+                  className="field-input"
+                  value={primarySeller?.firstname || ''}
+                  onChange={(e) => onChange('primarySeller', 'firstname', e.target.value)}
+                />
+              ) : (
+                <p className="field-value">{primarySeller?.fullName?.split(' ')[0] || primarySeller?.firstname || 'N/A'}</p>
+              )}
+            </div>
+            <div className="info-row">
+              <label className="field-label">Last Name</label>
+              {editMode ? (
+                <input
+                  type="text"
+                  className="field-input"
+                  value={primarySeller?.lastname || ''}
+                  onChange={(e) => onChange('primarySeller', 'lastname', e.target.value)}
+                />
+              ) : (
+                <p className="field-value">{primarySeller?.fullName?.split(' ').slice(1).join(' ') || primarySeller?.lastname || 'N/A'}</p>
+              )}
             </div>
             <div className="info-row">
               <label className="field-label">Email Address</label>
-              <p className="field-value">{primarySeller?.email || 'N/A'}</p>
+              {editMode ? (
+                <input
+                  type="email"
+                  className="field-input"
+                  value={primarySeller?.email || ''}
+                  onChange={(e) => onChange('primarySeller', 'email', e.target.value)}
+                />
+              ) : (
+                <p className="field-value">{primarySeller?.email || 'N/A'}</p>
+              )}
             </div>
             <div className="info-row">
               <label className="field-label">Mobile</label>
-              <p className="field-value">{primarySeller?.phone || 'N/A'}</p>
+              {editMode ? (
+                <input
+                  type="tel"
+                  className="field-input"
+                  value={primarySeller?.phone || ''}
+                  onChange={(e) => onChange('primarySeller', 'phone', e.target.value)}
+                />
+              ) : (
+                <p className="field-value">{primarySeller?.phone || 'N/A'}</p>
+              )}
             </div>
           </div>
         </div>
@@ -32,16 +72,56 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
             <h4 className="seller-heading additional">Additional Seller</h4>
             <div className="seller-content">
               <div className="info-row">
-                <label className="field-label">Full Name</label>
-                <p className="field-value">{additionalSeller?.fullName || 'N/A'}</p>
+                <label className="field-label">First Name</label>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="field-input"
+                    value={additionalSeller?.firstname || ''}
+                    onChange={(e) => onChange('additionalSeller', 'firstname', e.target.value)}
+                  />
+                ) : (
+                  <p className="field-value">{additionalSeller?.fullName?.split(' ')[0] || additionalSeller?.firstname || 'N/A'}</p>
+                )}
+              </div>
+              <div className="info-row">
+                <label className="field-label">Last Name</label>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="field-input"
+                    value={additionalSeller?.lastname || ''}
+                    onChange={(e) => onChange('additionalSeller', 'lastname', e.target.value)}
+                  />
+                ) : (
+                  <p className="field-value">{additionalSeller?.fullName?.split(' ').slice(1).join(' ') || additionalSeller?.lastname || 'N/A'}</p>
+                )}
               </div>
               <div className="info-row">
                 <label className="field-label">Email Address</label>
-                <p className="field-value">{additionalSeller?.email || 'N/A'}</p>
+                {editMode ? (
+                  <input
+                    type="email"
+                    className="field-input"
+                    value={additionalSeller?.email || ''}
+                    onChange((e) => onChange('additionalSeller', 'email', e.target.value)}
+                  />
+                ) : (
+                  <p className="field-value">{additionalSeller?.email || 'N/A'}</p>
+                )}
               </div>
               <div className="info-row">
                 <label className="field-label">Mobile</label>
-                <p className="field-value">{additionalSeller?.phone || 'N/A'}</p>
+                {editMode ? (
+                  <input
+                    type="tel"
+                    className="field-input"
+                    value={additionalSeller?.phone || ''}
+                    onChange={(e) => onChange('additionalSeller', 'phone', e.target.value)}
+                  />
+                ) : (
+                  <p className="field-value">{additionalSeller?.phone || 'N/A'}</p>
+                )}
               </div>
             </div>
           </div>
