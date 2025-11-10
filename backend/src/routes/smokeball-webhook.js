@@ -16,6 +16,7 @@
  */
 
 import express from 'express';
+import crypto from 'crypto';
 import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import * as smokeballMatters from '../integrations/smokeball/matters.js';
 import * as smokeballTasks from '../integrations/smokeball/tasks.js';
@@ -542,7 +543,6 @@ router.get('/webhook/register', async (req, res) => {
  * Generate webhook key for signature verification
  */
 function generateWebhookKey() {
-  const crypto = require('crypto');
   return crypto.randomBytes(32).toString('hex');
 }
 
