@@ -545,6 +545,68 @@ router.get('/webhook/register', async (req, res) => {
 });
 
 /**
+ * GET /api/smokeball/webhook/list
+ * List all registered webhook subscriptions
+ */
+router.get('/webhook/list', async (req, res) => {
+  try {
+    console.log('[Smokeball Webhook] 📋 Listing webhook subscriptions...');
+
+    const webhooks = await smokeballMatters.listWebhooks();
+
+    console.log(`[Smokeball Webhook] ✅ Found ${webhooks.length} webhook subscriptions`);
+
+    return res.json({
+      success: true,
+      count: webhooks.length,
+      webhooks: webhooks.map(webhook => ({
+        id: webhook.id,
+        name: webhook.name,
+        eventTypes: webhook.eventTypes,
+        eventNotificationUrl: webhook.eventNotificationUrl,
+        created: webhook.created,
+      })),
+    });
+
+  } catch (error) {
+    console.error('[Smokeball Webhook] ❌ Failed to list webhooks:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/smokeball/webhook/:subscriptionId
+ * Delete a webhook subscription
+ */
+router.delete('/webhook/:subscriptionId', async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+
+    console.log('[Smokeball Webhook] 🗑️ Deleting webhook subscription:', subscriptionId);
+
+    await smokeballMatters.deleteWebhook(subscriptionId);
+
+    console.log('[Smokeball Webhook] ✅ Webhook subscription deleted');
+
+    return res.json({
+      success: true,
+      message: 'Webhook subscription deleted',
+      subscriptionId,
+    });
+
+  } catch (error) {
+    console.error('[Smokeball Webhook] ❌ Failed to delete webhook:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Generate webhook key for signature verification
  */
 function generateWebhookKey() {
