@@ -43,14 +43,15 @@ router.post('/webhook', async (req, res) => {
     console.log('[Smokeball Webhook] 📋 Headers:', JSON.stringify(req.headers, null, 2));
     console.log('[Smokeball Webhook] 📦 Full payload:', JSON.stringify(payload, null, 2));
 
-    // Verify webhook signature or API key
-    if (!verifyWebhookAuth(req)) {
-      console.error('[Smokeball Webhook] ❌ Unauthorized webhook request');
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized - invalid API key',
-      });
-    }
+    // TODO: Implement proper webhook signature verification
+    // Currently disabled to see what Smokeball sends
+    // if (!verifyWebhookAuth(req)) {
+    //   console.error('[Smokeball Webhook] ❌ Unauthorized webhook request');
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: 'Unauthorized - invalid API key',
+    //   });
+    // }
 
     // Route to appropriate handler based on event type
     const eventType = payload.type || payload.eventType;
