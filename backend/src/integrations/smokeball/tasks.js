@@ -26,7 +26,7 @@ export async function createTask(taskData) {
       matterId: taskData.matterId,
       title: taskData.title,
       description: taskData.description || null,
-      assignedTo: taskData.assignedTo || null,
+      staffId: taskData.assignedTo || null,  // Smokeball API expects 'staffId' not 'assignedTo'
       dueDate: taskData.dueDate || null,
       priority: taskData.priority || 'Normal',
       status: 'NotStarted',

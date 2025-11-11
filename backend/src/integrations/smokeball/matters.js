@@ -104,6 +104,48 @@ export async function getMatter(matterId) {
 }
 
 /**
+ * Convert lead to matter
+ * Changes isLead from true to false, which triggers matter number assignment
+ * 
+ * Note: Smokeball returns 202 Accepted (async processing). The actual matter number
+ * will be assigned asynchronously and captured via matter.converted webhook.
+ *
+ * @param {string} leadId - Lead UUID
+ * @param {string} matterTypeId - Matter type ID (must be type:1)
+ * @param {string} clientRole - Client role (e.g., 'Vendor')
+ * @returns {Promise<Object>} Conversion response (202 Accepted)
+ */
+export async function convertLeadToMatter(leadId, matterTypeId, clientRole) {
+  try {
+    console.log(`[Smokeball Matters] 🔄 Converting lead to matter: ${leadId}`);
+    console.log(`[Smokeball Matters] Matter Type ID: ${matterTypeId}`);
+    console.log(`[Smokeball Matters] Client Role: ${clientRole}`);
+
+    // Payload must include matterTypeId, clientRole, and isLead=false
+    const payload = {
+      matterTypeId,
+      clientRole,
+      isLead: false,
+    };
+
+    const response = await client.patch(
+      SMOKEBALL_API.endpoints.matter(leadId),
+      payload
+    );
+
+    console.log('[Smokeball Matters] ✅ Lead conversion initiated (202 Accepted)');
+    console.log('[Smokeball Matters] 📋 Matter number will be assigned asynchronously');
+    console.log('[Smokeball Matters] 📨 matter.converted webhook will fire when complete');
+
+    return response;
+
+  } catch (error) {
+    console.error('[Smokeball Matters] ❌ Error converting lead to matter:', error.message);
+    throw error;
+  }
+}
+
+/**
  * Update matter details
  *
  * @param {string} matterId - Matter UUID
@@ -361,6 +403,7 @@ export async function deleteWebhook(subscriptionId) {
 
 export default {
   createLead,
+  convertLeadToMatter,
   getMatter,
   updateMatter,
   searchMatters,

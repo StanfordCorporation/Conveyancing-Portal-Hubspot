@@ -14,6 +14,8 @@ import * as filesIntegration from '../integrations/hubspot/files.js';
 import { getAllHubSpotProperties, getAllMappings, getFieldMapping } from '../utils/questionnaireHelper.js';
 import { shouldShowToClient } from '../config/stageHelpers.js';
 import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
+import * as smokeballMatters from '../integrations/smokeball/matters.js';
+import * as smokeballMatterTypes from '../integrations/smokeball/matter-types.js';
 
 const router = express.Router();
 
@@ -1175,6 +1177,68 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
       } catch (error) {
         console.error(`[Deal Stage] ⚠️  Error calculating searches, skipping search updates:`, error.message);
         // Continue with stage update even if search calculation fails
+      }
+
+      // ==================================================================
+      // CONVERT SMOKEBALL LEAD TO MATTER (Quote Accepted)
+      // ==================================================================
+      try {
+        console.log(`[Deal Stage] 🎯 Quote accepted - converting Smokeball lead to matter`);
+
+        // Get lead_uid and property address from deal
+        const leadDeal = await dealsIntegration.getDeal(dealId, ['lead_uid', 'property_address']);
+        const leadUid = leadDeal.properties.lead_uid;
+        const propertyAddress = leadDeal.properties.property_address;
+
+        if (!leadUid) {
+          console.warn(`[Deal Stage] ⚠️  No lead_uid found - skipping Smokeball conversion`);
+        } else {
+          console.log(`[Deal Stage] 📋 Lead UID: ${leadUid}`);
+
+          // Extract state from property address
+          const stateMatch = propertyAddress?.match(/(NSW|QLD|VIC|SA|WA|TAS|NT|ACT)/i);
+          if (!stateMatch) {
+            throw new Error(`Could not extract state from address: ${propertyAddress}`);
+          }
+
+          const stateCode = stateMatch[1].toUpperCase();
+          const stateMap = {
+            'NSW': 'New South Wales',
+            'QLD': 'Queensland',
+            'VIC': 'Victoria',
+            'SA': 'South Australia',
+            'WA': 'Western Australia',
+            'TAS': 'Tasmania',
+            'NT': 'Northern Territory',
+            'ACT': 'Australian Capital Territory'
+          };
+          const stateName = stateMap[stateCode];
+
+          console.log(`[Deal Stage] 🗺️  State: ${stateName} (${stateCode})`);
+
+          // Get matter type dynamically (type:1 for Sale)
+          const matterType = await smokeballMatterTypes.findMatterType(stateName, 'Conveyancing', 'Sale');
+          
+          if (!matterType) {
+            throw new Error(`Could not find matter type for Conveyancing > Sale in ${stateName}`);
+          }
+
+          console.log(`[Deal Stage] ✅ Matter Type ID: ${matterType.id}`);
+          console.log(`[Deal Stage] ✅ Client Role: ${matterType.clientRole}`);
+
+          // Convert lead to matter
+          await smokeballMatters.convertLeadToMatter(leadUid, matterType.id, matterType.clientRole);
+
+          console.log(`[Deal Stage] ✅ Lead conversion initiated in Smokeball`);
+          console.log(`[Deal Stage] 📨 Awaiting matter.converted webhook for matter number`);
+
+          // Update HubSpot to flag conversion initiated
+          updatePayload.smokeball_conversion_initiated = new Date().toISOString();
+        }
+
+      } catch (smokeballError) {
+        console.error(`[Deal Stage] ⚠️  Smokeball conversion error:`, smokeballError.message);
+        // Don't fail the whole stage update if Smokeball conversion fails
       }
     }
 
