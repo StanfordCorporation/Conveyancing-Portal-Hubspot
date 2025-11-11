@@ -389,6 +389,8 @@ router.post('/create-signing-session', async (req, res) => {
 });
 
 // POST /api/docusign/envelope-status
+// DEPRECATED: Using DocuSign webhooks instead of polling
+// This endpoint is kept for backward compatibility but should not be used
 router.post('/envelope-status', async (req, res) => {
   try {
     const { envelopeId, dealId } = req.body;
@@ -397,7 +399,8 @@ router.post('/envelope-status', async (req, res) => {
       return res.status(400).json({ error: 'Envelope ID is required' });
     }
 
-    console.log(`[DocuSign Route] Getting envelope status: ${envelopeId}`);
+    console.log(`[DocuSign Route] ⚠️ DEPRECATED: Getting envelope status via API polling: ${envelopeId}`);
+    console.log(`[DocuSign Route] ⚠️ Consider using DocuSign webhooks for real-time updates`);
 
     // Get JWT access token automatically
     const accessToken = await getAccessToken();

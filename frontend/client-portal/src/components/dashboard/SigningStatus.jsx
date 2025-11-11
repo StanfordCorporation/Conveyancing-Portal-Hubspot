@@ -36,9 +36,10 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
       if (response.data.hasEnvelope) {
         console.log('[SigningStatus] Found existing envelope:', response.data.envelopeId);
         setEnvelopeId(response.data.envelopeId);
-        
-        // Check the current status of the existing envelope
-        await checkEnvelopeStatus(response.data.envelopeId);
+
+        // TODO: Status updates will come via DocuSign webhooks
+        // await checkEnvelopeStatus(response.data.envelopeId);
+        setLoading(false);
       } else {
         console.log('[SigningStatus] No existing envelope - ready to create one');
         setLoading(false);
@@ -104,10 +105,12 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
         const envId = response.data.envelopeId;
         setEnvelopeId(envId);
         
-        // If this was an existing envelope, check its status
+        // If this was an existing envelope, status will be updated via webhook
         if (response.data.existingEnvelope) {
-          console.log('[SigningStatus] Using existing envelope, checking status...');
-          await checkEnvelopeStatus(envId);
+          console.log('[SigningStatus] Using existing envelope. Status updates via webhook.');
+          // TODO: Status updates will come via DocuSign webhooks
+          // await checkEnvelopeStatus(envId);
+          setLoading(false);
         } else {
           // New envelope created
           const additionalSigners = response.data.additionalSigners || [];
@@ -130,6 +133,10 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
     }
   };
 
+  // COMMENTED OUT: Using DocuSign webhooks instead of API polling
+  // DocuSign webhooks will update HubSpot deal properties directly
+  // Frontend will fetch updated status from HubSpot when needed
+  /*
   const checkEnvelopeStatus = async (envId) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/docusign/envelope-status`, {
@@ -141,7 +148,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
 
       // Find signers from the response (or use stored signers if available)
       let signers = response.data.recipients?.signers || [];
-      
+
       // If no signers in response, try to get from stored data
       if (signers.length === 0 && response.data.storedSigners) {
         signers = response.data.storedSigners.map(s => ({
@@ -151,14 +158,14 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
           routingOrder: s.routingOrder
         }));
       }
-      
+
       // Normalize email for comparison (lowercase, trim)
       const normalizedContactEmail = contactEmail?.toLowerCase()?.trim();
-      
-      const currentSigner = signers.find(s => 
+
+      const currentSigner = signers.find(s =>
         s.email?.toLowerCase()?.trim() === normalizedContactEmail
       );
-      
+
       const allSigners = signers.map(s => ({
         name: s.name,
         email: s.email,
@@ -174,7 +181,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
         });
       } else if (currentSigner.status === 'completed') {
         // This signer already completed
-        const waitingFor = signers.filter(s => 
+        const waitingFor = signers.filter(s =>
           s.status !== 'completed' && parseInt(s.routingOrder) > parseInt(currentSigner.routingOrder)
         );
 
@@ -204,7 +211,7 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
         });
       } else {
         // Waiting for previous signers
-        const previousSigners = signers.filter(s => 
+        const previousSigners = signers.filter(s =>
           parseInt(s.routingOrder) < parseInt(currentSigner.routingOrder) &&
           s.status !== 'completed'
         );
@@ -226,15 +233,17 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
       setLoading(false);
     }
   };
+  */
 
   const handleSigningComplete = (completedEnvelopeId) => {
     console.log('[SigningStatus] Signing completed:', completedEnvelopeId);
-    
+
+    // TODO: Status updates will come via DocuSign webhooks
     // Refresh status to show "waiting for others" message
-    if (envelopeId || completedEnvelopeId) {
-      checkEnvelopeStatus(envelopeId || completedEnvelopeId);
-    }
-    
+    // if (envelopeId || completedEnvelopeId) {
+    //   checkEnvelopeStatus(envelopeId || completedEnvelopeId);
+    // }
+
     if (onComplete) {
       onComplete(completedEnvelopeId);
     }
