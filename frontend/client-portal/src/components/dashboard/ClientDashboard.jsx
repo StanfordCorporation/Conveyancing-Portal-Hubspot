@@ -798,6 +798,10 @@ export default function ClientDashboard() {
                   dealId={currentProperty.id}
                   contactEmail={clientData.email}
                   sellers={propertyDetailsByDeal[currentProperty.id]}
+                  envelopeStatusFromHubSpot={{
+                    envelope_status: currentProperty.envelopeStatus,
+                    recipient_status: currentProperty.recipientStatus
+                  }}
                   onComplete={(envelopeId) => {
                     console.log('[Dashboard] 🎉 Signing completed for deal:', currentProperty.id);
                     console.log('[Dashboard] 📋 Envelope ID:', envelopeId);

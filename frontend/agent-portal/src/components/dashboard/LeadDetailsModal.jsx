@@ -1,9 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Home, FileText, Clock, Paperclip, StickyNote } from 'lucide-react';
 import { format } from 'date-fns';
+import { agentApi } from '../../services/api';
+import useQuestionnaireSchema from '../../hooks/useQuestionnaireSchema';
 
 export default function LeadDetailsModal({ isOpen, onClose, deal }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [timeline, setTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState(null);
+
+  // Fetch questionnaire schema for dynamic rendering
+  const { schema, loading: schemaLoading, error: schemaError } = useQuestionnaireSchema();
+
+  // Helper function to check if a conditional field should be displayed
+  const shouldShowConditionalField = (question, deal) => {
+    if (!question.conditional || !question.conditional_on) return true;
+    
+    const parentField = question.conditional_on.question;
+    const requiredValue = question.conditional_on.value;
+    
+    // Get the parent field's HubSpot property name
+    const parentQuestion = schema?.sections
+      .flatMap(s => s.questions)
+      .find(q => q.form_field_name === parentField);
+    
+    if (!parentQuestion) return true;
+    
+    const parentPropertyName = parentQuestion.HubSpot_Property_Name;
+    const actualValue = deal?.[parentPropertyName];
+    
+    // Compare values (case-insensitive for enumerations)
+    if (typeof actualValue === 'string' && typeof requiredValue === 'string') {
+      return actualValue.toLowerCase() === requiredValue.toLowerCase();
+    }
+    
+    return actualValue === requiredValue;
+  };
+
+  // Helper function to format field values for display
+  const formatFieldValue = (value, fieldType) => {
+    if (value === null || value === undefined || value === '') {
+      return 'Not answered';
+    }
+    
+    // Format dates
+    if (fieldType === 'date') {
+      try {
+        return format(new Date(value), 'MMM dd, yyyy');
+      } catch {
+        return value;
+      }
+    }
+    
+    // File uploads - show link or file ID
+    if (fieldType === 'file') {
+      return value ? 'File uploaded' : 'Not answered';
+    }
+    
+    return value;
+  };
+
+  // Fetch timeline when timeline tab is active
+  useEffect(() => {
+    if (activeTab === 'timeline' && deal && isOpen) {
+      fetchTimeline();
+    }
+  }, [activeTab, deal?.id, isOpen]);
+
+  const fetchTimeline = async () => {
+    if (!deal?.id) return;
+    
+    setTimelineLoading(true);
+    setTimelineError(null);
+    
+    try {
+      console.log('[LeadDetailsModal] Fetching timeline for deal:', deal.id);
+      const response = await agentApi.getTimeline(deal.id);
+      
+      if (response.data?.timeline) {
+        setTimeline(response.data.timeline);
+        console.log('[LeadDetailsModal] Timeline loaded:', response.data.timeline.length, 'events');
+      }
+    } catch (error) {
+      console.error('[LeadDetailsModal] Error fetching timeline:', error);
+      setTimelineError(error.response?.data?.message || 'Failed to load timeline');
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
 
   if (!isOpen || !deal) return null;
 
@@ -134,120 +219,97 @@ export default function LeadDetailsModal({ isOpen, onClose, deal }) {
             </div>
           )}
 
-          {/* Questionnaire Tab */}
+          {/* Questionnaire Tab - Dynamic Schema-Driven Rendering */}
           {activeTab === 'questionnaire' && (
             <div className="tab-content">
-              <div className="questionnaire-summary">
-                <div className="summary-section">
-                  <h4>Section 1: Title Details</h4>
-                  <div className="summary-item">
-                    <span>Body Corporate:</span>
-                    <span>{deal.body_corporate || 'Not answered'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span>Registered Encumbrances:</span>
-                    <span>{deal.registered_encumbrances || 'Not answered'}</span>
-                  </div>
-                  {deal.registered_encumbrance_details && (
-                    <div className="summary-item full">
-                      <span>Details:</span>
-                      <span>{deal.registered_encumbrance_details}</span>
-                    </div>
-                  )}
+              {schemaLoading ? (
+                <div className="questionnaire-loading">
+                  <p>Loading questionnaire schema...</p>
                 </div>
+              ) : schemaError ? (
+                <div className="questionnaire-error">
+                  <p>⚠️ Error loading questionnaire schema</p>
+                </div>
+              ) : !schema?.sections ? (
+                <div className="questionnaire-error">
+                  <p>No questionnaire schema available</p>
+                </div>
+              ) : (
+                <div className="questionnaire-summary">
+                  {schema.sections.map((section) => {
+                    // Filter questions to only show visible ones (non-conditional or conditionally visible)
+                    const visibleQuestions = section.questions.filter(question => 
+                      shouldShowConditionalField(question, deal)
+                    );
 
-                <div className="summary-section">
-                  <h4>Section 2: Tenancy</h4>
-                  <div className="summary-item">
-                    <span>Tenancy Agreement:</span>
-                    <span>{deal.tenancy_agreement || 'Not answered'}</span>
-                  </div>
-                  {deal.tenancy_agreement === 'Yes' && (
-                    <>
-                      <div className="summary-item">
-                        <span>Lease Start:</span>
-                        <span>{deal.tenancy_agreement_lease_start_date || 'N/A'}</span>
+                    // Skip empty sections
+                    if (visibleQuestions.length === 0) return null;
+
+                    return (
+                      <div key={section.section_number} className="summary-section">
+                        <h4>Section {section.section_number}: {section.section_title}</h4>
+                        {visibleQuestions.map((question) => {
+                          const propertyName = question.HubSpot_Property_Name;
+                          const value = deal?.[propertyName];
+                          const displayValue = formatFieldValue(value, question.form_field_type);
+                          
+                          // For textarea fields or details fields, use full-width display
+                          const isFullWidth = question.form_field_type === 'textarea' || 
+                                             question.form_field_name.includes('_details');
+
+                          return (
+                            <div 
+                              key={question.form_field_name} 
+                              className={`summary-item ${isFullWidth ? 'full' : ''}`}
+                            >
+                              <span>{question.HubSpot_Property_Label || question.form_question}:</span>
+                              <span>{displayValue}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="summary-item">
-                        <span>Lease End:</span>
-                        <span>{deal.tenancy_agreement_lease_end_date || 'N/A'}</span>
-                      </div>
-                    </>
-                  )}
+                    );
+                  })}
                 </div>
-
-                <div className="summary-section">
-                  <h4>Section 3: Environment</h4>
-                  <div className="summary-item">
-                    <span>Environmental Register:</span>
-                    <span>{deal.environmental_register || 'Not answered'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span>Tree Orders:</span>
-                    <span>{deal.tree_order || 'Not answered'}</span>
-                  </div>
-                </div>
-
-                <div className="summary-section">
-                  <h4>Section 4: Buildings</h4>
-                  <div className="summary-item">
-                    <span>Swimming Pool:</span>
-                    <span>{deal.swimming_pool || 'Not answered'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span>Owner Builder:</span>
-                    <span>{deal.owner_builder || 'Not answered'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span>Enforcement Notice:</span>
-                    <span>{deal.enforcement_notice || 'Not answered'}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* Timeline Tab */}
           {activeTab === 'timeline' && (
             <div className="tab-content">
-              <div className="timeline">
-                <div className="timeline-item">
-                  <div className="timeline-dot"></div>
-                  <div className="timeline-content">
-                    <h5>Lead Created</h5>
-                    <p>Created by agent</p>
-                    <span className="timeline-date">
-                      {deal.createdate ? format(new Date(deal.createdate), 'MMM dd, yyyy HH:mm') : 'N/A'}
-                    </span>
-                  </div>
+              {timelineLoading ? (
+                <div className="timeline-loading">
+                  <div className="spinner"></div>
+                  <p>Loading timeline...</p>
                 </div>
-                
-                {deal.hs_lastmodifieddate && (
-                  <div className="timeline-item">
-                    <div className="timeline-dot"></div>
-                    <div className="timeline-content">
-                      <h5>Last Updated</h5>
-                      <p>Information modified</p>
-                      <span className="timeline-date">
-                        {format(new Date(deal.hs_lastmodifieddate), 'MMM dd, yyyy HH:mm')}
-                      </span>
+              ) : timelineError ? (
+                <div className="timeline-error">
+                  <p className="error-message">⚠️ {timelineError}</p>
+                  <button onClick={fetchTimeline} className="retry-button">
+                    Retry
+                  </button>
+                </div>
+              ) : timeline.length === 0 ? (
+                <div className="timeline-empty">
+                  <p>No timeline events found</p>
+                </div>
+              ) : (
+                <div className="timeline">
+                  {timeline.map((event, index) => (
+                    <div key={index} className="timeline-item">
+                      <div className="timeline-dot"></div>
+                      <div className="timeline-content">
+                        <h5>{event.title}</h5>
+                        <p>{event.description}</p>
+                        <span className="timeline-date">
+                          {event.timestamp ? format(new Date(event.timestamp), 'MMM dd, yyyy HH:mm') : 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
-                
-                {deal.closedate && (
-                  <div className="timeline-item">
-                    <div className="timeline-dot"></div>
-                    <div className="timeline-content">
-                      <h5>Deal Closed</h5>
-                      <p>Status: {deal.dealstage === 'closedwon' ? 'Won' : 'Lost'}</p>
-                      <span className="timeline-date">
-                        {format(new Date(deal.closedate), 'MMM dd, yyyy HH:mm')}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

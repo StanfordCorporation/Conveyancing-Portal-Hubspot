@@ -5,7 +5,7 @@ import './status-tracking.css';
 
 export default function StatusTracking({ deal }) {
   const stageName = getStageName(deal.status);
-  const nextStep = getClientNextStep(deal.status);
+  const stageDescription = getClientNextStep(deal.status); // Returns full description now
   const currentStageIndex = POST_WORKFLOW_STAGES.indexOf(deal.status);
 
   // Timeline stages for visual display
@@ -16,7 +16,8 @@ export default function StatusTracking({ deal }) {
     { id: '1904359901', label: 'Searches Returned', icon: FileText },
     { id: '1995356644', label: 'Form 2 Drafting', icon: FileText },
     { id: '1995278813', label: 'Conveyancer Review', icon: FileText },
-    { id: '1904359902', label: 'Form 2 With Client', icon: Home }
+    { id: '1904359902', label: 'Form 2 With Client', icon: Home },
+    { id: 'closedwon', label: 'Form 2 Complete', icon: CheckCircle }
   ];
 
   return (
@@ -43,9 +44,9 @@ export default function StatusTracking({ deal }) {
       <div className="status-next-step-card">
         <div className="next-step-header">
           <Clock size={24} />
-          <h4>What's Next?</h4>
+          <h4>Next Steps</h4>
         </div>
-        <p className="next-step-text">{nextStep}</p>
+        <p className="next-step-text">{stageDescription}</p>
       </div>
 
       {/* Progress Timeline */}

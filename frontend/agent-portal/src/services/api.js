@@ -98,6 +98,14 @@ export const agentApi = {
   },
 
   /**
+   * Get timeline for a deal
+   */
+  getTimeline: (dealId) => {
+    console.log('[API] Fetching timeline for deal:', dealId);
+    return api.get(`/timeline/${dealId}`);
+  },
+
+  /**
    * Update lead
    */
   updateLead: (leadId, updates) => {

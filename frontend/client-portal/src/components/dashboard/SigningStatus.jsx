@@ -8,12 +8,18 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 /**
  * SigningStatus Component
  * 
- * Shows signing status for multi-signer workflows
+ * Shows signing status for multi-signer workflows based on HubSpot data (updated via DocuSign webhooks)
  * - If this signer's turn: Show embedded signing
  * - If waiting for others: Show waiting message
  * - If all complete: Show completion message
+ * 
+ * @param {string} dealId - HubSpot deal ID
+ * @param {string} contactEmail - Current user's email
+ * @param {object} sellers - Seller information (primarySeller, additionalSeller)
+ * @param {object} envelopeStatusFromHubSpot - Envelope status from HubSpot (updated by webhooks)
+ * @param {function} onComplete - Callback when signing is complete
  */
-export default function SigningStatus({ dealId, contactEmail, sellers, onComplete }) {
+export default function SigningStatus({ dealId, contactEmail, sellers, envelopeStatusFromHubSpot, onComplete }) {
   const [loading, setLoading] = useState(true);
   const [envelopeId, setEnvelopeId] = useState(null);
   const [signingStatus, setSigningStatus] = useState(null);
@@ -21,32 +27,109 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
 
   useEffect(() => {
     if (dealId && contactEmail) {
-      checkForExistingEnvelope();
+      processEnvelopeStatus();
     }
-  }, [dealId, contactEmail]);
+  }, [dealId, contactEmail, envelopeStatusFromHubSpot]);
 
-  // Check if envelope already exists in HubSpot (called on component mount)
-  const checkForExistingEnvelope = async () => {
+  // Process envelope status from HubSpot (updated by DocuSign webhooks)
+  const processEnvelopeStatus = () => {
     try {
       setLoading(true);
-      console.log('[SigningStatus] Checking for existing envelope for deal:', dealId);
+      console.log('[SigningStatus] 🔄 Processing envelope status from HubSpot...');
+      console.log('[SigningStatus] 📊 Envelope data:', envelopeStatusFromHubSpot);
 
-      const response = await axios.get(`${API_BASE_URL}/docusign/check-envelope/${dealId}`);
-
-      if (response.data.hasEnvelope) {
-        console.log('[SigningStatus] Found existing envelope:', response.data.envelopeId);
-        setEnvelopeId(response.data.envelopeId);
-
-        // TODO: Status updates will come via DocuSign webhooks
-        // await checkEnvelopeStatus(response.data.envelopeId);
+      // If no envelope status from HubSpot, show "Start Signing" button
+      if (!envelopeStatusFromHubSpot?.envelope_status) {
+        console.log('[SigningStatus] ℹ️ No envelope status - ready to create envelope');
+        setEnvelopeId(null);
+        setSigningStatus(null);
         setLoading(false);
-      } else {
-        console.log('[SigningStatus] No existing envelope - ready to create one');
-        setLoading(false);
+        return;
       }
+
+      const { envelope_status, recipient_status } = envelopeStatusFromHubSpot;
+      console.log('[SigningStatus] ✍️ Envelope status:', envelope_status);
+      console.log('[SigningStatus] 👥 Recipients:', recipient_status);
+
+      // Normalize email for comparison
+      const normalizedContactEmail = contactEmail?.toLowerCase()?.trim();
+
+      // Find current signer in recipient_status array
+      const currentSigner = recipient_status?.find(r => 
+        r.email?.toLowerCase()?.trim() === normalizedContactEmail
+      );
+
+      if (!currentSigner) {
+        console.log('[SigningStatus] ⚠️ Current user not found in recipient list');
+        setSigningStatus({
+          canSign: false,
+          message: 'You are not a signer on this document.',
+          allSigners: recipient_status || []
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log('[SigningStatus] 👤 Current signer status:', currentSigner.status);
+
+      // Check if all signers have completed
+      const allCompleted = recipient_status?.every(r => r.status === 'completed');
+
+      if (allCompleted && envelope_status === 'completed') {
+        console.log('[SigningStatus] ✅ All signers completed!');
+        setSigningStatus({
+          canSign: false,
+          isCompleted: true,
+          allComplete: true,
+          message: 'All signers have completed signing this document.',
+          allSigners: recipient_status
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Current signer has completed - waiting for others
+      if (currentSigner.status === 'completed') {
+        const waitingFor = recipient_status?.filter(r => r.status !== 'completed') || [];
+        console.log('[SigningStatus] ⏳ Current signer completed, waiting for:', waitingFor.map(r => r.email));
+        
+        setSigningStatus({
+          canSign: false,
+          isCompleted: true,
+          waitingFor: waitingFor.map(r => r.email),
+          message: waitingFor.length > 0
+            ? `You have signed this document. Waiting for ${waitingFor.map(r => r.email).join(', ')} to sign.`
+            : 'You have signed this document.',
+          allSigners: recipient_status
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Current signer needs to sign (status: sent, delivered, or similar)
+      if (currentSigner.status === 'sent' || currentSigner.status === 'delivered') {
+        console.log('[SigningStatus] 📝 Ready for current signer to sign');
+        setSigningStatus({
+          canSign: true,
+          message: 'Ready for your signature',
+          allSigners: recipient_status
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Default: waiting state
+      console.log('[SigningStatus] ⏳ Waiting state');
+      setSigningStatus({
+        canSign: false,
+        message: 'Processing signature request...',
+        allSigners: recipient_status
+      });
+      setLoading(false);
+
     } catch (err) {
-      console.error('[SigningStatus] Error checking for existing envelope:', err);
-      setError(err.response?.data?.message || err.message);
+      console.error('[SigningStatus] ❌ Error processing envelope status:', err);
+      setError(err.message);
       setLoading(false);
     }
   };
@@ -376,12 +459,11 @@ export default function SigningStatus({ dealId, contactEmail, sellers, onComplet
               <h4>Signing Progress:</h4>
               <div className="signers-list">
                 {signingStatus.allSigners
-                  .sort((a, b) => parseInt(a.order) - parseInt(b.order))
                   .map((signer, idx) => (
                     <div key={idx} className={`signer-item signer-${signer.status}`}>
-                      <div className="signer-number">{signer.order}</div>
+                      <div className="signer-number">{idx + 1}</div>
                       <div className="signer-info">
-                        <div className="signer-name">{signer.name}</div>
+                        <div className="signer-name">{signer.email}</div>
                         <div className="signer-status">
                           {signer.status === 'completed' ? '✅ Signed' :
                            signer.status === 'sent' || signer.status === 'delivered' ? '📝 Ready to sign' :
