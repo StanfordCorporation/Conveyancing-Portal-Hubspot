@@ -1317,38 +1317,24 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
           'DES: Heritage Search': 'des_heritage_search'
         };
 
-        // Initialize all search properties to "No" / "Not Required"
-        const searchProperties = {
-          cms_and_dealing_certificate: "No",
-          cms_and_dealing_certificate_status: "Not Required",
-          des_contaminated_land_search: "No",
-          des_contaminated_land_search_status: "Not Required",
-          des_heritage_search: "No",
-          des_heritage_search_status: "Not Required",
-          tmr_search: "No",
-          tmr_search_status: "Not Required",
-          information_certificate: "No",
-          information_certificate_status: "Not Required",
-          plan_image_search: "No",
-          plan_image_search_status: "Not Required",
-          title_search: "No",
-          title_search_status: "Not Required"
-        };
+        // Initialize search properties object (only set included searches)
+        const searchProperties = {};
 
-        // Update only the searches that are included in the quote
+        // Set search properties based on quote breakdown
         quote.breakdown.forEach(search => {
+          const propertyName = searchNameToPropertyMap[search.name];
+          if (!propertyName) return;
+
           if (search.included) {
-            const propertyName = searchNameToPropertyMap[search.name];
-            if (propertyName) {
-              searchProperties[propertyName] = "Yes";
-              searchProperties[`${propertyName}_status`] = "Ordered";
-              console.log(`[Deal Stage]   ✓ ${search.name} → ${propertyName} = Yes/Ordered`);
-            }
+            // Included searches: set to Yes/Ordered
+            searchProperties[propertyName] = "Yes";
+            searchProperties[`${propertyName}_status`] = "Ordered";
+            console.log(`[Deal Stage]   ✓ ${search.name} → ${propertyName} = Yes/Ordered`);
           } else {
-            const propertyName = searchNameToPropertyMap[search.name];
-            if (propertyName) {
-              console.log(`[Deal Stage]   ✗ ${search.name} → ${propertyName} = No/Not Required (${search.reason})`);
-            }
+            // Excluded searches: only set status to "Not Ordered"
+            // Don't set the main property (e.g., tmr_search) as it only allows "Yes"
+            searchProperties[`${propertyName}_status`] = "Not Ordered";
+            console.log(`[Deal Stage]   ✗ ${search.name} → ${propertyName}_status = Not Ordered (${search.reason})`);
           }
         });
 
