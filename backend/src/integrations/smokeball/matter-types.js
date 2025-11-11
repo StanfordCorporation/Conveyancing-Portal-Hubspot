@@ -39,20 +39,20 @@ export async function getMatterTypesByState(state, forceRefresh = false) {
 
     console.log(`[Smokeball Matter Types] 🔄 Fetching matter types for ${stateFullName}`);
 
-    // Smokeball API doesn't support query parameters - fetch ALL and filter client-side
-    const response = await client.get(SMOKEBALL_API.endpoints.matterTypes);
+    // Fetch matter types with type=1 filter (only matter types usable for lead/matter creation)
+    // and location filter for the specific state
+    const stateCode = getStateCode(stateFullName);
+    const queryParams = {
+      type: 1,  // Only fetch matter types that can be used for creating leads/matters
+      location: stateCode,  // Filter by state code (e.g., QLD, NSW)
+    };
+
+    const response = await client.get(SMOKEBALL_API.endpoints.matterTypes, queryParams);
 
     // Smokeball API wraps responses in 'value' field (OData format)
-    const allMatterTypes = Array.isArray(response) ? response : response.value || [];
+    const stateMatterTypes = Array.isArray(response) ? response : response.value || [];
 
-    console.log(`[Smokeball Matter Types] 📊 Total matter types fetched: ${allMatterTypes.length}`);
-
-    // Filter by state using 'location' field (state CODE like "QLD", not full name)
-    const stateCode = getStateCode(stateFullName);
-    const stateMatterTypes = allMatterTypes.filter(mt => {
-      // Smokeball uses 'location' field with state CODE (e.g., "QLD", "NSW")
-      return mt.location === stateCode || mt.id?.endsWith(`_${stateCode}`);
-    });
+    console.log(`[Smokeball Matter Types] 📊 Total matter types fetched: ${stateMatterTypes.length}`);
 
     // Update cache
     matterTypesCache[cacheKey] = stateMatterTypes;

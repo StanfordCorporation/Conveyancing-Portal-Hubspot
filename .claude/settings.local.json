@@ -78,7 +78,8 @@
       "Bash(rm:*)",
       "Bash(git push)",
       "Bash(git push:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(timeout 30 node:*)"
     ],
     "deny": [],
     "ask": []
