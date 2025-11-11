@@ -21,6 +21,7 @@ import * as associationsIntegration from '../../integrations/hubspot/association
 import * as smokeballMatters from '../../integrations/smokeball/matters.js';
 import * as smokeballContacts from '../../integrations/smokeball/contacts.js';
 import * as smokeballStaff from '../../integrations/smokeball/staff.js';
+import * as smokeballMatterTypes from '../../integrations/smokeball/matter-types.js';
 import { extractStateFromAddress } from '../../utils/stateExtractor.js';
 
 /**
@@ -61,27 +62,18 @@ export async function createSmokeballLeadFromDeal(dealId) {
     console.log(`[Smokeball Lead Workflow] 🗺️ State: ${state}`);
 
     // ========================================
-    // STEP 3: Get matter type ID for Conveyancing > Sale
+    // STEP 3: Get matter type ID for Conveyancing > Sale dynamically
     // ========================================
     // Client disclosure is ALWAYS for selling property (Vendor/Sale)
-    // Hardcoded matter type IDs by state:
-    const MATTER_TYPE_IDS = {
-      'Queensland': '0623643a-48a4-41d7-8c91-d35915b291cd_QLD',
-      'New South Wales': '0623643a-48a4-41d7-8c91-d35915b291cd_NSW',
-      'Victoria': '0623643a-48a4-41d7-8c91-d35915b291cd_VIC',
-      'South Australia': '0623643a-48a4-41d7-8c91-d35915b291cd_SA',
-      'Western Australia': '0623643a-48a4-41d7-8c91-d35915b291cd_WA',
-      'Tasmania': '0623643a-48a4-41d7-8c91-d35915b291cd_TAS',
-      'Northern Territory': '0623643a-48a4-41d7-8c91-d35915b291cd_NT',
-      'Australian Capital Territory': '0623643a-48a4-41d7-8c91-d35915b291cd_ACT',
-    };
-
-    const matterTypeId = MATTER_TYPE_IDS[state];
-    if (!matterTypeId) {
-      throw new Error(`No matter type configured for state: ${state}`);
+    console.log(`[Smokeball Lead Workflow] 🔍 Looking up matter type for ${state}...`);
+    
+    const matterType = await smokeballMatterTypes.findMatterType(state, 'Conveyancing', 'Sale');
+    if (!matterType) {
+      throw new Error(`Could not find matter type for Conveyancing > Sale in state: ${state}`);
     }
 
-    const clientRole = 'Vendor'; // Always Vendor for Sale
+    const matterTypeId = matterType.id;
+    const clientRole = matterType.clientRole;
 
     console.log(`[Smokeball Lead Workflow] ✅ Matter Type: Conveyancing > Sale`);
     console.log(`[Smokeball Lead Workflow] ✅ Matter Type ID: ${matterTypeId}`);
