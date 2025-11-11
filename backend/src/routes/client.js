@@ -1414,9 +1414,6 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
 
           console.log(`[Deal Stage] ✅ Lead conversion initiated in Smokeball`);
           console.log(`[Deal Stage] 📨 Awaiting matter.converted webhook for matter number`);
-
-          // Update HubSpot to flag conversion initiated
-          updatePayload.smokeball_conversion_initiated = new Date().toISOString();
         }
 
       } catch (smokeballError) {
