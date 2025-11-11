@@ -209,11 +209,14 @@ export const searchContactsByCompany = async (companyId) => {
  * @returns {Object|null} First matching contact object with all requested properties or null
  * @throws {Error} If API request fails
  */
-export const searchContactByEmailOrPhone = async (email, phone) => {
+export const searchContactByEmailOrPhone = async (email, phone, options = {}) => {
   try {
     console.log(`[HubSpot Contacts] 🔍 Searching for contact by email or phone (POST):`);
     console.log(`[HubSpot Contacts]    - Email: ${email}`);
     console.log(`[HubSpot Contacts]    - Phone: ${phone}`);
+    if (options.preferredContactType) {
+      console.log(`[HubSpot Contacts]    - Preferred Type: ${options.preferredContactType}`);
+    }
 
     // Build filter groups for flexible OR-based searching
     const filterGroups = [];
@@ -262,7 +265,7 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
 
     if (results.length > 0) {
       results.forEach((contact, index) => {
-        console.log(`[HubSpot Contacts]    ${index + 1}. ${contact.properties.firstname} ${contact.properties.lastname} (ID: ${contact.id})`);
+        console.log(`[HubSpot Contacts]    ${index + 1}. ${contact.properties.firstname} ${contact.properties.lastname} (ID: ${contact.id}, Type: ${contact.properties.contact_type || 'N/A'})`);
       });
 
       // Prioritize exact email match if email was provided
@@ -273,6 +276,53 @@ export const searchContactByEmailOrPhone = async (email, phone) => {
         if (emailMatch) {
           console.log(`[HubSpot Contacts] ✅ Returning exact email match: ${emailMatch.id}`);
           return emailMatch;
+        }
+      }
+
+      // If preferredContactType is specified, filter and prioritize by contact_type
+      if (options.preferredContactType) {
+        console.log(`[HubSpot Contacts] 🔍 Filtering by preferred contact type: ${options.preferredContactType}`);
+        
+        // For client portal: prefer pure clients, then dual-role, exclude pure agents
+        if (options.preferredContactType === 'Client') {
+          // Priority 1: Pure clients (contact_type = "Client" only)
+          const pureClients = results.filter(contact => {
+            const type = contact.properties.contact_type || '';
+            return type === 'Client';
+          });
+          
+          if (pureClients.length > 0) {
+            console.log(`[HubSpot Contacts] ✅ Found ${pureClients.length} pure client(s), returning first: ${pureClients[0].id}`);
+            return pureClients[0];
+          }
+
+          // Priority 2: Dual-role contacts (contains "Client")
+          const dualRoleClients = results.filter(contact => {
+            const type = contact.properties.contact_type || '';
+            return type.includes('Client') && type !== 'Client';
+          });
+          
+          if (dualRoleClients.length > 0) {
+            console.log(`[HubSpot Contacts] ✅ Found ${dualRoleClients.length} dual-role client(s), returning first: ${dualRoleClients[0].id}`);
+            return dualRoleClients[0];
+          }
+
+          // No clients found at all - return null (will be caught by calling function)
+          console.log(`[HubSpot Contacts] ⚠️ No clients found (only agents), returning null`);
+          return null;
+        }
+        
+        // For agent portal: prefer contacts with "Agent" in contact_type
+        if (options.preferredContactType === 'Agent') {
+          const agents = results.filter(contact => {
+            const type = contact.properties.contact_type || '';
+            return type.includes('Agent');
+          });
+          
+          if (agents.length > 0) {
+            console.log(`[HubSpot Contacts] ✅ Found ${agents.length} agent(s), returning first: ${agents[0].id}`);
+            return agents[0];
+          }
         }
       }
 

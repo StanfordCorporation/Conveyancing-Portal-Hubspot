@@ -141,56 +141,56 @@ export const getDealContacts = async (dealId) => {
   try {
     console.log(`[HubSpot Associations] 👥 Fetching all contacts for deal: ${dealId}`);
 
-    const response = await hubspotClient.get(
-      `/crm/v3/objects/deals/${dealId}/associations/contacts`,
+    // Step 1: Use v4 API to get association type IDs
+    const v4Response = await hubspotClient.post(
+      '/crm/v4/associations/deal/contact/batch/read',
       {
-        params: {
-          limit: 100
-        }
+        inputs: [{ id: dealId }]
       }
     );
 
-    const contactsFromDeal = response.data.results || [];
-    console.log(`[HubSpot Associations] ✅ Found ${contactsFromDeal.length} contacts for deal`);
+    const contactAssociations = v4Response.data.results[0]?.to || [];
+    console.log(`[HubSpot Associations] ✅ Found ${contactAssociations.length} contacts for deal`);
 
     // Log association details for debugging
-    contactsFromDeal.forEach((contact, idx) => {
-      console.log(`[HubSpot Associations]    ${idx + 1}. Contact ID: ${contact.id}`);
-      if (contact.type) {
-        console.log(`[HubSpot Associations]       - Type: ${contact.type}`);
-      }
-      if (contact.associationTypes) {
-        console.log(`[HubSpot Associations]       - AssociationTypes: ${JSON.stringify(contact.associationTypes)}`);
+    contactAssociations.forEach((assoc, idx) => {
+      console.log(`[HubSpot Associations]    ${idx + 1}. Contact ID: ${assoc.toObjectId}`);
+      if (assoc.associationTypes && assoc.associationTypes.length > 0) {
+        assoc.associationTypes.forEach(type => {
+          console.log(`[HubSpot Associations]       - Type ID: ${type.typeId}, Category: ${type.category}, Label: ${type.label || 'N/A'}`);
+        });
+      } else {
+        console.log(`[HubSpot Associations]       - No association types found`);
       }
     });
 
     // If no contacts found, return empty array
-    if (contactsFromDeal.length === 0) {
+    if (contactAssociations.length === 0) {
       return [];
     }
 
-    // Batch fetch full contact properties for all contacts
-    console.log(`[HubSpot Associations] 📦 Batch fetching properties for ${contactsFromDeal.length} contacts`);
-    const contactIds = contactsFromDeal.map(c => c.id);
+    // Step 2: Batch fetch full contact properties for all contacts
+    console.log(`[HubSpot Associations] 📦 Batch fetching properties for ${contactAssociations.length} contacts`);
+    const contactIds = contactAssociations.map(assoc => assoc.toObjectId);
 
     const batchResponse = await hubspotClient.post('/crm/v3/objects/contacts/batch/read', {
-      inputs: contactIds.map(id => ({ id })),
+      inputs: contactIds.map(id => ({ id: String(id) })),
       properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type', 'address']
     });
 
     const contactDetails = batchResponse.data.results || [];
     console.log(`[HubSpot Associations] ✅ Batch fetch returned properties for ${contactDetails.length} contacts`);
 
-    // Merge association metadata with contact properties
-    return contactsFromDeal.map(contactFromDeal => {
+    // Step 3: Merge association metadata with contact properties
+    return contactAssociations.map(assoc => {
       // Find matching contact details
-      const details = contactDetails.find(d => d.id === contactFromDeal.id);
+      const details = contactDetails.find(d => d.id === String(assoc.toObjectId));
 
       return {
-        id: contactFromDeal.id,
+        id: String(assoc.toObjectId),
         properties: details?.properties || {},
-        type: contactFromDeal.type,
-        associationTypes: contactFromDeal.associationTypes || []
+        type: 'contact', // Generic type
+        associationTypes: assoc.associationTypes || []
       };
     });
   } catch (error) {

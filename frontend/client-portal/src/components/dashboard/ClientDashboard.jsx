@@ -8,6 +8,7 @@ import PropertyQuestionnaire from './PropertyQuestionnaire.jsx';
 import DynamicQuote from './DynamicQuote.jsx';
 import SigningStatus from './SigningStatus.jsx';
 import PaymentInstructions from './PaymentInstructions.jsx';
+import StatusTracking from './StatusTracking.jsx';
 import './dashboard.css';
 
 export default function ClientDashboard() {
@@ -79,6 +80,50 @@ export default function ClientDashboard() {
       window.history.replaceState({}, '', '/dashboard');
     }
   }, [location.search, currentProperty]);
+
+  // Handle payment completion query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get('payment');
+    const dealIdParam = params.get('dealId');
+
+    if (paymentStatus === 'success' && dealIdParam) {
+      console.log('[Dashboard] 💳 Payment completed! Verifying with backend...', { dealId: dealIdParam });
+      
+      // Poll backend to verify payment status (webhook should have updated the deal)
+      const verifyPayment = async () => {
+        try {
+          const response = await api.get(`/client/property/${dealIdParam}`);
+          const updatedDeal = response.data;
+          
+          console.log('[Dashboard] ✅ Deal status verified:', updatedDeal.status);
+          
+          // Update to step 6 (tracking)
+          setPropertyStages(prev => ({
+            ...prev,
+            [dealIdParam]: 6
+          }));
+          setActiveSection('tracking');
+          
+          console.log('[Dashboard] 🎯 Progressed to Step 6 (Status Tracking)');
+        } catch (error) {
+          console.error('[Dashboard] ❌ Error verifying payment:', error);
+          // Still show step 6 even if verification fails
+          setPropertyStages(prev => ({
+            ...prev,
+            [dealIdParam]: 6
+          }));
+          setActiveSection('tracking');
+        }
+      };
+
+      // Small delay to allow webhook to process
+      setTimeout(verifyPayment, 1000);
+
+      // Clear query parameters
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [location.search]);
 
   // Fetch dashboard data on component mount
   useEffect(() => {
@@ -794,6 +839,26 @@ export default function ClientDashboard() {
                   dealId={currentProperty.id}
                   quoteAmount={quoteAmounts[currentProperty.id] || '0.00'}
                   propertyAddress={currentProperty.subtitle || currentProperty.title}
+                  onComplete={async () => {
+                    console.log('[Dashboard] 💳 Payment completed for deal:', currentProperty.id);
+                    
+                    // Verify payment with backend
+                    try {
+                      const response = await api.get(`/client/property/${currentProperty.id}`);
+                      console.log('[Dashboard] ✅ Deal status verified after payment');
+                    } catch (error) {
+                      console.error('[Dashboard] ⚠️ Could not verify deal status:', error);
+                    }
+                    
+                    // Progress to step 6 (tracking)
+                    setPropertyStages(prev => ({
+                      ...prev,
+                      [currentProperty.id]: 6
+                    }));
+                    setActiveSection('tracking');
+                    
+                    console.log('[Dashboard] 🎯 Progressed to Step 6 (Status Tracking)');
+                  }}
                 />
               ) : (
                 <div className="empty-state">
@@ -812,23 +877,7 @@ export default function ClientDashboard() {
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
-                <div className="tracking-info">
-                  <h3>Transaction Progress</h3>
-                  <p>Your transaction is being processed. We'll keep you updated on each milestone.</p>
-                  <div className="status-info" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-                    <p><strong>Current Status:</strong> {currentProperty.status || 'In Progress'}</p>
-                    <p><strong>Property:</strong> {currentProperty.title}</p>
-                    <p><strong>Address:</strong> {currentProperty.subtitle}</p>
-                  </div>
-                  <div className="next-steps" style={{ marginTop: '20px' }}>
-                    <h4>What Happens Next?</h4>
-                    <ul style={{ lineHeight: '1.8' }}>
-                      <li>Your conveyancer will process your searches</li>
-                      <li>You'll receive updates via email as progress is made</li>
-                      <li>Contact your agent if you have any questions</li>
-                    </ul>
-                  </div>
-                </div>
+                <StatusTracking deal={currentProperty} />
               ) : (
                 <div className="empty-state">
                   <p>Loading tracking information...</p>

@@ -9,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * Payment Instructions Component
  * Displays payment information and Stripe payment form
  */
-export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress }) {
+export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete }) {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState(initialQuoteAmount || '0.00');
@@ -47,10 +47,18 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
   // Assuming quoteAmount is in dollars (e.g., 175.48)
   const amountInCents = Math.round(parseFloat(quoteAmount) * 100);
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
     setPaymentComplete(true);
     setShowPaymentForm(false);
     console.log('[Payment Instructions] ✅ Payment completed successfully');
+    
+    // Wait a moment for webhook to process, then notify parent
+    setTimeout(() => {
+      if (onComplete) {
+        console.log('[Payment Instructions] 🎯 Notifying parent of completion');
+        onComplete();
+      }
+    }, 1500);
   };
 
   const handleCancelPayment = () => {

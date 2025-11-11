@@ -12,7 +12,7 @@ import * as companiesIntegration from '../integrations/hubspot/companies.js';
 import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import * as filesIntegration from '../integrations/hubspot/files.js';
 import { getAllHubSpotProperties, getAllMappings, getFieldMapping } from '../utils/questionnaireHelper.js';
-import { shouldShowToClient } from '../config/stageHelpers.js';
+import { shouldShowToClient, getStageName } from '../config/stageHelpers.js';
 import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
 import * as smokeballMatters from '../integrations/smokeball/matters.js';
 import * as smokeballMatterTypes from '../integrations/smokeball/matter-types.js';
@@ -103,11 +103,27 @@ router.get('/dashboard-data', authenticateJWT, async (req, res) => {
           }
         });
 
+        // Extract property address (handle placeholder values)
+        let propertyAddress = deal.properties.property_address;
+        const dealName = deal.properties.dealname;
+        
+        // Check if property_address is a placeholder/label (not a real address)
+        const addressPlaceholders = ['Property Address', 'N/A', 'TBD', 'To Be Determined', ''];
+        const isPlaceholder = !propertyAddress || addressPlaceholders.includes(propertyAddress.trim());
+        
+        if (isPlaceholder && dealName) {
+          // Extract address from dealname (format: "Address - Name" or just "Address")
+          const addressMatch = dealName.split(' - ')[0];
+          if (addressMatch) {
+            propertyAddress = addressMatch.trim();
+          }
+        }
+
         return {
           id: deal.id,
           index: index,
-          title: extractTitle(deal.properties.property_address || deal.properties.dealname || 'Untitled'),
-          subtitle: extractSubtitle(deal.properties.property_address),
+          title: extractTitle(propertyAddress || dealName || 'Untitled'),
+          subtitle: extractSubtitle(propertyAddress),
           status: deal.properties.dealstage || 'Unknown',
           questionsAnswered: Object.keys(questionnaireData).length,
           totalQuestions: Object.keys(propertyMapping).length,
@@ -190,6 +206,14 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       allDealProperties
     );
 
+    // Log what we got back
+    if (deals.length > 0) {
+      console.log(`[Dashboard Complete] 📋 Sample deal properties for ${deals[0].id}:`);
+      console.log(`[Dashboard Complete]    - dealname: ${deals[0].properties.dealname || 'NOT SET'}`);
+      console.log(`[Dashboard Complete]    - property_address: ${deals[0].properties.property_address || 'NOT SET'}`);
+      console.log(`[Dashboard Complete]    - dealstage: ${deals[0].properties.dealstage || 'NOT SET'}`);
+    }
+
     // Step 3: For each deal, fetch associations (contacts, companies)
     const propertyMapping = getAllMappings();
     const completeDeals = await Promise.all(deals.map(async (deal, index) => {
@@ -222,9 +246,23 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         let additionalSellers = [];
         let agent = null;
 
+        // HubSpot association types (USER_DEFINED):
+        // - Type 1: Primary Seller
+        // - Type 4: Additional Seller
+        // - Type 6: Agent/Listing Salesperson
+        // Note: A contact can have MULTIPLE association types (e.g., both seller and agent)
+
+        // First pass: assign roles based on association types
         for (const contact of dealContacts) {
           const props = contact.properties;
-          if (!props.firstname || !props.lastname) continue;
+          const associationTypes = contact.associationTypes || [];
+
+          console.log(`[Dashboard Complete] 🔍 Processing contact ${contact.id} (${props.firstname} ${props.lastname})`);
+
+          if (!props.firstname || !props.lastname) {
+            console.log(`[Dashboard Complete] ⚠️ Skipping contact ${contact.id} - missing name`);
+            continue;
+          }
 
           const contactData = {
             id: contact.id,
@@ -235,29 +273,108 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
             address: props.address || ''
           };
 
-          // Check if agent by contact_type
-          const contactType = props.contact_type || '';
-          const isAgentType = contactType.toLowerCase() === 'agent';
+          // Check association type metadata to determine role(s)
+          // A contact can have MULTIPLE roles on the same deal
+          let isAgent = false;
+          let isAdditionalSeller = false;
+          let isPrimarySeller = false;
 
-          if (isAgentType && !agent) {
-            agent = contactData;
+          // Try to extract type from associationTypes array
+          if (Array.isArray(associationTypes) && associationTypes.length > 0) {
+            console.log(`[Dashboard Complete] 📋 Found ${associationTypes.length} association types`);
+            for (const assocType of associationTypes) {
+              // v4 API returns 'typeId', v3 API returns 'associationTypeId'
+              const typeId = assocType.typeId || assocType.associationTypeId || assocType.type || assocType.id;
+              console.log(`[Dashboard Complete]    - Type ID: ${typeId}, Category: ${assocType.category || 'N/A'}`);
+
+              // Match by numeric ID - note: NOT using else-if because a contact can have multiple types
+              if (typeId === 6 || typeId === '6') {
+                isAgent = true;
+                console.log(`[Dashboard Complete]    ✅ Identified as AGENT (Type 6)`);
+              }
+              if (typeId === 4 || typeId === '4') {
+                isAdditionalSeller = true;
+                console.log(`[Dashboard Complete]    ✅ Identified as ADDITIONAL SELLER (Type 4)`);
+              }
+              if (typeId === 1 || typeId === '1') {
+                isPrimarySeller = true;
+                console.log(`[Dashboard Complete]    ✅ Identified as PRIMARY SELLER (Type 1)`);
+              }
+            }
           } else {
-            // Check if this is the authenticated user
-            if (contact.id === contactId) {
-              primarySeller = contactData;
-            } else {
-              additionalSellers.push(contactData);
+            console.log(`[Dashboard Complete] ⚠️ No association types found, using fallback`);
+          }
+
+          // If no association types found, use heuristic fallback
+          if (!isAgent && !isAdditionalSeller && !isPrimarySeller) {
+            // Check if agent by contact_type property (handles "Agent", "Client;Agent", "Agent;Client")
+          const contactType = props.contact_type || '';
+            const hasAgentType = contactType.includes('Agent');
+
+            console.log(`[Dashboard Complete] 🔄 Fallback: contact_type="${contactType}", hasAgent=${hasAgentType}`);
+
+            if (hasAgentType) {
+              isAgent = true;
+              console.log(`[Dashboard Complete]    ✅ Fallback identified as AGENT`);
+            }
+
+            // If authenticated user and not identified as agent, they're a seller
+            if (contact.id === contactId && !hasAgentType) {
+              isPrimarySeller = true;
+              console.log(`[Dashboard Complete]    ✅ Fallback: authenticated user as PRIMARY SELLER`);
+            } else if (!hasAgentType) {
+              // Non-authenticated, non-agent contacts default to sellers
+              isPrimarySeller = !primarySeller; // First one is primary
+              isAdditionalSeller = !!primarySeller; // Rest are additional
+              console.log(`[Dashboard Complete]    ✅ Fallback: assigned as ${isPrimarySeller ? 'PRIMARY' : 'ADDITIONAL'} SELLER`);
             }
           }
+
+          // Assign to roles - a contact can appear in MULTIPLE roles
+          // (e.g., someone selling their own property while also being the agent)
+          if (isAgent) {
+            agent = contactData;
+            console.log(`[Dashboard Complete] 👤 AGENT assigned: ${contactData.firstname} ${contactData.lastname}`);
+          }
+          
+          if (isAdditionalSeller) {
+            additionalSellers.push(contactData);
+            console.log(`[Dashboard Complete] 👥 ADDITIONAL SELLER assigned: ${contactData.firstname} ${contactData.lastname}`);
+          }
+          
+          if (isPrimarySeller) {
+            // If this is the authenticated user, make them primary
+            if (contact.id === contactId) {
+              primarySeller = contactData;
+              console.log(`[Dashboard Complete] 👤 PRIMARY SELLER assigned (authenticated user): ${contactData.firstname} ${contactData.lastname}`);
+            } else if (!primarySeller) {
+              primarySeller = contactData;
+              console.log(`[Dashboard Complete] 👤 PRIMARY SELLER assigned: ${contactData.firstname} ${contactData.lastname}`);
+            } else {
+              // Multiple primary sellers? Add others to additional
+              additionalSellers.push(contactData);
+              console.log(`[Dashboard Complete] 👥 Additional PRIMARY SELLER moved to ADDITIONAL: ${contactData.firstname} ${contactData.lastname}`);
+            }
+          }
+
+          console.log(`[Dashboard Complete] ✅ Contact ${contact.id} processed - Agent: ${isAgent}, Primary: ${isPrimarySeller}, Additional: ${isAdditionalSeller}`);
         }
+
+        console.log(`[Dashboard Complete] 📊 Role assignment complete:`);
+        console.log(`[Dashboard Complete]    - Primary Seller: ${primarySeller ? `${primarySeller.firstname} ${primarySeller.lastname} (${primarySeller.id})` : 'NONE'}`);
+        console.log(`[Dashboard Complete]    - Additional Sellers: ${additionalSellers.length > 0 ? additionalSellers.map(s => `${s.firstname} ${s.lastname} (${s.id})`).join(', ') : 'NONE'}`);
+        console.log(`[Dashboard Complete]    - Agent: ${agent ? `${agent.firstname} ${agent.lastname} (${agent.id})` : 'NONE'}`);
 
         // If authenticated user is not in the contacts, fallback to first non-agent contact
         if (!primarySeller && additionalSellers.length > 0) {
+          console.log(`[Dashboard Complete] 🔄 No primary seller, promoting first additional seller`);
           primarySeller = additionalSellers.shift();
         }
 
         // If no primary seller found, use authenticated contact
         if (!primarySeller) {
+          console.log(`[Dashboard Complete] 🔄 No primary seller found, fetching authenticated contact`);
+
           const primarySellerContact = await contactsIntegration.getContact(contactId);
           if (primarySellerContact) {
             primarySeller = {
@@ -283,7 +400,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
           };
         }
 
-        // Build property details
+        // Build property details (will be populated with property address below)
         propertyDetails = {
           primarySeller: {
             id: primarySeller?.id || null,
@@ -342,13 +459,39 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       }
 
       const dealstage = deal.properties.dealstage || 'Unknown';
-      console.log(`[Dashboard Complete] 📊 Deal ${deal.id} - Stage: ${dealstage}`);
+      let propertyAddress = deal.properties.property_address;
+      const dealName = deal.properties.dealname;
+      
+      // Check if property_address is a placeholder/label (not a real address)
+      const addressPlaceholders = ['Property Address', 'N/A', 'TBD', 'To Be Determined', ''];
+      const isPlaceholder = !propertyAddress || addressPlaceholders.includes(propertyAddress.trim());
+      
+      if (isPlaceholder && dealName) {
+        // Extract address from dealname (format: "Address - Name" or just "Address")
+        const addressMatch = dealName.split(' - ')[0];
+        if (addressMatch) {
+          propertyAddress = addressMatch.trim();
+          console.log(`[Dashboard Complete] 🔄 Extracted address from dealname: ${propertyAddress}`);
+        }
+      }
+      
+      // Add property address and stage info to propertyDetails
+      const stageName = getStageName(dealstage, deal);
+      propertyDetails.propertyAddress = propertyAddress;
+      propertyDetails.dealName = dealName;
+      propertyDetails.dealStage = stageName; // Get human-readable stage name
+      propertyDetails.dealStageId = dealstage; // Keep ID for internal use
+      propertyDetails.numberOfOwners = deal.properties.number_of_owners || 1;
+
+      console.log(`[Dashboard Complete] 📊 Deal ${deal.id} - Stage ID: ${dealstage}, Stage Name: ${stageName}`);
+      console.log(`[Dashboard Complete] 🏠 Property Address: ${propertyAddress || 'NOT SET'}`);
+      console.log(`[Dashboard Complete] 📝 Deal Name: ${dealName || 'NOT SET'}`);
 
       return {
         id: deal.id,
         index: index,
-        title: extractTitle(deal.properties.property_address || deal.properties.dealname || 'Untitled'),
-        subtitle: extractSubtitle(deal.properties.property_address),
+        title: extractTitle(propertyAddress || dealName || 'Untitled'),
+        subtitle: extractSubtitle(propertyAddress),
         status: dealstage,
         questionsAnswered: Object.keys(questionnaireData).length,
         totalQuestions: Object.keys(propertyMapping).length,
@@ -468,6 +611,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       // - Type 1: Primary Seller
       // - Type 4: Additional Seller
       // - Type 6: Agent/Listing Salesperson
+      // Note: A contact can have MULTIPLE association types (e.g., both seller and agent)
 
       // First pass: assign roles based on association types if available
       for (const contact of dealContacts) {
@@ -485,7 +629,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
           phone: props.phone || ''
         };
 
-        // Check association type metadata
+        // Check association type metadata - a contact can have MULTIPLE roles
         let isAgent = false;
         let isAdditionalSeller = false;
         let isPrimarySeller = false;
@@ -495,46 +639,62 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
         // Try to extract type from associationTypes array first
         if (Array.isArray(associationTypes) && associationTypes.length > 0) {
           for (const assocType of associationTypes) {
-            const typeId = assocType.associationTypeId || assocType.type || assocType.id;
+            // v4 API returns 'typeId', v3 API returns 'associationTypeId'
+            const typeId = assocType.typeId || assocType.associationTypeId || assocType.type || assocType.id;
             const typeLabel = assocType.label;
 
-            console.log(`[Client Dashboard] 🔍    AssociationType - ID: ${typeId}, Label: ${typeLabel}`);
+            console.log(`[Client Dashboard] 🔍    AssociationType - ID: ${typeId}, Label: ${typeLabel || 'N/A'}`);
 
-            // Match by numeric ID
+            // Match by numeric ID - note: NOT using else-if because a contact can have multiple types
             if (typeId === 6 || typeId === '6') {
               isAgent = true;
-            } else if (typeId === 4 || typeId === '4') {
+            }
+            if (typeId === 4 || typeId === '4') {
               isAdditionalSeller = true;
-            } else if (typeId === 1 || typeId === '1') {
+            }
+            if (typeId === 1 || typeId === '1') {
               isPrimarySeller = true;
             }
             // Match by label if numeric ID not found
-            else if (typeLabel) {
+            if (typeLabel && !isAgent && !isAdditionalSeller && !isPrimarySeller) {
               if (typeLabel.includes('agent') || typeLabel.includes('6')) {
                 isAgent = true;
-              } else if (typeLabel.includes('additional') || typeLabel.includes('4')) {
+              }
+              if (typeLabel.includes('additional') || typeLabel.includes('4')) {
                 isAdditionalSeller = true;
-              } else if (typeLabel.includes('primary') || typeLabel.includes('1')) {
+              }
+              if (typeLabel.includes('primary') || typeLabel.includes('1')) {
                 isPrimarySeller = true;
               }
             }
           }
         }
 
-        // If no type found in associationTypes, we'll use heuristic in pass 2
-        // But log that we couldn't determine the type
+        // If no type found in associationTypes, check contact_type property
         if (!isAgent && !isAdditionalSeller && !isPrimarySeller) {
-          console.log(`[Client Dashboard] ℹ️ Contact ${contact.id} - No association type detected, will use heuristic`);
+          console.log(`[Client Dashboard] ℹ️ Contact ${contact.id} - No association type detected, checking contact_type property`);
+          
+          // Check contact_type property (handles "Agent", "Client;Agent", "Agent;Client")
+          const contactTypeProperty = props.contact_type || '';
+          if (contactTypeProperty.includes('Agent')) {
+            isAgent = true;
+            console.log(`[Client Dashboard] ℹ️ Contact ${contact.id} - Identified as agent via contact_type: ${contactTypeProperty}`);
+          }
         }
 
-        // Assign based on type metadata
+        // Assign to roles - a contact can appear in MULTIPLE roles
+        // (e.g., someone selling their own property while also being the agent)
         if (isAgent) {
           agent = contactData;
           console.log(`[Client Dashboard] 👤 Agent assigned: ${contactData.firstname} ${contactData.lastname}`);
-        } else if (isAdditionalSeller) {
+        }
+        
+        if (isAdditionalSeller) {
           additionalSellers.push(contactData);
           console.log(`[Client Dashboard] 👥 Additional seller assigned: ${contactData.firstname} ${contactData.lastname}`);
-        } else if (isPrimarySeller) {
+        }
+        
+        if (isPrimarySeller) {
           primarySeller = contactData;
           console.log(`[Client Dashboard] 👤 Primary seller assigned: ${contactData.firstname} ${contactData.lastname}`);
         }
@@ -677,11 +837,34 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       console.log(`[Client Dashboard] 📝 Sample fields:`, Object.keys(questionnaireData).slice(0, 5));
     }
 
+    // Extract property address (handle placeholder values)
+    let propertyAddress = deal.properties.property_address;
+    const dealName = deal.properties.dealname || 'Untitled Deal';
+    
+    // Check if property_address is a placeholder/label (not a real address)
+    const addressPlaceholders = ['Property Address', 'N/A', 'TBD', 'To Be Determined', ''];
+    const isPlaceholder = !propertyAddress || addressPlaceholders.includes(propertyAddress.trim());
+    
+    if (isPlaceholder && dealName) {
+      // Extract address from dealname (format: "Address - Name" or just "Address")
+      const addressMatch = dealName.split(' - ')[0];
+      if (addressMatch) {
+        propertyAddress = addressMatch.trim();
+        console.log(`[Client Dashboard] 🔄 Extracted address from dealname: ${propertyAddress}`);
+      } else {
+        propertyAddress = 'N/A';
+      }
+    }
+
+    const stageName = getStageName(deal.properties.dealstage, deal) || 'Unknown';
+    console.log(`[Client Dashboard] 📊 Deal stage: ID=${deal.properties.dealstage}, Name=${stageName}`);
+
     const propertyInfo = {
       dealId: deal.id,
-      dealName: deal.properties.dealname || 'Untitled Deal',
-      propertyAddress: deal.properties.property_address || 'N/A',
-      dealStage: deal.properties.dealstage || 'Unknown',
+      dealName: dealName,
+      propertyAddress: propertyAddress,
+      dealStage: stageName, // Get human-readable stage name
+      dealStageId: deal.properties.dealstage, // Keep ID for internal use
       numberOfOwners: deal.properties.number_of_owners || 1,
 
       // Seller Information

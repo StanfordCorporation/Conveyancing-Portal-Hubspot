@@ -30,15 +30,24 @@ export default function PropertyInformation({ dealId, initialData }) {
       console.log(`[PropertyInfo] ⚡ Using pre-loaded data for deal: ${dealId} (no API call)`);
 
       // Add missing fields that PropertyInformation expects
+      // Note: ...initialData is spread AFTER defaults, so it overrides them if present
       const completeData = {
         dealId: dealId,
         dealName: `Deal ${dealId}`,
-        propertyAddress: 'Property Address', // This could be enhanced
-        dealStage: 'Active',
+        propertyAddress: 'Property Address',  // Default placeholder
+        dealStage: 'In Progress',  // Default placeholder (will be overridden by initialData)
         numberOfOwners: 1,
         nextStep: 'Complete property questionnaire',
-        ...initialData // This has: primarySeller, additionalSeller, agency, agent
+        ...initialData // This has: primarySeller, additionalSeller, agency, agent, propertyAddress, dealStage, etc.
       };
+
+      // Log what we got
+      console.log(`[PropertyInfo] 📋 Property data:`, {
+        propertyAddress: completeData.propertyAddress,
+        dealName: completeData.dealName,
+        dealStage: completeData.dealStage,
+        primarySeller: completeData.primarySeller?.fullName
+      });
 
       setPropertyData(completeData);
       setLoading(false);

@@ -20,7 +20,8 @@ export const sendOTPForClient = async (identifier, method = 'email') => {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
     // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
+    // Prefer Client contact_type when multiple contacts share the same phone
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone, { preferredContactType: 'Client' });
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -41,6 +42,24 @@ export const sendOTPForClient = async (identifier, method = 'email') => {
       message: 'Contact is not configured as a client or agent'
     };
   }
+
+  // Validate contact is NOT a pure agent (agents should use agent portal)
+  // However, allow dual-role contacts like "Client;Agent" to access client portal
+  const contactTypes = contact.properties.contact_type || '';
+  const hasClientType = contactTypes.includes('Client');
+  const hasAgentType = contactTypes.includes('Agent');
+  
+  // Reject if contact is ONLY an agent (not also a client)
+  if (hasAgentType && !hasClientType) {
+    console.log(`[Auth] ❌ Contact ${contact.id} is a pure agent, cannot send OTP for client portal`);
+    throw {
+      status: 403,
+      error: 'Invalid Access',
+      message: 'Agents should use the agent portal. Please visit the agent login page.'
+    };
+  }
+
+  console.log(`[Auth] ✅ Contact ${contact.id} validated for client portal OTP (contact_type: ${contactTypes})`);
 
   // Generate and send OTP
   const otp = generateOTP();
@@ -74,7 +93,8 @@ export const sendOTPForAgent = async (identifier, method = 'email') => {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
     // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
+    // Prefer Agent contact_type when multiple contacts share the same phone
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone, { preferredContactType: 'Agent' });
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -142,7 +162,8 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
     // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
+    // Prefer Client contact_type when multiple contacts share the same phone
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone, { preferredContactType: 'Client' });
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
@@ -155,29 +176,91 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
     };
   }
 
+  // Validate contact is NOT a pure agent (agents should use agent portal)
+  // However, allow dual-role contacts like "Client;Agent" to access client portal
+  const contactTypes = contact.properties.contact_type || '';
+  const hasClientType = contactTypes.includes('Client');
+  const hasAgentType = contactTypes.includes('Agent');
+  
+  // Reject if contact is ONLY an agent (not also a client)
+  if (hasAgentType && !hasClientType) {
+    console.log(`[Auth] ❌ Contact ${contact.id} is a pure agent, rejecting client portal access`);
+    throw {
+      status: 403,
+      error: 'Invalid Access',
+      message: 'Agents should use the agent portal. Please visit the agent login page.'
+    };
+  }
+
+  console.log(`[Auth] ✅ Contact ${contact.id} validated for client portal (contact_type: ${contactTypes})`);
+
   // Determine seller type by checking deal associations
   let sellerType = 'primary'; // Default to primary
   try {
     const hubspotClient = (await import('../../integrations/hubspot/client.js')).default;
     
-    // Get all deals associated with this contact
-    const dealsResponse = await hubspotClient.get(
-      `/crm/v4/objects/contacts/${contact.id}/associations/deals`
+    // Get all deals associated with this contact using v4 batch API
+    const dealsResponse = await hubspotClient.post(
+      '/crm/v4/associations/contact/deal/batch/read',
+      {
+        inputs: [{ id: contact.id }]
+      }
     );
     
-    if (dealsResponse.data.results && dealsResponse.data.results.length > 0) {
-      // Check the association type for the first deal
-      // If they're associated as type 4 (Additional Seller) to ANY deal, mark them as additional
-      const hasAdditionalSellerAssociation = dealsResponse.data.results.some(dealAssoc => {
-        const types = dealAssoc.associationTypes || [];
-        return types.some(t => t.typeId === 4 || t.typeId === '4');
+    const dealAssociations = dealsResponse.data.results[0]?.to || [];
+    console.log(`[Auth] 🔍 Found ${dealAssociations.length} deal associations for contact ${contact.id}`);
+    
+    if (dealAssociations.length > 0) {
+      // Log all associations for debugging
+      dealAssociations.forEach((assoc, idx) => {
+        console.log(`[Auth]    Deal ${idx + 1}: ID ${assoc.toObjectId}`);
+        assoc.associationTypes?.forEach(type => {
+          console.log(`[Auth]       - Type ID: ${type.typeId}, Category: ${type.category}, Label: ${type.label || 'N/A'}`);
+        });
       });
       
-      if (hasAdditionalSellerAssociation) {
+      // HubSpot association types are DIRECTIONAL:
+      // Contact → Deal perspective (what we're querying):
+      //   - Type 2 (USER_DEFINED) = Primary Seller (reverse of Type 1)
+      //   - Type 4 (USER_DEFINED) = Additional Seller
+      //   - Type 4 (HUBSPOT_DEFINED) = Standard deal association (ignore)
+      //   - Type 6 (USER_DEFINED) = Agent
+      
+      // Check if they're a Primary Seller (Type 1 or Type 2 with USER_DEFINED)
+      const hasPrimarySellerAssociation = dealAssociations.some(dealAssoc => {
+        const types = dealAssoc.associationTypes || [];
+        return types.some(t => {
+          const id = t.typeId;
+          const category = t.category;
+          // Type 1 (deal→contact view) or Type 2 (contact→deal view), both USER_DEFINED
+          return ((id === 1 || id === '1' || id === 2 || id === '2') && category === 'USER_DEFINED');
+        });
+      });
+      
+      // Check if they're an Additional Seller (Type 4 with USER_DEFINED only)
+      const hasAdditionalSellerAssociation = dealAssociations.some(dealAssoc => {
+        const types = dealAssoc.associationTypes || [];
+        return types.some(t => {
+          const id = t.typeId;
+          const category = t.category;
+          // Type 4 with USER_DEFINED means Additional Seller
+          // Type 4 with HUBSPOT_DEFINED is just a standard association (ignore)
+          return ((id === 4 || id === '4') && category === 'USER_DEFINED');
+        });
+      });
+      
+      // Priority: Primary > Additional > Default to Primary
+      // If user is a primary seller on ANY deal, give them primary access
+      if (hasPrimarySellerAssociation) {
+        sellerType = 'primary';
+        console.log(`[Auth] ✅ Contact ${contact.id} is PRIMARY SELLER on at least one deal`);
+      } else if (hasAdditionalSellerAssociation) {
         sellerType = 'additional';
-        console.log(`[Auth] Contact ${contact.id} identified as additional seller`);
+        console.log(`[Auth] ℹ️ Contact ${contact.id} is ADDITIONAL SELLER only`);
       } else {
-        console.log(`[Auth] Contact ${contact.id} identified as primary seller`);
+        // No explicit seller type found - default to primary (most permissive)
+        sellerType = 'primary';
+        console.log(`[Auth] ℹ️ Contact ${contact.id} has no explicit seller type, defaulting to PRIMARY`);
       }
     }
   } catch (error) {
@@ -221,7 +304,8 @@ export const verifyOTPForAgent = async (identifier, otp, method = 'email') => {
     // Normalize phone number to international format for HubSpot search
     const normalizedPhone = normalizePhoneForSearch(identifier);
     // Use POST search method for phone (GET method doesn't support phone as idProperty in HubSpot)
-    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone);
+    // Prefer Agent contact_type when multiple contacts share the same phone
+    contact = await contactsIntegration.searchContactByEmailOrPhone(null, normalizedPhone, { preferredContactType: 'Agent' });
   } else {
     contact = await contactsIntegration.searchContactByEmail(identifier);
   }
