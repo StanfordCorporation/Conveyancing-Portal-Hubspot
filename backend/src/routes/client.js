@@ -1326,10 +1326,11 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
           if (!propertyName) return;
 
           if (search.included) {
-            // Included searches: set to Yes/Ordered
+            // Required searches: set property to "Yes" and status to "Not Ordered"
+            // Staff will manually update status in HubSpot as they order/receive searches
             searchProperties[propertyName] = "Yes";
-            searchProperties[`${propertyName}_status`] = "Ordered";
-            console.log(`[Deal Stage]   ✓ ${search.name} → ${propertyName} = Yes/Ordered`);
+            searchProperties[`${propertyName}_status`] = "Not Ordered";
+            console.log(`[Deal Stage]   ✓ ${search.name} → ${propertyName} = Yes, status = Not Ordered (required)`);
           } else {
             // Excluded searches: only set status to "Not Ordered"
             // Don't set the main property (e.g., tmr_search) as it only allows "Yes"
