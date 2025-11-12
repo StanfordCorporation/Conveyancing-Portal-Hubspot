@@ -6,7 +6,7 @@ import { AgencySearchModal } from './AgencySearchModal';
 import { AgentSelectionModal } from './AgentSelectionModal';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
-import AddressAutocomplete from '../../../common/AddressAutocomplete';
+import AddressAutocomplete from '../../../src/components/common/AddressAutocomplete';
 
 export default function DisclosureForm() {
   const navigate = useNavigate();

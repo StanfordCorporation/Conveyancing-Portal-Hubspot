@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Upload, FileText, X } from 'lucide-react';
-import AddressAutocomplete from '../../../common/AddressAutocomplete';
+import AddressAutocomplete from '../../../src/components/common/AddressAutocomplete';
 
 export default function CreateLeadStep1({ formData, updateFormData }) {
   const [uploadingTitleSearch, setUploadingTitleSearch] = useState(false);
