@@ -109,12 +109,43 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
     }
   };
 
-  // Generate reference number from deal ID
-  const generateReference = (dealId) => {
-    // Extract last 4 characters and format as XX-XXXX
-    const shortId = dealId.slice(-4);
-    return `25-${shortId}`;
-  };
+  // Generate reference number - use matter_uid from Smokeball or client phone
+  const [referenceNumber, setReferenceNumber] = useState('');
+
+  useEffect(() => {
+    const fetchReferenceNumber = async () => {
+      try {
+        // Fetch deal to get matter_uid
+        const response = await api.get(`/client/property/${dealId}`);
+        const dealData = response.data;
+
+        // Try to use matter_uid first
+        if (dealData.matter_uid) {
+          setReferenceNumber(dealData.matter_uid);
+          console.log(`[Payment Instructions] Using matter_uid as reference: ${dealData.matter_uid}`);
+        } else if (dealData.primarySeller?.phone) {
+          // Use client phone number if matter_uid not available
+          const phoneRef = dealData.primarySeller.phone.replace(/\D/g, ''); // Remove non-digits
+          setReferenceNumber(phoneRef);
+          console.log(`[Payment Instructions] Using phone as reference: ${phoneRef}`);
+        } else {
+          // Fallback to deal ID
+          const shortId = dealId.slice(-4);
+          setReferenceNumber(`25-${shortId}`);
+          console.log(`[Payment Instructions] Using deal ID as reference: 25-${shortId}`);
+        }
+      } catch (error) {
+        console.error('[Payment Instructions] Error fetching reference:', error);
+        // Fallback to deal ID
+        const shortId = dealId.slice(-4);
+        setReferenceNumber(`25-${shortId}`);
+      }
+    };
+
+    if (dealId && paymentMethod === 'Bank Transfer') {
+      fetchReferenceNumber();
+    }
+  }, [dealId, paymentMethod]);
 
   if (loading) {
     return (
@@ -199,7 +230,7 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
         <BankTransferDetails 
           amount={quoteAmount}
           dealId={dealId}
-          referenceNumber={generateReference(dealId)}
+          referenceNumber={referenceNumber || 'Loading...'}
           onConfirm={handleBankTransferConfirm}
         />
       </div>
