@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
 import api from '../../services/api.js';
-import AddressAutocomplete from '../../../src/components/common/AddressAutocomplete';
+import AddressAutocomplete from '../../../../src/components/common/AddressAutocomplete';
 
 export default function PropertyDetails({
   dealId,
