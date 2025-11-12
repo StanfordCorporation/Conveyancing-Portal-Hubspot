@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PaymentForm from './PaymentForm.jsx';
+import PaymentMethodSelection from './PaymentMethodSelection.jsx';
+import BankTransferDetails from './BankTransferDetails.jsx';
+import api from '../../services/api.js';
 import './payment-instructions.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -10,10 +13,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * Displays payment information and Stripe payment form
  */
 export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete }) {
+  const [paymentMethod, setPaymentMethod] = useState(null); // 'Stripe' or 'Bank Transfer'
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState(initialQuoteAmount || '0.00');
   const [loading, setLoading] = useState(!initialQuoteAmount);
+  const [bankTransferRecorded, setBankTransferRecorded] = useState(false);
 
   // Fetch quote if not provided
   useEffect(() => {
@@ -65,6 +70,52 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
     setShowPaymentForm(false);
   };
 
+  // Handle payment method selection
+  const handleMethodSelect = async (method) => {
+    console.log(`[Payment Instructions] Method selected: ${method}`);
+    setPaymentMethod(method);
+
+    if (method === 'Stripe') {
+      // Show Stripe payment form
+      setShowPaymentForm(true);
+    }
+    // If Bank Transfer, we'll show the BankTransferDetails component
+  };
+
+  // Handle bank transfer confirmation
+  const handleBankTransferConfirm = async () => {
+    try {
+      console.log('[Payment Instructions] Recording bank transfer payment...');
+
+      // Call backend to record bank transfer selection
+      await api.post(`/client/property/${dealId}/bank-transfer`, {
+        amount: quoteAmount
+      });
+
+      console.log('[Payment Instructions] Bank transfer recorded successfully');
+      setBankTransferRecorded(true);
+
+      // Wait a moment, then notify parent
+      setTimeout(() => {
+        if (onComplete) {
+          console.log('[Payment Instructions] 🎯 Notifying parent of completion');
+          onComplete();
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error('[Payment Instructions] Error recording bank transfer:', error);
+      alert('Failed to record bank transfer. Please try again.');
+    }
+  };
+
+  // Generate reference number from deal ID
+  const generateReference = (dealId) => {
+    // Extract last 4 characters and format as XX-XXXX
+    const shortId = dealId.slice(-4);
+    return `25-${shortId}`;
+  };
+
   if (loading) {
     return (
       <div className="payment-instructions-container">
@@ -76,18 +127,25 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
     );
   }
 
-  if (paymentComplete) {
+  if (paymentComplete || bankTransferRecorded) {
+    const message = bankTransferRecorded 
+      ? 'Bank Transfer Recorded!'
+      : 'Payment Completed!';
+    const description = bankTransferRecorded
+      ? 'We will notify you once we receive your bank transfer.'
+      : 'Your payment has been successfully processed.';
+
     return (
       <div className="payment-instructions-container">
         <div className="payment-complete-message">
           <div className="complete-icon">✓</div>
-          <h2>Payment Completed!</h2>
-          <p>Thank you for your payment of ${quoteAmount} AUD</p>
+          <h2>{message}</h2>
+          <p>Amount: ${quoteAmount} AUD</p>
           <div className="complete-details">
-            <p>Your payment has been successfully processed.</p>
+            <p>{description}</p>
             <p>A confirmation email has been sent to your registered email address.</p>
             <p className="next-steps">
-              <strong>Next Steps:</strong> Our team will now process your conveyancing request and contact you within 24-48 hours.
+              <strong>Next Steps:</strong> Our team will process your conveyancing request and contact you within 24-48 hours.
             </p>
           </div>
         </div>
@@ -95,7 +153,20 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
     );
   }
 
-  if (showPaymentForm) {
+  // Show payment method selection first
+  if (!paymentMethod) {
+    return (
+      <div className="payment-instructions-container">
+        <PaymentMethodSelection 
+          amount={quoteAmount}
+          onSelectMethod={handleMethodSelect}
+        />
+      </div>
+    );
+  }
+
+  // Show Stripe payment form if Credit Card selected
+  if (paymentMethod === 'Stripe' && showPaymentForm) {
     return (
       <div className="payment-instructions-container">
         <PaymentForm
@@ -117,6 +188,20 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
             </ul>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // Show Bank Transfer details if Bank Transfer selected
+  if (paymentMethod === 'Bank Transfer') {
+    return (
+      <div className="payment-instructions-container">
+        <BankTransferDetails 
+          amount={quoteAmount}
+          dealId={dealId}
+          referenceNumber={generateReference(dealId)}
+          onConfirm={handleBankTransferConfirm}
+        />
       </div>
     );
   }
