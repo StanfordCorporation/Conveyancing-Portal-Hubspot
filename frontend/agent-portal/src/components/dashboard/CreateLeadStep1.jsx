@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Upload, FileText, X } from 'lucide-react';
+import AddressAutocomplete from '../../../common/AddressAutocomplete';
 
 export default function CreateLeadStep1({ formData, updateFormData }) {
   const [uploadingTitleSearch, setUploadingTitleSearch] = useState(false);
@@ -66,12 +67,11 @@ export default function CreateLeadStep1({ formData, updateFormData }) {
         <div className="form-row">
           <div className="form-group full-width">
             <label className="form-label required">Property Address</label>
-            <input
-              type="text"
+            <AddressAutocomplete
               className="form-input"
               placeholder="123 Main Street, Brisbane QLD 4000"
               value={formData.propertyAddress}
-              onChange={(e) => updateFormData({ propertyAddress: e.target.value })}
+              onChange={(value) => updateFormData({ propertyAddress: value })}
             />
           </div>
         </div>
@@ -218,12 +218,11 @@ export default function CreateLeadStep1({ formData, updateFormData }) {
         <div className="form-row">
           <div className="form-group full-width">
             <label className="form-label">Residential Address (Optional)</label>
-            <input
-              type="text"
+            <AddressAutocomplete
               className="form-input"
               placeholder="10 Smith Street, Brisbane QLD 4000"
               value={formData.primarySeller.address}
-              onChange={(e) => handlePrimarySellerChange('address', e.target.value)}
+              onChange={(value) => handlePrimarySellerChange('address', value)}
             />
           </div>
         </div>
@@ -284,12 +283,11 @@ export default function CreateLeadStep1({ formData, updateFormData }) {
           <div className="form-row">
             <div className="form-group full-width">
               <label className="form-label">Residential Address (Optional)</label>
-              <input
-                type="text"
+              <AddressAutocomplete
                 className="form-input"
                 placeholder="20 Jones Street, Brisbane QLD 4000"
                 value={seller.address}
-                onChange={(e) => handleAdditionalSellerChange(index, 'address', e.target.value)}
+                onChange={(value) => handleAdditionalSellerChange(index, 'address', value)}
               />
             </div>
           </div>

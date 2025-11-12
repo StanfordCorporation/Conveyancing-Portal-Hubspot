@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
 import api from '../../services/api.js';
+import AddressAutocomplete from '../../../common/AddressAutocomplete';
 
 export default function PropertyDetails({
   dealId,
@@ -63,11 +64,10 @@ export default function PropertyDetails({
         <div className="info-row full-width">
           <label className="field-label">Property Address</label>
           {editMode ? (
-            <input
-              type="text"
+            <AddressAutocomplete
               className="field-input"
               value={propertyAddress || ''}
-              onChange={(e) => onChangePropertyAddress(e.target.value)}
+              onChange={onChangePropertyAddress}
               placeholder="Enter property address"
             />
           ) : (
@@ -77,11 +77,10 @@ export default function PropertyDetails({
         <div className="info-row full-width">
           <label className="field-label">Client Residential Address</label>
           {editMode ? (
-            <input
-              type="text"
+            <AddressAutocomplete
               className="field-input"
               value={clientResidentialAddress || ''}
-              onChange={(e) => onChangeResidentialAddress(e.target.value)}
+              onChange={onChangeResidentialAddress}
               placeholder="Enter residential address"
             />
           ) : (

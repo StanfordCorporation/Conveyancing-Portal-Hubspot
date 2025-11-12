@@ -6,6 +6,7 @@ import { AgencySearchModal } from './AgencySearchModal';
 import { AgentSelectionModal } from './AgentSelectionModal';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
+import AddressAutocomplete from '../../../common/AddressAutocomplete';
 
 export default function DisclosureForm() {
   const navigate = useNavigate();
@@ -348,12 +349,11 @@ export default function DisclosureForm() {
                   <label htmlFor="propertyAddress" className="block text-sm font-medium text-foreground mb-3">
                     Property Address <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <AddressAutocomplete
                     id="propertyAddress"
-                    type="text"
                     value={propertyAddress}
-                    onChange={(e) => setPropertyAddress(e.target.value)}
-                    placeholder="123 Main Street, Melbourne VIC 3000"
+                    onChange={setPropertyAddress}
+                    placeholder="123 Main Street, Brisbane QLD 4000"
                     className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
                   />
                 </div>
