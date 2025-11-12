@@ -140,120 +140,158 @@ router.post('/create-signing-session', async (req, res) => {
       if (docusignData && docusignData.envelope_id) {
         console.log(`[DocuSign Route] 🔍 Found existing envelope: ${docusignData.envelope_id}`);
         console.log(`[DocuSign Route] 📋 Stored signers in envelope:`, JSON.stringify(docusignData.signers, null, 2));
-        console.log(`[DocuSign Route] ℹ️ Checking status and generating signing URL if needed...`);
         
-        // Check current status to see if we need to generate a signing URL
-        const accessToken = await getAccessToken();
-        const envelopeStatus = await getEnvelopeStatus(accessToken, docusignData.envelope_id);
-        
-        // Find signers from stored data
+        const envelopeId = docusignData.envelope_id;
         const signers = docusignData.signers || [];
-        const firstSigner = signers[0];
         
-        // Check if first signer still needs to sign
-        const firstSignerStatus = envelopeStatus.recipients?.signers?.find(s => 
-          s.email === firstSigner?.email && s.routingOrder === '1'
-        );
+        // HYBRID SIGNING APPROACH
+        // Get current user's email from the request (first signer in providedSigners)
+        const currentUserEmail = providedSigners && providedSigners.length > 0 
+          ? providedSigners[0]?.email?.toLowerCase()?.trim()
+          : null;
         
-        if (firstSignerStatus && (firstSignerStatus.status === 'sent' || firstSignerStatus.status === 'delivered')) {
-          // Check if we have a cached signing URL (< 5 minutes old)
-          let signingUrl = null;
-          
-          if (docusignData.signing_url && docusignData.signing_url_created_at) {
-            const urlAge = Date.now() - new Date(docusignData.signing_url_created_at).getTime();
-            const FIVE_MINUTES = 5 * 60 * 1000;
-            
-            if (urlAge < FIVE_MINUTES) {
-              console.log(`[DocuSign Route] ♻️ Using cached signing URL (${Math.round(urlAge/1000)}s old)`);
-              signingUrl = docusignData.signing_url;
-            } else {
-              console.log(`[DocuSign Route] ⏰ Cached URL expired (${Math.round(urlAge/1000)}s old) - generating new URL`);
-            }
-          }
-          
-          // Generate new URL if no valid cache
-          if (!signingUrl) {
-            console.log(`[DocuSign Route] First signer (${firstSigner.email}) hasn't signed - generating URL...`);
-            
-            const dsApiClient = new docusign.ApiClient();
-            dsApiClient.setBasePath(docusignConfig.basePath);
-            dsApiClient.addDefaultHeader('Authorization', 'Bearer ' + accessToken);
-            
-            const envelopesApi = new docusign.EnvelopesApi(dsApiClient);
-            const recipientViewRequest = new docusign.RecipientViewRequest();
-            recipientViewRequest.returnUrl = docusignConfig.returnUrl;
-            recipientViewRequest.authenticationMethod = 'none';
-            recipientViewRequest.email = firstSigner.email;
-            recipientViewRequest.userName = firstSigner.name;
-            // Use the SAME clientUserId that was used when creating envelope
-            recipientViewRequest.clientUserId = firstSigner.clientUserId;
-            recipientViewRequest.pingUrl = docusignConfig.pingUrl;
-            recipientViewRequest.pingFrequency = '300';
-            
-            const result = await envelopesApi.createRecipientView(
-              docusignConfig.accountId,
-              docusignData.envelope_id,
-              { recipientViewRequest }
-            );
-            
-            signingUrl = result.url;
-            
-            // Store URL in HubSpot for future reuse
-            docusignData.signing_url = signingUrl;
-            docusignData.signing_url_created_at = new Date().toISOString();
-            await saveDocuSignData(dealId, docusignData);
-            
-            console.log(`[DocuSign Route] ✅ Signing URL generated and cached in HubSpot`);
-          }
-          
-          console.log(`[DocuSign Route] 🔗 Signing URL:`, signingUrl);
-          
+        if (!currentUserEmail) {
+          console.log(`[DocuSign Route] ⚠️ No current user email in request`);
           return res.json({
             success: true,
             dealId,
-            envelopeId: docusignData.envelope_id,
-            redirectUrl: signingUrl,
-            signerName: firstSigner.name,  // Add for EmbeddedSigning display
-            signerEmail: firstSigner.email, // Add for EmbeddedSigning display
+            envelopeId,
             existingEnvelope: true,
+            message: 'Envelope exists. Please refresh to continue.'
+          });
+        }
+        
+        console.log(`[DocuSign Route] 👤 Current user: ${currentUserEmail}`);
+        
+        // Fetch recipient status from HubSpot (updated by webhooks)
+        const dealData = await hubspotClient.get(`/crm/v3/objects/deals/${dealId}`, {
+          params: { properties: 'recipient_status,envelope_status' }
+        });
+        
+        const recipientStatusJson = dealData.data.properties.recipient_status;
+        const envelopeStatus = dealData.data.properties.envelope_status;
+        
+        if (!recipientStatusJson) {
+          console.log(`[DocuSign Route] ℹ️ No recipient_status yet (webhook hasn't fired) - returning basic info`);
+          return res.json({
+            success: true,
+            dealId,
+            envelopeId,
+            existingEnvelope: true,
+            message: 'Envelope created, awaiting status update. Please refresh in a moment.'
+          });
+        }
+        
+        const recipientStatus = JSON.parse(recipientStatusJson);
+        console.log(`[DocuSign Route] 📊 Recipient status from HubSpot:`, recipientStatus);
+        console.log(`[DocuSign Route] ✉️ Envelope status: ${envelopeStatus}`);
+        
+        // Find current user in recipient list
+        const currentRecipient = recipientStatus.find(r => 
+          r.email?.toLowerCase()?.trim() === currentUserEmail
+        );
+        
+        if (!currentRecipient) {
+          console.log(`[DocuSign Route] ❌ Current user not found in recipient list`);
+          return res.status(403).json({ 
+            error: 'You are not a signer on this envelope' 
+          });
+        }
+        
+        console.log(`[DocuSign Route] 👤 Current user status: ${currentRecipient.status}`);
+        
+        // Check if current user has already signed
+        if (currentRecipient.status === 'completed') {
+          console.log(`[DocuSign Route] ✅ Current user has already signed`);
+          return res.json({
+            success: true,
+            dealId,
+            envelopeId,
+            existingEnvelope: true,
+            alreadySigned: true,
+            message: 'You have already signed this document',
             signers: signers.map(s => ({
               contactId: s.contactId,
-              name: s.name,
-              email: s.email,
-              routingOrder: s.routingOrder,
-              roleName: s.roleName
-            })),
-            additionalSigners: signers.slice(1).map(s => ({
               name: s.name,
               email: s.email,
               routingOrder: s.routingOrder
-            })),
-            totalSigners: signers.length,
-            currentSigner: {
-              name: firstSigner.name,
-              email: firstSigner.email,
-              routingOrder: 1
-            }
+            }))
           });
-        } else {
-          // First signer already signed or envelope complete
-          console.log(`[DocuSign Route] Envelope status: ${envelopeStatus.status}`);
+        }
+        
+        // Check if it's the current user's turn to sign
+        if (currentRecipient.status !== 'sent' && currentRecipient.status !== 'delivered') {
+          console.log(`[DocuSign Route] ⏳ Not current user's turn yet (status: ${currentRecipient.status})`);
           return res.json({
             success: true,
             dealId,
-            envelopeId: docusignData.envelope_id,
+            envelopeId,
             existingEnvelope: true,
-            status: envelopeStatus.status,
-            message: 'Envelope already processed. Check status for details.',
+            waitingForOthers: true,
+            message: 'Waiting for previous signers to complete',
             signers: signers.map(s => ({
               contactId: s.contactId,
               name: s.name,
               email: s.email,
-              routingOrder: s.routingOrder,
-              roleName: s.roleName
+              routingOrder: s.routingOrder
             }))
           });
         }
+        
+        // Current user needs to sign - generate their signing URL
+        console.log(`[DocuSign Route] 📝 Current user needs to sign - generating URL...`);
+        
+        // Find current signer in stored signers data
+        const currentSigner = signers.find(s => 
+          s.email?.toLowerCase()?.trim() === currentUserEmail
+        );
+        
+        if (!currentSigner) {
+          console.log(`[DocuSign Route] ⚠️ Current user not found in stored signers`);
+          return res.status(500).json({ 
+            error: 'Signer data not found. Please contact support.' 
+          });
+        }
+        
+        // Use the existing getRecipientSigningUrl function
+        const { getRecipientSigningUrl } = await import('../integrations/docusign/client.js');
+        
+        const signingUrl = await getRecipientSigningUrl({
+          envelopeId,
+          recipientEmail: currentSigner.email,
+          recipientName: currentSigner.name,
+          recipientClientId: currentSigner.clientUserId || `${currentSigner.contactId}_${Date.now()}`,
+          useJWT: true
+        });
+        
+        console.log(`[DocuSign Route] ✅ Signing URL generated for ${currentSigner.name}`);
+        
+        return res.json({
+          success: true,
+          dealId,
+          envelopeId,
+          redirectUrl: signingUrl,
+          signerName: currentSigner.name,
+          signerEmail: currentSigner.email,
+          existingEnvelope: true,
+          signers: signers.map(s => ({
+            contactId: s.contactId,
+            name: s.name,
+            email: s.email,
+            routingOrder: s.routingOrder
+          })),
+          additionalSigners: signers.filter(s => s.email !== currentUserEmail).map(s => ({
+            name: s.name,
+            email: s.email,
+            routingOrder: s.routingOrder
+          })),
+          totalSigners: signers.length,
+          currentSigner: {
+            name: currentSigner.name,
+            email: currentSigner.email,
+            routingOrder: currentSigner.routingOrder
+          }
+        });
       }
     } catch (checkError) {
       console.log(`[DocuSign Route] ⚠️ Could not check for existing envelope:`, checkError.message);

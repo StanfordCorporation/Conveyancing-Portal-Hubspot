@@ -8,6 +8,7 @@ import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
 import hubspotClient from '../../integrations/hubspot/client.js';
 import { HUBSPOT } from '../../config/constants.js';
 import { format, subMonths, startOfMonth } from 'date-fns';
+import { getAllHubSpotProperties } from '../../utils/questionnaireHelper.js';
 
 /**
  * Find agent by email
@@ -277,21 +278,18 @@ export const getAgentDeals = async (agentId) => {
     
     console.log(`[Agent Service] Found ${dealIds.length} deals for agent ${agentId}`);
     
-    // Define all properties to fetch
+    // Define all properties to fetch (dynamically includes ALL questionnaire fields)
+    const questionnaireProperties = getAllHubSpotProperties();
     const dealProperties = [
       'dealname', 'dealstage', 'property_address', 'number_of_owners',
-      'body_corporate', 'registered_encumbrances', 'tenancy_agreement',
-      'rental_agreement_post_settlement', 'resume_notice', 'swimming_pool',
-      'owner_builder', 'createdate', 'hs_lastmodifieddate', 'closedate',
+      'createdate', 'hs_lastmodifieddate', 'closedate',
       'amount', 'pipeline', 'deal_currency_code',
       'is_draft', // Draft status indicator
       'agent_title_search', 'agent_title_search_file', // Title search fields
-      // Questionnaire fields
-      'body_corporate_details', 'non_statutory_encumbrances',
-      'formal_tenancy_agreement', 'tenancy_end_date', 'weekly_rent',
-      'owner_name', 'contaminated_land', 'tree_disputes',
-      'environmental_management', 'unauthorised_works'
+      ...questionnaireProperties // Dynamically include ALL questionnaire fields from schema
     ];
+    
+    console.log(`[Agent Service] Fetching ${dealProperties.length} properties per deal (base: 11, questionnaire: ${questionnaireProperties.length})`);
     
     // Batch fetch all deals
     const dealsResponse = await hubspotClient.post(

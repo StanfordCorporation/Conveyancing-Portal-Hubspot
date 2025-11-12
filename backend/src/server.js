@@ -27,6 +27,7 @@ import paymentRoutes from './routes/payment.js';
 import webhookRoutes from './routes/webhook.js';
 import smokeballRoutes from './routes/smokeball.js';
 import smokeballWebhookRoutes from './routes/smokeball-webhook.js';
+import timelineRoutes from './routes/timeline.js';
 
 dotenv.config();
 
@@ -123,6 +124,12 @@ app.use('/api/client', clientRoutes);
  * Agent Portal Routes (Protected)
  */
 app.use('/api/agent', agentRoutes);
+
+/**
+ * Timeline Routes (Protected)
+ * Fetch deal timeline events for agent portal
+ */
+app.use('/api/timeline', timelineRoutes);
 
 /**
  * Agency Owner Routes (Protected)

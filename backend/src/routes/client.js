@@ -196,6 +196,8 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       'is_draft', // Include is_draft to filter out draft deals
       'agent_title_search', // Did agent complete title search?
       'agent_title_search_file', // Agent's title search file ID
+      'envelope_status', // DocuSign envelope status (sent, completed, etc)
+      'recipient_status', // JSON array of signer statuses
       ...questionnaireProperties
     ];
 
@@ -500,7 +502,10 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         propertyDetails: propertyDetails,
         files: files,
         agentTitleSearch: deal.properties.agent_title_search || null,
-        agentTitleSearchFile: agentTitleSearchFileData
+        agentTitleSearchFile: agentTitleSearchFileData,
+        envelopeStatus: deal.properties.envelope_status || null,
+        recipientStatus: deal.properties.recipient_status ? 
+          JSON.parse(deal.properties.recipient_status) : null
       };
     }));
 
@@ -1214,6 +1219,49 @@ router.post('/property/:dealId/agent-title-search-file', authenticateJWT, upload
   } catch (error) {
     console.error(`[Agent Title Search Upload] ❌ Error:`, error.message);
     res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+/**
+ * POST /api/client/property/:dealId/bank-transfer
+ * Record bank transfer payment selection
+ * Updates HubSpot with payment details and sets status to Pending
+ */
+router.post('/property/:dealId/bank-transfer', authenticateJWT, async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const { amount } = req.body;
+
+    console.log(`[Bank Transfer] 💰 Recording bank transfer selection for deal ${dealId}`);
+    console.log(`[Bank Transfer] Amount: $${amount}`);
+
+    // Verify user has access to this deal
+    const userContactId = req.user.contactId;
+    const userDeals = await associationsIntegration.getContactDeals(userContactId);
+
+    if (!userDeals.includes(dealId)) {
+      console.log(`[Bank Transfer] ❌ Access denied for deal ${dealId}`);
+      return res.status(403).json({ error: 'You do not have permission to update this deal' });
+    }
+
+    // Update HubSpot with bank transfer payment details
+    await dealsIntegration.updateDeal(dealId, {
+      payment_method: 'Bank Transfer',
+      payment_status: 'Pending',
+      payment_amount: amount.toString(),
+      payment_date: new Date().toISOString().split('T')[0],
+    });
+
+    console.log(`[Bank Transfer] ✅ Deal ${dealId} marked for bank transfer - status: Pending`);
+    
+    res.json({ 
+      success: true,
+      message: 'Bank transfer payment recorded. Please transfer funds to the provided account.'
+    });
+
+  } catch (error) {
+    console.error(`[Bank Transfer] ❌ Error:`, error.message);
+    res.status(500).json({ error: 'Failed to record bank transfer payment' });
   }
 });
 

@@ -86,6 +86,7 @@ export const SMOKEBALL_API = {
     // Bank account endpoints
     bankAccounts: '/bankaccounts',
     bankAccount: (id) => `/bankaccounts/${id}`,
+    bankAccountForMatter: (matterId) => `/bankaccounts/${matterId}`, // Get bank account by matter/lead ID
     transactions: (accountId) => `/bankaccounts/${accountId}/transactions`,
     transaction: (accountId, transactionId) => `/bankaccounts/${accountId}/transactions/${transactionId}`,
 

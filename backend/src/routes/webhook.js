@@ -83,6 +83,7 @@ async function handlePaymentSuccess(paymentIntent) {
     try {
       // Update deal: mark as paid, store payment details, and progress to FUNDS_PROVIDED stage
       await dealsIntegration.updateDeal(dealId, {
+        payment_method: 'Stripe',
         payment_status: 'Paid',
         payment_amount: (paymentIntent.amount / 100).toString(),
         payment_date: new Date().toISOString().split('T')[0],
@@ -375,6 +376,101 @@ async function handleMatterConverted(matterData) {
     console.error(`[Smokeball Webhook] ❌ Error handling matter.converted:`, error.message);
     throw error;
   }
+}
+
+/**
+ * POST /api/webhook/hubspot
+ * Handle HubSpot property change webhooks
+ * Triggers when payment_status field changes to "Paid"
+ */
+router.post('/hubspot', express.json(), async (req, res) => {
+  try {
+    const events = Array.isArray(req.body) ? req.body : [req.body];
+    
+    console.log(`[HubSpot Webhook] 📥 Received ${events.length} webhook event(s)`);
+    
+    // Process each event
+    for (const event of events) {
+      // Check if this is a payment_status change to "Paid"
+      if (event.propertyName === 'payment_status' && 
+          event.propertyValue === 'Paid') {
+        
+        const dealId = event.objectId;
+        console.log(`[HubSpot Webhook] 💰 Payment confirmed for deal: ${dealId}`);
+        
+        // Get deal to check payment method
+        const deal = await dealsIntegration.getDeal(dealId, [
+          'payment_method',
+          'payment_amount',
+          'lead_uid',
+          'matter_uid'
+        ]);
+        
+        // Only process bank transfers (Stripe payments are handled by Stripe webhook)
+        if (deal.properties.payment_method === 'Bank Transfer') {
+          console.log('[HubSpot Webhook] 🏦 Processing bank transfer confirmation...');
+          
+          try {
+            // Receipt to Smokeball with Bank Transfer type
+            await handleBankTransferConfirmation(deal);
+            
+            // Update deal stage to FUNDS_PROVIDED
+            await dealsIntegration.updateDeal(dealId, {
+              dealstage: DEAL_STAGES.FUNDS_PROVIDED.id
+            });
+            
+            console.log(`[HubSpot Webhook] ✅ Bank transfer processed successfully for deal ${dealId}`);
+          } catch (error) {
+            console.error(`[HubSpot Webhook] ❌ Error processing bank transfer:`, error.message);
+            // Don't throw - still acknowledge webhook
+          }
+        } else {
+          console.log(`[HubSpot Webhook] ℹ️ Payment method is ${deal.properties.payment_method}, not Bank Transfer - skipping`);
+        }
+      }
+    }
+    
+    res.json({ received: true });
+  } catch (error) {
+    console.error('[HubSpot Webhook] ❌ Error processing webhook:', error.message);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * Handle bank transfer confirmation
+ * Creates Smokeball receipt with Bank Transfer type
+ * @param {Object} deal - HubSpot deal object
+ */
+async function handleBankTransferConfirmation(deal) {
+  const matterId = deal.properties.matter_uid || deal.properties.lead_uid;
+  const amount = parseFloat(deal.properties.payment_amount);
+  
+  if (!matterId) {
+    throw new Error('No matter_uid or lead_uid found in deal');
+  }
+  
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error(`Invalid payment amount: ${deal.properties.payment_amount}`);
+  }
+  
+  console.log(`[HubSpot Webhook] 💰 Receipting bank transfer to Smokeball`);
+  console.log(`[HubSpot Webhook]    Matter ID: ${matterId}`);
+  console.log(`[HubSpot Webhook]    Amount: $${amount.toFixed(2)}`);
+  
+  // Create payment intent-like object for workflow
+  const paymentData = {
+    id: `bank_transfer_${deal.id}`,
+    amount: Math.round(amount * 100), // Convert to cents
+    metadata: {
+      deal_id: deal.id
+    }
+  };
+  
+  // Receipt to Smokeball with Bank Transfer type
+  await smokeballPaymentWorkflow.receiptStripePayment(paymentData, matterId, null, 'Bank Transfer');
+  
+  console.log(`[HubSpot Webhook] ✅ Bank transfer receipted to Smokeball`);
 }
 
 export default router;

@@ -345,10 +345,10 @@ function makeEnvelopeFromTemplate(args) {
     console.log(`[DocuSign] Creating envelope with ${signers.length} signers (routing order enabled)`);
 
     templateRoles = signers.map((signer, index) => {
-      // Only first signer gets embedded signing (clientUserId)
-      // Subsequent signers will receive email from DocuSign
+      // All signers get embedded signing capability (clientUserId)
+      // Signers receive email from DocuSign AND can sign in portal (hybrid approach)
       const isFirstSigner = signer.routingOrder === 1;
-      const signingMethod = isFirstSigner ? 'Embedded (Portal)' : 'Email';
+      const signingMethod = 'Hybrid (Portal OR Email)';
       
       console.log(`[DocuSign]   Signer ${index + 1}: ${signer.name} (${signer.email}) - Role: ${signer.roleName}, Order: ${signer.routingOrder}, Method: ${signingMethod}`);
 
@@ -359,11 +359,11 @@ function makeEnvelopeFromTemplate(args) {
         routingOrder: signer.routingOrder.toString() // "1", "2", etc. - defines signing order
       };
 
-      // Only set clientUserId for first signer (enables embedded signing)
-      // Leaving it empty for others triggers DocuSign to send email notifications
-      if (isFirstSigner) {
-        role.clientUserId = signer.clientUserId;
-      }
+      // Set clientUserId for ALL signers (enables hybrid: portal OR email)
+      // DocuSign will still send email notifications due to envelope event configuration
+      // This allows signers to choose: sign via portal (embedded) OR via email link
+      // Routing order is still enforced by DocuSign (sequential signing)
+      role.clientUserId = signer.clientUserId;
 
       return docusign.TemplateRole.constructFromObject(role);
     });

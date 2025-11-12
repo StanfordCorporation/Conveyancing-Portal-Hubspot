@@ -10,6 +10,7 @@
  */
 
 import * as dealsIntegration from '../../integrations/hubspot/deals.js';
+import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
 import * as smokeballBankAccounts from '../../integrations/smokeball/bankAccounts.js';
 
 /**
@@ -61,11 +62,20 @@ export async function receiptStripePayment(paymentIntent) {
 
     if (contactId) {
       try {
-        const hubspotContact = await dealsIntegration.getDeal(contactId, ['smokeball_contact_id']);
+        console.log(`[Smokeball Payment Workflow] 👤 Fetching contact: ${contactId}`);
+        const hubspotContact = await contactsIntegration.getContact(contactId, ['smokeball_contact_id']);
         smokeballPayorId = hubspotContact.properties?.smokeball_contact_id || null;
+        
+        if (smokeballPayorId) {
+          console.log(`[Smokeball Payment Workflow] ✅ Found Smokeball payor ID: ${smokeballPayorId}`);
+        } else {
+          console.warn('[Smokeball Payment Workflow] ⚠️ Contact exists but no Smokeball ID stored');
+        }
       } catch (error) {
         console.warn('[Smokeball Payment Workflow] ⚠️ Could not fetch payor contact:', error.message);
       }
+    } else {
+      console.log('[Smokeball Payment Workflow] ℹ️ No contact_id in payment metadata');
     }
 
     // ========================================

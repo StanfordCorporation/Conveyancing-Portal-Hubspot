@@ -94,12 +94,22 @@ export const createContact = async (contactData) => {
 
 /**
  * Get contact by ID
+ * @param {string} contactId - Contact ID
+ * @param {Array<string>} properties - Optional: Specific properties to fetch
  */
-export const getContact = async (contactId) => {
+export const getContact = async (contactId, properties = null) => {
+  const params = {};
+  
+  if (properties && properties.length > 0) {
+    // Fetch specific properties
+    params.properties = properties.join(',');
+  } else {
+    // Default properties
+    params.properties = ['firstname','lastname','email','phone','address','contact_type','smokeball_contact_id'].join(',');
+  }
+
   const response = await hubspotClient.get(`/crm/v3/objects/contacts/${contactId}`, {
-    params: {
-      properties: ['firstname','lastname','email','phone','address','contact_type'].join(',')
-    }
+    params
   });
   return response.data;
 };
