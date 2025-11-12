@@ -291,38 +291,53 @@ function makeEnvelopeFromTemplate(args) {
 
   // Add EventNotification for webhooks (if dealId provided in args)
   if (args.dealId) {
-    const webhookUrl = process.env.DOCUSIGN_WEBHOOK_URL || 'https://webhooks.stanfordlegal.com.au/docusign';
+    // Use environment variable or fall back to backend URL
+    const webhookUrl = process.env.DOCUSIGN_WEBHOOK_URL;
     
-    env.eventNotification = docusign.EventNotification.constructFromObject({
-      url: webhookUrl,
-      loggingEnabled: true,
-      requireAcknowledgment: true,
-      useSoapInterface: false,
-      includeCertificateWithSoap: false,
-      signMessageWithX509Cert: false,
-      includeDocuments: false,
-      includeEnvelopeVoidReason: true,
-      includeTimeZone: true,
-      includeSenderAccountAsCustomField: true,
-      includeDocumentFields: true,
-      includeCertificateOfCompletion: false,
-      envelopeEvents: [
-        { envelopeEventStatusCode: 'sent' },
-        { envelopeEventStatusCode: 'delivered' },
-        { envelopeEventStatusCode: 'completed' },
-        { envelopeEventStatusCode: 'declined' },
-        { envelopeEventStatusCode: 'voided' }
-      ],
-      recipientEvents: [
-        { recipientEventStatusCode: 'Sent' },
-        { recipientEventStatusCode: 'Delivered' },
-        { recipientEventStatusCode: 'Completed' },
-        { recipientEventStatusCode: 'Declined' },
-        { recipientEventStatusCode: 'AutoResponded' }
-      ]
-    });
+    if (!webhookUrl) {
+      console.warn('[DocuSign] ⚠️ DOCUSIGN_WEBHOOK_URL not set in environment variables!');
+      console.warn('[DocuSign] ⚠️ Webhooks will use DocuSign Connect settings instead.');
+      console.warn('[DocuSign] ⚠️ Set DOCUSIGN_WEBHOOK_URL=https://conveyancing-portal-backend.vercel.app/api/webhook/docusign');
+    }
     
-    // Add custom field with HubSpot deal ID for webhook
+    // Only add EventNotification if webhook URL is configured
+    // Otherwise, DocuSign Connect settings will be used
+    if (webhookUrl) {
+      env.eventNotification = docusign.EventNotification.constructFromObject({
+        url: webhookUrl,
+        loggingEnabled: true,
+        requireAcknowledgment: true,
+        useSoapInterface: false,
+        includeCertificateWithSoap: false,
+        signMessageWithX509Cert: false,
+        includeDocuments: false,
+        includeEnvelopeVoidReason: true,
+        includeTimeZone: true,
+        includeSenderAccountAsCustomField: true,
+        includeDocumentFields: true,
+        includeCertificateOfCompletion: false,
+        envelopeEvents: [
+          { envelopeEventStatusCode: 'sent' },
+          { envelopeEventStatusCode: 'delivered' },
+          { envelopeEventStatusCode: 'completed' },
+          { envelopeEventStatusCode: 'declined' },
+          { envelopeEventStatusCode: 'voided' }
+        ],
+        recipientEvents: [
+          { recipientEventStatusCode: 'Sent' },
+          { recipientEventStatusCode: 'Delivered' },
+          { recipientEventStatusCode: 'Completed' },
+          { recipientEventStatusCode: 'Declined' },
+          { recipientEventStatusCode: 'AutoResponded' }
+        ]
+      });
+      
+      console.log(`[DocuSign] ✅ EventNotification configured for deal ${args.dealId} → ${webhookUrl}`);
+    } else {
+      console.log(`[DocuSign] ℹ️ Using DocuSign Connect settings for webhooks (no EventNotification override)`);
+    }
+    
+    // Add custom field with HubSpot deal ID for webhook (essential for linking webhook to deal)
     env.customFields = docusign.CustomFields.constructFromObject({
       textCustomFields: [
         {
@@ -333,8 +348,6 @@ function makeEnvelopeFromTemplate(args) {
         }
       ]
     });
-    
-    console.log(`[DocuSign] EventNotification configured for deal ${args.dealId} → ${webhookUrl}`);
   }
 
   // Create template roles (signers)

@@ -168,23 +168,55 @@ router.post('/create-signing-session', async (req, res) => {
           params: { properties: 'recipient_status,envelope_status' }
         });
         
-        const recipientStatusJson = dealData.data.properties.recipient_status;
-        const envelopeStatus = dealData.data.properties.envelope_status;
+        let recipientStatusJson = dealData.data.properties.recipient_status;
+        let envelopeStatus = dealData.data.properties.envelope_status;
+        let recipientStatus;
         
+        // FALLBACK: If no webhook data in HubSpot, fetch directly from DocuSign
         if (!recipientStatusJson) {
-          console.log(`[DocuSign Route] ℹ️ No recipient_status yet (webhook hasn't fired) - returning basic info`);
-          return res.json({
-            success: true,
-            dealId,
-            envelopeId,
-            existingEnvelope: true,
-            message: 'Envelope created, awaiting status update. Please refresh in a moment.'
-          });
+          console.log(`[DocuSign Route] ⚠️ No recipient_status in HubSpot - fetching from DocuSign API (fallback)`);
+          
+          try {
+            // Fetch current status from DocuSign
+            const { getEnvelopeStatus } = await import('../integrations/docusign/client.js');
+            const dsEnvelopeStatus = await getEnvelopeStatus(null, envelopeId, true);
+            
+            console.log(`[DocuSign Route] 📊 Fetched from DocuSign - Status: ${dsEnvelopeStatus.status}`);
+            console.log(`[DocuSign Route] 👥 Recipients:`, dsEnvelopeStatus.recipients?.signers);
+            
+            // Convert to our format
+            recipientStatus = (dsEnvelopeStatus.recipients?.signers || []).map(s => ({
+              email: s.email,
+              status: s.status
+            }));
+            
+            envelopeStatus = dsEnvelopeStatus.status;
+            
+            // Backfill HubSpot with this data (so webhook data is available next time)
+            const { updateDeal } = await import('../integrations/hubspot/deals.js');
+            await updateDeal(dealId, {
+              envelope_status: envelopeStatus,
+              recipient_status: JSON.stringify(recipientStatus)
+            });
+            
+            console.log(`[DocuSign Route] ✅ Backfilled HubSpot with envelope status from DocuSign`);
+            
+          } catch (fallbackError) {
+            console.error(`[DocuSign Route] ❌ Failed to fetch from DocuSign:`, fallbackError.message);
+            return res.json({
+              success: true,
+              dealId,
+              envelopeId,
+              existingEnvelope: true,
+              message: 'Envelope exists but status unavailable. Please try again in a moment.'
+            });
+          }
+        } else {
+          // Use webhook data from HubSpot
+          recipientStatus = JSON.parse(recipientStatusJson);
+          console.log(`[DocuSign Route] 📊 Recipient status from HubSpot:`, recipientStatus);
+          console.log(`[DocuSign Route] ✉️ Envelope status: ${envelopeStatus}`);
         }
-        
-        const recipientStatus = JSON.parse(recipientStatusJson);
-        console.log(`[DocuSign Route] 📊 Recipient status from HubSpot:`, recipientStatus);
-        console.log(`[DocuSign Route] ✉️ Envelope status: ${envelopeStatus}`);
         
         // Find current user in recipient list
         const currentRecipient = recipientStatus.find(r => 
