@@ -229,7 +229,7 @@ router.post('/create-signing-session', async (req, res) => {
             error: 'You are not a signer on this envelope' 
           });
         }
-        
+            
         console.log(`[DocuSign Route] 👤 Current user status: ${currentRecipient.status}`);
         
         // Check if current user has already signed
@@ -386,7 +386,8 @@ router.post('/create-signing-session', async (req, res) => {
       signers,
       templateId: docusignConfig.templateId,
       dealName: deal.properties.dealname,
-      propertyAddress: deal.properties.address
+      propertyAddress: deal.properties.address,
+      dealId: dealId  // ✅ Pass dealId for custom field (enables webhook tracking)
     });
 
     // Store envelope data in HubSpot JSON field
@@ -642,6 +643,62 @@ router.delete('/clear-envelope/:dealId', async (req, res) => {
       message: error.message
     });
   }
+});
+
+/**
+ * GET /api/docusign/oauth-callback
+ * OAuth callback endpoint for DocuSign admin consent
+ * This endpoint is called after granting admin consent for JWT authentication
+ */
+router.get('/oauth-callback', (req, res) => {
+  const { code, error } = req.query;
+  
+  if (error) {
+    console.log(`[DocuSign OAuth] ❌ Consent denied: ${error}`);
+    return res.status(400).send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; padding: 40px; text-align: center;">
+          <h2 style="color: #d32f2f;">❌ DocuSign Consent Denied</h2>
+          <p>Admin consent was not granted. JWT authentication will not work.</p>
+          <p><strong>Error:</strong> ${error}</p>
+          <p><a href="javascript:window.close()">Close this window</a></p>
+        </body>
+      </html>
+    `);
+  }
+  
+  if (code) {
+    console.log(`[DocuSign OAuth] ✅ Admin consent granted successfully`);
+    console.log(`[DocuSign OAuth] 🔑 Authorization code received: ${code.substring(0, 20)}...`);
+    
+    return res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; padding: 40px; text-align: center;">
+          <h2 style="color: #4caf50;">✅ DocuSign Admin Consent Granted</h2>
+          <p>JWT authentication has been successfully authorized!</p>
+          <p>You can now close this window and test your DocuSign integration.</p>
+          <p><strong>Next steps:</strong></p>
+          <ul style="text-align: left; display: inline-block;">
+            <li>Ensure your RSA keypair is properly configured</li>
+            <li>Test JWT authentication in your application</li>
+            <li>Create and sign DocuSign envelopes</li>
+          </ul>
+          <p><a href="javascript:window.close()">Close this window</a></p>
+        </body>
+      </html>
+    `);
+  }
+  
+  // Fallback
+  res.send(`
+    <html>
+      <body style="font-family: Arial, sans-serif; padding: 40px; text-align: center;">
+        <h2>DocuSign OAuth Callback</h2>
+        <p>This endpoint handles DocuSign admin consent callbacks.</p>
+        <p><a href="javascript:window.close()">Close this window</a></p>
+      </body>
+    </html>
+  `);
 });
 
 export default router;

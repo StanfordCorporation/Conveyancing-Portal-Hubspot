@@ -98,6 +98,30 @@ export const getDeal = async (dealId, properties = null) => {
 };
 
 /**
+ * Get deal by custom ID property (e.g., smokeball_lead_uid)
+ * Uses HubSpot's idProperty parameter for direct lookup without search filters
+ * 
+ * @param {string} idValue - The value of the custom property
+ * @param {string} idProperty - The custom property name to use as ID (e.g., 'smokeball_lead_uid')
+ * @param {Array} properties - Optional array of properties to fetch
+ * @returns {Promise<Object>} Deal data
+ */
+export const getDealByCustomId = async (idValue, idProperty, properties = []) => {
+  const params = {
+    idProperty: idProperty
+  };
+
+  if (properties && properties.length > 0) {
+    params.properties = properties.join(',');
+  }
+
+  const response = await hubspotClient.get(`/crm/v3/objects/deals/${idValue}`, {
+    params
+  });
+  return response.data;
+};
+
+/**
  * Update deal
  */
 export const updateDeal = async (dealId, updates) => {
@@ -175,6 +199,7 @@ export const createDealWithAssociations = async (dealData, contactIdOrAssociatio
 export default {
   createDeal,
   getDeal,
+  getDealByCustomId,
   updateDeal,
   updateDealStage,
   searchDeals,

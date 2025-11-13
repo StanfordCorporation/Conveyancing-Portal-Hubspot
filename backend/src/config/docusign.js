@@ -49,17 +49,17 @@ const docusignConfig = {
   publicKey: process.env.DOCUSIGN_PUBLIC_KEY,
 
   // Return URL after signing (where user is redirected after completing signature)
-  returnUrl: process.env.DOCUSIGN_RETURN_URL || 'http://localhost:3000/signing-complete',
+  returnUrl: process.env.DOCUSIGN_RETURN_URL || 'https://portal.stanfordlegal.com.au/client/dashboard?signing=complete&step=5',
 
   // Ping URL for keeping session alive during signing
-  pingUrl: process.env.DOCUSIGN_PING_URL || 'http://localhost:3001/api/docusign/ping',
+  pingUrl: process.env.DOCUSIGN_PING_URL || 'https://conveyancing-portal-backend.vercel.app/api/docusign/ping',
 
   // Token expiration in seconds (1 hour)
   tokenExpirationInSeconds: 3600,
 
   // Allowed frame ancestors (for embedded signing)
   frameAncestors: [
-    'http://localhost:3000',
+    'https://portal.stanfordlegal.com.au',
     'https://apps-d.docusign.com',
     'https://demo.docusign.net'
   ],

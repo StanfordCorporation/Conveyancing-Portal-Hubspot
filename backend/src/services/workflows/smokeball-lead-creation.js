@@ -12,7 +12,7 @@
  * 4. Create contacts in Smokeball with correct 'person' wrapper
  * 5. Get staff assignments (Sean Kerswill, Laura Stuart)
  * 6. Create lead in Smokeball with correct API payload
- * 7. Update HubSpot deal with lead_uid and sync status
+ * 7. Update HubSpot deal with smokeball_lead_uid and sync status
  */
 
 import * as dealsIntegration from '../../integrations/hubspot/deals.js';
@@ -84,10 +84,46 @@ export async function createSmokeballLeadFromDeal(dealId) {
     // ========================================
     console.log('[Smokeball Lead Workflow] 👥 Fetching associated contacts...');
 
-    const contacts = await associationsIntegration.getDealContacts(dealId);
-    const hubspotContactIds = contacts.map(contact => contact.id);
+    const allContacts = await associationsIntegration.getDealContacts(dealId);
+    
+    // Filter out agents (association type 6) - only create clients in Smokeball
+    // Type 1: Primary Seller, Type 4: Additional Seller, Type 6: Agent (exclude)
+    const clientContacts = [];
+    const excludedContacts = [];
+    
+    allContacts.forEach(contact => {
+      // Check association type (primary filter)
+      const hasAgentAssociation = contact.associationTypes?.some(
+        assocType => assocType.typeId === 6 || assocType.label?.toLowerCase().includes('agent')
+      );
+      
+      // Check contact_type property (backup filter)
+      const contactType = contact.properties?.contact_type?.toLowerCase();
+      const isAgent = contactType?.includes('agent') || contactType?.includes('salesperson');
+      
+      if (hasAgentAssociation || isAgent) {
+        const reason = hasAgentAssociation ? 'Agent association (type 6)' : `contact_type="${contact.properties?.contact_type}"`;
+        excludedContacts.push({
+          id: contact.id,
+          name: `${contact.properties?.firstname || ''} ${contact.properties?.lastname || ''}`.trim(),
+          email: contact.properties?.email,
+          reason
+        });
+      } else {
+        clientContacts.push(contact);
+      }
+    });
+    
+    const hubspotContactIds = clientContacts.map(contact => contact.id);
 
-    console.log(`[Smokeball Lead Workflow] Found ${hubspotContactIds.length} associated contacts`);
+    console.log(`[Smokeball Lead Workflow] Found ${allContacts.length} total contacts (${clientContacts.length} clients, ${excludedContacts.length} excluded)`);
+    
+    if (excludedContacts.length > 0) {
+      console.log('[Smokeball Lead Workflow] 🚫 Excluded contacts (not creating in Smokeball):');
+      excludedContacts.forEach(contact => {
+        console.log(`[Smokeball Lead Workflow]   - ${contact.name} (${contact.email}) - ${contact.reason}`);
+      });
+    }
 
     // ========================================
     // STEP 5: Create contacts in Smokeball
@@ -152,12 +188,12 @@ export async function createSmokeballLeadFromDeal(dealId) {
     console.log(`[Smokeball Lead Workflow] ✅ Lead created: ${smokeballLead.id}`);
 
     // ========================================
-    // STEP 8: Update HubSpot deal with lead_uid
+    // STEP 8: Update HubSpot deal with smokeball_lead_uid
     // ========================================
     console.log('[Smokeball Lead Workflow] 🔄 Updating HubSpot deal...');
 
     await dealsIntegration.updateDeal(dealId, {
-      lead_uid: smokeballLead.id,
+      smokeball_lead_uid: smokeballLead.id,
       matter_uid: null, // Will be populated on conversion
       smokeball_sync_status: 'Successful',
       smokeball_last_sync: new Date().toISOString(),

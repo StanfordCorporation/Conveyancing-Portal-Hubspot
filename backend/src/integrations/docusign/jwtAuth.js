@@ -40,6 +40,11 @@ export async function requestJWTUserToken(options = {}) {
   console.log(`[DocuSign JWT] Integration Key: ${integrationKey}`);
   console.log(`[DocuSign JWT] User ID: ${userId}`);
   console.log(`[DocuSign JWT] OAuth Base Path: ${oAuthBasePath}`);
+  
+  // Debug private key format
+  console.log(`[DocuSign JWT] Private Key Length: ${privateKey ? privateKey.length : 'undefined'}`);
+  console.log(`[DocuSign JWT] Private Key Starts With: ${privateKey ? privateKey.substring(0, 50) + '...' : 'undefined'}`);
+  console.log(`[DocuSign JWT] Private Key Ends With: ${privateKey ? '...' + privateKey.substring(privateKey.length - 50) : 'undefined'}`);
 
   try {
     // Create API client
@@ -60,11 +65,27 @@ export async function requestJWTUserToken(options = {}) {
     );
 
     console.log('[DocuSign JWT] ✅ JWT Token received successfully');
+    console.log('[DocuSign JWT] Raw results object keys:', Object.keys(results || {}));
+    console.log('[DocuSign JWT] Body keys:', Object.keys(results?.body || {}));
+    
+    // Extract token from results (handle different response structures)
+    const accessToken = results.body?.access_token || results.accessToken;
+    const expiresInValue = results.body?.expires_in || results.expiresIn || 3600;
+    const tokenType = results.body?.token_type || results.tokenType || 'Bearer';
+    
+    if (!accessToken) {
+      console.error('[DocuSign JWT] ❌ No access token found in response!');
+      console.error('[DocuSign JWT] Response structure:', JSON.stringify(results, null, 2));
+      throw new Error('JWT response did not contain an access token');
+    }
+    
+    console.log('[DocuSign JWT] Access token (first 20 chars):', accessToken.substring(0, 20) + '...');
+    console.log('[DocuSign JWT] Expires in:', expiresInValue, 'seconds');
     
     return {
-      accessToken: results.body.access_token,
-      expiresIn: results.body.expires_in,
-      tokenType: results.body.token_type
+      accessToken: accessToken,
+      expiresIn: expiresInValue,
+      tokenType: tokenType
     };
 
   } catch (error) {
@@ -112,11 +133,20 @@ export async function getAccessToken(forceRefresh = false) {
   console.log('[DocuSign JWT] Requesting new access token...');
   const tokenData = await requestJWTUserToken();
   
+  console.log('[DocuSign JWT] Token data received:', {
+    hasAccessToken: !!tokenData.accessToken,
+    accessTokenLength: tokenData.accessToken?.length,
+    accessTokenPreview: tokenData.accessToken ? tokenData.accessToken.substring(0, 20) + '...' : 'undefined',
+    expiresIn: tokenData.expiresIn
+  });
+  
   // Cache the token
   cachedToken = tokenData.accessToken;
   tokenExpirationTime = Date.now() + (tokenData.expiresIn * 1000);
   
-  console.log(`[DocuSign JWT] Token cached, expires in ${tokenData.expiresIn} seconds`);
+  console.log(`[DocuSign JWT] Token cached successfully`);
+  console.log(`[DocuSign JWT] Cached token (first 20 chars): ${cachedToken ? cachedToken.substring(0, 20) + '...' : 'undefined'}`);
+  console.log(`[DocuSign JWT] Expires in ${tokenData.expiresIn} seconds`);
   
   return cachedToken;
 }
@@ -140,9 +170,19 @@ export function clearTokenCache() {
 export async function getAuthenticatedClient(forceRefresh = false) {
   const accessToken = await getAccessToken(forceRefresh);
   
+  console.log('[DocuSign JWT] Creating authenticated client');
+  console.log('[DocuSign JWT] Access token for client:', accessToken ? accessToken.substring(0, 20) + '...' : 'undefined');
+  
+  if (!accessToken) {
+    console.error('[DocuSign JWT] ❌ Cannot create authenticated client: accessToken is undefined!');
+    throw new Error('Access token is undefined - JWT authentication failed');
+  }
+  
   const dsApiClient = new docusign.ApiClient();
   dsApiClient.setBasePath(docusignConfig.basePath);
   dsApiClient.addDefaultHeader('Authorization', 'Bearer ' + accessToken);
+  
+  console.log('[DocuSign JWT] ✅ Authenticated client created with base path:', docusignConfig.basePath);
   
   return dsApiClient;
 }

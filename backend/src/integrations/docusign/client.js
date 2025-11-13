@@ -303,35 +303,35 @@ function makeEnvelopeFromTemplate(args) {
     // Only add EventNotification if webhook URL is configured
     // Otherwise, DocuSign Connect settings will be used
     if (webhookUrl) {
-      env.eventNotification = docusign.EventNotification.constructFromObject({
-        url: webhookUrl,
-        loggingEnabled: true,
-        requireAcknowledgment: true,
-        useSoapInterface: false,
-        includeCertificateWithSoap: false,
-        signMessageWithX509Cert: false,
-        includeDocuments: false,
-        includeEnvelopeVoidReason: true,
-        includeTimeZone: true,
-        includeSenderAccountAsCustomField: true,
-        includeDocumentFields: true,
-        includeCertificateOfCompletion: false,
-        envelopeEvents: [
-          { envelopeEventStatusCode: 'sent' },
-          { envelopeEventStatusCode: 'delivered' },
-          { envelopeEventStatusCode: 'completed' },
-          { envelopeEventStatusCode: 'declined' },
-          { envelopeEventStatusCode: 'voided' }
-        ],
-        recipientEvents: [
-          { recipientEventStatusCode: 'Sent' },
-          { recipientEventStatusCode: 'Delivered' },
-          { recipientEventStatusCode: 'Completed' },
-          { recipientEventStatusCode: 'Declined' },
-          { recipientEventStatusCode: 'AutoResponded' }
-        ]
-      });
-      
+    env.eventNotification = docusign.EventNotification.constructFromObject({
+      url: webhookUrl,
+      loggingEnabled: true,
+      requireAcknowledgment: true,
+      useSoapInterface: false,
+      includeCertificateWithSoap: false,
+      signMessageWithX509Cert: false,
+      includeDocuments: false,
+      includeEnvelopeVoidReason: true,
+      includeTimeZone: true,
+      includeSenderAccountAsCustomField: true,
+      includeDocumentFields: true,
+      includeCertificateOfCompletion: false,
+      envelopeEvents: [
+        { envelopeEventStatusCode: 'sent' },
+        { envelopeEventStatusCode: 'delivered' },
+        { envelopeEventStatusCode: 'completed' },
+        { envelopeEventStatusCode: 'declined' },
+        { envelopeEventStatusCode: 'voided' }
+      ],
+      recipientEvents: [
+        { recipientEventStatusCode: 'Sent' },
+        { recipientEventStatusCode: 'Delivered' },
+        { recipientEventStatusCode: 'Completed' },
+        { recipientEventStatusCode: 'Declined' },
+        { recipientEventStatusCode: 'AutoResponded' }
+      ]
+    });
+    
       console.log(`[DocuSign] ✅ EventNotification configured for deal ${args.dealId} → ${webhookUrl}`);
     } else {
       console.log(`[DocuSign] ℹ️ Using DocuSign Connect settings for webhooks (no EventNotification override)`);
@@ -376,7 +376,7 @@ function makeEnvelopeFromTemplate(args) {
       // DocuSign will still send email notifications due to envelope event configuration
       // This allows signers to choose: sign via portal (embedded) OR via email link
       // Routing order is still enforced by DocuSign (sequential signing)
-      role.clientUserId = signer.clientUserId;
+        role.clientUserId = signer.clientUserId;
 
       return docusign.TemplateRole.constructFromObject(role);
     });

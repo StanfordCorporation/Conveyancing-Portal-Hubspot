@@ -38,19 +38,19 @@ export async function receiptStripePayment(paymentIntent) {
     console.log(`[Smokeball Payment Workflow] 📋 Deal ID: ${dealId}`);
 
     // ========================================
-    // STEP 2: Fetch deal to get lead_uid/matter_uid
+    // STEP 2: Fetch deal to get smokeball_lead_uid/matter_uid
     // ========================================
     const deal = await dealsIntegration.getDeal(dealId, [
       'dealname',
-      'lead_uid',
+      'smokeball_lead_uid',
       'matter_uid',
       'smokeball_sync_status',
     ]);
 
-    const matterId = deal.properties.matter_uid || deal.properties.lead_uid;
+    const matterId = deal.properties.matter_uid || deal.properties.smokeball_lead_uid;
 
     if (!matterId) {
-      throw new Error('No lead_uid or matter_uid found in deal. Create lead first.');
+      throw new Error('No smokeball_lead_uid or matter_uid found in deal. Create lead first.');
     }
 
     console.log(`[Smokeball Payment Workflow] 🆔 Matter/Lead ID: ${matterId}`);

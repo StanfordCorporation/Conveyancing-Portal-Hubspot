@@ -281,28 +281,22 @@ async function handleMatterCreated(matterData) {
     console.log(`[Smokeball Webhook] 📝 Matter/Lead created!`);
     console.log(`[Smokeball Webhook] 🆔 ID: ${matterData.id}`);
 
-    // Find HubSpot deal by lead_uid
-    const deals = await dealsIntegration.searchDeals({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: 'lead_uid',
-              operator: 'EQ',
-              value: matterData.id,
-            },
-          ],
-        },
-      ],
-      properties: ['dealname', 'lead_uid'],
-    });
-
-    if (!deals || deals.length === 0) {
-      console.warn(`[Smokeball Webhook] ⚠️ No deal found with lead_uid: ${matterData.id}`);
-      return;
+    // Find HubSpot deal by smokeball_lead_uid using direct lookup
+    let deal;
+    try {
+      deal = await dealsIntegration.getDealByCustomId(
+        matterData.id,
+        'smokeball_lead_uid',
+        ['dealname', 'smokeball_lead_uid']
+      );
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.warn(`[Smokeball Webhook] ⚠️ No deal found with smokeball_lead_uid: ${matterData.id}`);
+        return;
+      }
+      throw error;
     }
 
-    const deal = deals[0];
     const dealId = deal.id;
 
     console.log(`[Smokeball Webhook] 📋 Found deal: ${deal.properties.dealname} (${dealId})`);
@@ -326,7 +320,7 @@ async function handleMatterCreated(matterData) {
  * Updates HubSpot deal with matter number when lead is converted
  *
  * @param {Object} matterData - Matter data from Smokeball webhook
- * @param {string} matterData.id - Matter UUID (same as lead_uid)
+ * @param {string} matterData.id - Matter UUID (same as smokeball_lead_uid)
  * @param {string} matterData.number - Newly assigned matter number
  */
 async function handleMatterConverted(matterData) {
@@ -335,35 +329,28 @@ async function handleMatterConverted(matterData) {
     console.log(`[Smokeball Webhook] 🆔 Matter ID: ${matterData.id}`);
     console.log(`[Smokeball Webhook] 📋 Matter Number: ${matterData.number}`);
 
-    // Find HubSpot deal by lead_uid
-    const deals = await dealsIntegration.searchDeals({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: 'lead_uid',
-              operator: 'EQ',
-              value: matterData.id,
-            },
-          ],
-        },
-      ],
-      properties: ['dealname', 'lead_uid', 'matter_uid'],
-    });
-
-    if (!deals || deals.length === 0) {
-      console.warn(`[Smokeball Webhook] ⚠️ No deal found with lead_uid: ${matterData.id}`);
-      return;
+    // Find HubSpot deal by smokeball_lead_uid using direct lookup
+    let deal;
+    try {
+      deal = await dealsIntegration.getDealByCustomId(
+        matterData.id,
+        'smokeball_lead_uid',
+        ['dealname', 'smokeball_lead_uid', 'matter_uid']
+      );
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.warn(`[Smokeball Webhook] ⚠️ No deal found with smokeball_lead_uid: ${matterData.id}`);
+        return;
+      }
+      throw error;
     }
 
-    const deal = deals[0];
     const dealId = deal.id;
 
     console.log(`[Smokeball Webhook] 📋 Found deal: ${deal.properties.dealname} (${dealId})`);
 
-    // Update deal with BOTH lead UUID and matter number
+    // Update deal with matter number (smokeball_lead_uid already exists, just update matter_uid)
     await dealsIntegration.updateDeal(dealId, {
-      lead_uid: matterData.id,           // UUID (always exists)
       matter_uid: matterData.number,     // Matter number (after conversion)
       smokeball_sync_status: 'synced',
       smokeball_last_sync: new Date().toISOString(),
@@ -402,7 +389,7 @@ router.post('/hubspot', express.json(), async (req, res) => {
         const deal = await dealsIntegration.getDeal(dealId, [
           'payment_method',
           'payment_amount',
-          'lead_uid',
+          'smokeball_lead_uid',
           'matter_uid'
         ]);
         
@@ -443,11 +430,11 @@ router.post('/hubspot', express.json(), async (req, res) => {
  * @param {Object} deal - HubSpot deal object
  */
 async function handleBankTransferConfirmation(deal) {
-  const matterId = deal.properties.matter_uid || deal.properties.lead_uid;
+  const matterId = deal.properties.matter_uid || deal.properties.smokeball_lead_uid;
   const amount = parseFloat(deal.properties.payment_amount);
   
   if (!matterId) {
-    throw new Error('No matter_uid or lead_uid found in deal');
+    throw new Error('No matter_uid or smokeball_lead_uid found in deal');
   }
   
   if (isNaN(amount) || amount <= 0) {

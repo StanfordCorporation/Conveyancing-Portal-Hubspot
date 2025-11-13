@@ -496,37 +496,22 @@ async function createWelcomeCallTask(matterId, deal) {
 }
 
 /**
- * Find HubSpot deal by Smokeball lead_uid
+ * Find HubSpot deal by Smokeball lead UID
+ * Uses direct lookup with idProperty for efficiency
  */
 async function findDealByLeadUid(leadUid) {
   try {
-    // Search HubSpot for deal with matching lead_uid
-    const searchResults = await dealsIntegration.searchDeals({
-      filterGroups: [{
-        filters: [{
-          propertyName: 'lead_uid',
-          operator: 'EQ',
-          value: leadUid,
-        }],
-      }],
-      properties: [
-        'dealname',
-        'lead_uid',
-        'matter_uid',
-        'property_address',
-        'client_name',
-        'lead_source',
-      ],
-      limit: 1,
-    });
-
-    if (searchResults.results && searchResults.results.length > 0) {
-      return searchResults.results[0];
-    }
-
-    return null;
-
+    const deal = await dealsIntegration.getDealByCustomId(
+      leadUid,
+      'smokeball_lead_uid',
+      ['dealname', 'smokeball_lead_uid', 'matter_uid', 'property_address', 'client_name', 'lead_source']
+    );
+    return deal;
   } catch (error) {
+    if (error.response?.status === 404) {
+      console.log(`[Smokeball Webhook] ℹ️ No deal found with smokeball_lead_uid: ${leadUid}`);
+      return null;
+    }
     console.error('[Smokeball Webhook] ❌ Error finding deal:', error);
     throw error;
   }

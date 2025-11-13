@@ -182,7 +182,7 @@ export async function createTransaction(bankAccountId, transactionData) {
  * Receipt payment to trust account
  * Creates a Deposit transaction for a matter
  *
- * @param {string} matterId - Matter UUID (can be lead_uid - Smokeball handles both)
+ * @param {string} matterId - Matter UUID (can be smokeball_lead_uid - Smokeball handles both)
  * @param {number} amount - Amount in dollars
  * @param {string} reference - Payment reference/description
  * @param {string} payorId - Contact UUID of person paying (optional)

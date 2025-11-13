@@ -1403,13 +1403,13 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
       try {
         console.log(`[Deal Stage] 🎯 Quote accepted - converting Smokeball lead to matter`);
 
-        // Get lead_uid and property address from deal
-        const leadDeal = await dealsIntegration.getDeal(dealId, ['lead_uid', 'property_address']);
-        const leadUid = leadDeal.properties.lead_uid;
+        // Get smokeball_lead_uid and property address from deal
+        const leadDeal = await dealsIntegration.getDeal(dealId, ['smokeball_lead_uid', 'property_address']);
+        const leadUid = leadDeal.properties.smokeball_lead_uid;
         const propertyAddress = leadDeal.properties.property_address;
 
         if (!leadUid) {
-          console.warn(`[Deal Stage] ⚠️  No lead_uid found - skipping Smokeball conversion`);
+          console.warn(`[Deal Stage] ⚠️  No smokeball_lead_uid found - skipping Smokeball conversion`);
         } else {
           console.log(`[Deal Stage] 📋 Lead UID: ${leadUid}`);
 

@@ -27,16 +27,16 @@ export async function handleFundsProvided(dealId) {
     // ========================================
     const deal = await dealsIntegration.getDeal(dealId, [
       'dealname',
-      'lead_uid',
+      'smokeball_lead_uid',
       'matter_uid',
       'smokeball_sync_status',
     ]);
 
-    const leadUid = deal.properties.lead_uid;
+    const leadUid = deal.properties.smokeball_lead_uid;
     const matterUid = deal.properties.matter_uid;
 
     if (!leadUid) {
-      throw new Error('No lead_uid found. Lead must be created in Smokeball first.');
+      throw new Error('No smokeball_lead_uid found. Lead must be created in Smokeball first.');
     }
 
     console.log(`[Smokeball Funds Workflow] 🆔 Lead UID: ${leadUid}`);
