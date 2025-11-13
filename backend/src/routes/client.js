@@ -1454,19 +1454,9 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
 
           console.log(`[Deal Stage] 🗺️  State: ${stateName} (${stateCode})`);
 
-          // Get matter type dynamically (type:1 for Sale)
-          const matterType = await smokeballMatterTypes.findMatterType(stateName, 'Conveyancing', 'Sale');
-          
-          if (!matterType) {
-            throw new Error(`Could not find matter type for Conveyancing > Sale in ${stateName}`);
-          }
-
-          console.log(`[Deal Stage] ✅ Matter Type ID: ${matterType.id}`);
-          console.log(`[Deal Stage] ✅ Client Role: ${matterType.clientRole}`);
-
-          // Convert lead to matter
+          // Convert lead to matter (uses hardcoded matter type ID internally)
           console.log(`[Deal Stage] 🔄 Calling Smokeball API to convert lead to matter...`);
-          await smokeballMatters.convertLeadToMatter(leadUid, matterType.id, matterType.clientRole);
+          await smokeballMatters.convertLeadToMatter(leadUid);
 
           console.log(`[Deal Stage] ========================================`);
           console.log(`[Deal Stage] ✅ Lead conversion initiated in Smokeball`);

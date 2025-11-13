@@ -62,6 +62,9 @@ export async function getDocuSignClientJWT(forceRefresh = false) {
  * @param {string} params.documentName - Display name for document
  * @param {string} params.emailSubject - Email subject line
  * @param {boolean} [params.useJWT] - Use JWT authentication (default: true if no accessToken provided)
+ * @param {string} [params.dealId] - HubSpot deal ID (for custom field and webhooks)
+ * @param {string} [params.dealName] - Deal name
+ * @param {string} [params.propertyAddress] - Property address
  * @returns {Promise<{envelopeId: string, redirectUrl: string}>}
  */
 export async function createEmbeddedSigningSession(params) {
@@ -75,7 +78,10 @@ export async function createEmbeddedSigningSession(params) {
     documentPath,
     documentName = 'Property Disclosure Form',
     emailSubject = 'Please sign this document',
-    useJWT = !accessToken
+    useJWT = !accessToken,
+    dealId, // HubSpot deal ID for custom field and webhooks
+    dealName,
+    propertyAddress
   } = params;
 
   // Log appropriate message based on single vs multi-signer
@@ -85,6 +91,7 @@ export async function createEmbeddedSigningSession(params) {
     console.log(`[DocuSign] Creating embedded signing session for ${signerEmail}`);
   }
   console.log(`[DocuSign] Using JWT: ${useJWT}`);
+  console.log(`[DocuSign] Deal ID received in createEmbeddedSigningSession: ${dealId || 'UNDEFINED/NULL - WEBHOOKS WILL FAIL!'}`);
 
   try {
     // Initialize API client (use JWT if no access token provided)
@@ -107,7 +114,10 @@ export async function createEmbeddedSigningSession(params) {
         signerClientId,
         signers, // Pass signers array for multi-signer flow
         templateId,
-        emailSubject
+        emailSubject,
+        dealId, // ✅ Pass dealId for custom field and webhooks
+        dealName,
+        propertyAddress
       });
     } else if (documentPath) {
       envelope = makeEnvelope({
@@ -116,7 +126,8 @@ export async function createEmbeddedSigningSession(params) {
         signerClientId,
         documentPath,
         documentName,
-        emailSubject
+        emailSubject,
+        dealId // ✅ Pass dealId for custom field
       });
     } else {
       throw new Error('Either templateId or documentPath must be provided');
@@ -182,7 +193,8 @@ function makeEnvelope(args) {
     signerClientId,
     documentPath,
     documentName,
-    emailSubject
+    emailSubject,
+    dealId
   } = args;
 
   console.log(`[DocuSign] Loading document: ${documentPath}`);
@@ -243,6 +255,21 @@ function makeEnvelope(args) {
     signers: [signer1]
   });
   env.recipients = recipients;
+
+  // Add custom field with HubSpot deal ID for webhook (if dealId provided)
+  if (dealId) {
+    env.customFields = docusign.CustomFields.constructFromObject({
+      textCustomFields: [
+        {
+          name: 'hs_deal_id',
+          value: dealId,
+          show: 'false',
+          required: 'false'
+        }
+      ]
+    });
+    console.log(`[DocuSign] ✅ Custom field 'hs_deal_id' added to document envelope with value: ${dealId}`);
+  }
 
   // Send the envelope (use "created" for draft)
   env.status = 'sent';

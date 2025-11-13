@@ -109,22 +109,29 @@ export async function getMatter(matterId) {
  * 
  * Note: Smokeball returns 202 Accepted (async processing). The actual matter number
  * will be assigned asynchronously and captured via matter.converted webhook.
+ * 
+ * IMPORTANT: Uses hardcoded matter type ID matching legacy PHP implementation.
+ * This ensures consistent conversion behavior across all Queensland sales.
  *
  * @param {string} leadId - Lead UUID
- * @param {string} matterTypeId - Matter type ID (must be type:1)
- * @param {string} clientRole - Client role (e.g., 'Vendor')
  * @returns {Promise<Object>} Conversion response (202 Accepted)
  */
-export async function convertLeadToMatter(leadId, matterTypeId, clientRole) {
+export async function convertLeadToMatter(leadId) {
   try {
     console.log(`[Smokeball Matters] 🔄 Converting lead to matter: ${leadId}`);
-    console.log(`[Smokeball Matters] Matter Type ID: ${matterTypeId}`);
-    console.log(`[Smokeball Matters] Client Role: ${clientRole}`);
+    
+    // Hardcoded values matching legacy PHP implementation
+    // These values are consistent for all Queensland Sale conversions
+    const CONVERSION_MATTER_TYPE_ID = '0623643a-48a4-41d7-8c91-d35915b291cd_QLD';
+    const CONVERSION_CLIENT_ROLE = 'Vendor';
+    
+    console.log(`[Smokeball Matters] Matter Type ID: ${CONVERSION_MATTER_TYPE_ID} (hardcoded)`);
+    console.log(`[Smokeball Matters] Client Role: ${CONVERSION_CLIENT_ROLE} (hardcoded)`);
 
     // Payload must include matterTypeId, clientRole, and isLead=false
     const payload = {
-      matterTypeId,
-      clientRole,
+      matterTypeId: CONVERSION_MATTER_TYPE_ID,
+      clientRole: CONVERSION_CLIENT_ROLE,
       isLead: false,
     };
 

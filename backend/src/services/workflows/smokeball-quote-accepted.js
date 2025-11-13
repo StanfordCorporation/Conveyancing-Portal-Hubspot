@@ -147,10 +147,8 @@ export async function handleQuoteAccepted(dealId) {
         };
       }
 
-      // Convert lead to matter
-      await smokeballMatters.updateMatter(leadUid, {
-        isLead: false,
-      });
+      // Convert lead to matter (uses hardcoded matter type ID)
+      await smokeballMatters.convertLeadToMatter(leadUid);
 
       console.log('[Smokeball Quote Workflow] ✅ Lead to matter conversion initiated');
       console.log('[Smokeball Quote Workflow] ℹ️ matter.converted webhook will provide matter number');
