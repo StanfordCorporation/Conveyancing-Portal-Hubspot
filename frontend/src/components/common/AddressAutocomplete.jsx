@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * AddressAutocomplete Component
@@ -23,12 +23,13 @@ const AddressAutocomplete = ({
 }) => {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
 
-  useEffect(() => {
+  const initializeAutocomplete = () => {
     // Check if Google Places API is loaded
     if (!window.google || !window.google.maps || !window.google.maps.places) {
       console.warn('[AddressAutocomplete] Google Places API not loaded yet');
-      return;
+      return false;
     }
 
     // Initialize autocomplete only if not already initialized
@@ -66,14 +67,44 @@ const AddressAutocomplete = ({
         });
 
         console.log('[AddressAutocomplete] Initialized successfully');
+        setIsGoogleLoaded(true);
+        return true;
       } catch (error) {
         console.error('[AddressAutocomplete] Error initializing:', error);
+        return false;
       }
     }
+    return true;
+  };
+
+  useEffect(() => {
+    // Try to initialize immediately if Google is already loaded
+    if (window.googlePlacesLoaded) {
+      initializeAutocomplete();
+      return;
+    }
+
+    // Listen for Google Places API to load
+    const handleGooglePlacesReady = () => {
+      console.log('[AddressAutocomplete] Google Places API loaded');
+      initializeAutocomplete();
+    };
+
+    window.addEventListener('googlePlacesReady', handleGooglePlacesReady);
+
+    // Also check periodically in case the event was missed
+    const checkInterval = setInterval(() => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        initializeAutocomplete();
+        clearInterval(checkInterval);
+      }
+    }, 100);
 
     // Cleanup function
     return () => {
-      if (autocompleteRef.current) {
+      window.removeEventListener('googlePlacesReady', handleGooglePlacesReady);
+      clearInterval(checkInterval);
+      if (autocompleteRef.current && window.google) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };

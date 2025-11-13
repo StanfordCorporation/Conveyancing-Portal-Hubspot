@@ -10,7 +10,13 @@
     />
     <title>Conveyancing Portal</title>
     <!-- Google Places API for Address Autocomplete -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_PLACES_API_KEY%&libraries=places" async defer></script>
+    <script>
+      window.initGooglePlaces = function() {
+        window.googlePlacesLoaded = true;
+        window.dispatchEvent(new Event('googlePlacesReady'));
+      };
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAyphMWbu_4ZU-7gWvtFN2eyzKBn0oU3Fk&libraries=places&callback=initGooglePlaces&loading=async" async defer></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this application.</noscript>
