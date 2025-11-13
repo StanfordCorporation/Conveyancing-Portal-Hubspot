@@ -222,12 +222,39 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       console.log(`[Dashboard Complete]    - dealname: ${deals[0].properties.dealname || 'NOT SET'}`);
       console.log(`[Dashboard Complete]    - property_address: ${deals[0].properties.property_address || 'NOT SET'}`);
       console.log(`[Dashboard Complete]    - dealstage: ${deals[0].properties.dealstage || 'NOT SET'}`);
+      console.log(`[Dashboard Complete]    - pipeline: ${deals[0].properties.pipeline || 'NOT SET'}`);
+      console.log(`[Dashboard Complete]    - is_draft: ${deals[0].properties.is_draft || 'NOT SET'}`);
     }
 
-    // Step 3: For each deal, fetch associations (contacts, companies)
+    // Filter out draft deals and non-Form 2s pipeline deals BEFORE transforming
+    // This is more efficient and avoids accessing properties on transformed objects
+    const filteredDeals = deals.filter(deal => {
+      // Check if deal is a draft using is_draft property
+      const isDraft = deal.properties?.is_draft === 'Yes' || deal.properties?.is_draft === 'yes';
+
+      // Check if deal is in Form 2s pipeline
+      const pipeline = deal.properties?.pipeline;
+      const isForm2sPipeline = pipeline === HUBSPOT.PIPELINES.FORM_2S;
+
+      if (isDraft) {
+        console.log(`[Dashboard Complete] 🚫 Filtering out draft deal: ${deal.id}`);
+        return false;
+      }
+
+      if (!isForm2sPipeline) {
+        console.log(`[Dashboard Complete] 🚫 Filtering out non-Form 2s deal: ${deal.id} (pipeline: ${pipeline})`);
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(`[Dashboard Complete] ✅ Filtered to ${filteredDeals.length} Form 2s deals (removed ${deals.length - filteredDeals.length} draft/other pipeline deals)`);
+
+    // Step 3: For each filtered deal, fetch associations (contacts, companies)
     const propertyMapping = getAllMappings();
-    const completeDeals = await Promise.all(deals.map(async (deal, index) => {
-      console.log(`[Dashboard Complete] 🔄 Processing deal ${index + 1}/${deals.length}: ${deal.id}`);
+    const completeDeals = await Promise.all(filteredDeals.map(async (deal, index) => {
+      console.log(`[Dashboard Complete] 🔄 Processing deal ${index + 1}/${filteredDeals.length}: ${deal.id}`);
 
       // Extract questionnaire data
       const questionnaireData = {};
@@ -517,30 +544,8 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       };
     }));
 
-    // Filter out draft deals and non-Form 2s pipeline deals - clients should ONLY see Form 2s pipeline deals
-    const clientVisibleDeals = completeDeals.filter(deal => {
-      // Check if deal is a draft using is_draft property
-      const isDraft = deal.properties?.is_draft === 'Yes' || deal.properties?.is_draft === 'yes';
-
-      // Check if deal is in Form 2s pipeline
-      const pipeline = deal.properties?.pipeline;
-      const isForm2sPipeline = pipeline === HUBSPOT.PIPELINES.FORM_2S;
-
-      if (isDraft) {
-        console.log(`[Dashboard Complete] 🚫 Filtering out draft deal: ${deal.id}`);
-        return false;
-      }
-
-      if (!isForm2sPipeline) {
-        console.log(`[Dashboard Complete] 🚫 Filtering out non-Form 2s deal: ${deal.id} (pipeline: ${pipeline})`);
-        return false;
-      }
-
-      return true;
-    });
-
-    console.log(`[Dashboard Complete] 🎉 Returning ${clientVisibleDeals.length} client-visible Form 2s deals (filtered out ${completeDeals.length - clientVisibleDeals.length} drafts/other pipelines)`);
-    res.json({ deals: clientVisibleDeals });
+    console.log(`[Dashboard Complete] 🎉 Returning ${completeDeals.length} Form 2s deals`);
+    res.json({ deals: completeDeals });
 
   } catch (error) {
     console.error(`[Dashboard Complete] ❌ Error:`, error.message);
