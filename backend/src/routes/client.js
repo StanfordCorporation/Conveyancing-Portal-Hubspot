@@ -16,6 +16,7 @@ import { shouldShowToClient, getStageName } from '../config/stageHelpers.js';
 import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
 import * as smokeballMatters from '../integrations/smokeball/matters.js';
 import * as smokeballMatterTypes from '../integrations/smokeball/matter-types.js';
+import { HUBSPOT } from '../config/constants.js';
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.get('/dashboard-data', authenticateJWT, async (req, res) => {
       'dealname',
       'property_address',
       'dealstage',
+      'pipeline', // Include pipeline to filter by Form 2s
       'number_of_owners',
       'is_draft', // Include is_draft to filter out draft deals
       ...questionnaireProperties
@@ -91,7 +93,12 @@ router.get('/dashboard-data', authenticateJWT, async (req, res) => {
       .filter(deal => {
         // Filter out draft deals
         const isDraft = deal.properties?.is_draft === 'Yes' || deal.properties?.is_draft === 'yes';
-        return !isDraft;
+
+        // Filter to only show Form 2s pipeline deals
+        const pipeline = deal.properties?.pipeline;
+        const isForm2sPipeline = pipeline === HUBSPOT.PIPELINES.FORM_2S;
+
+        return !isDraft && isForm2sPipeline;
       })
       .map((deal, index) => {
         // Extract questionnaire data for this deal
@@ -192,6 +199,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       'dealname',
       'property_address',
       'dealstage',
+      'pipeline', // Include pipeline to filter by Form 2s
       'number_of_owners',
       'is_draft', // Include is_draft to filter out draft deals
       'agent_title_search', // Did agent complete title search?
@@ -509,20 +517,29 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       };
     }));
 
-    // Filter out draft deals - clients should NOT see drafts
+    // Filter out draft deals and non-Form 2s pipeline deals - clients should ONLY see Form 2s pipeline deals
     const clientVisibleDeals = completeDeals.filter(deal => {
       // Check if deal is a draft using is_draft property
       const isDraft = deal.properties?.is_draft === 'Yes' || deal.properties?.is_draft === 'yes';
-      
+
+      // Check if deal is in Form 2s pipeline
+      const pipeline = deal.properties?.pipeline;
+      const isForm2sPipeline = pipeline === HUBSPOT.PIPELINES.FORM_2S;
+
       if (isDraft) {
         console.log(`[Dashboard Complete] 🚫 Filtering out draft deal: ${deal.id}`);
         return false;
       }
-      
+
+      if (!isForm2sPipeline) {
+        console.log(`[Dashboard Complete] 🚫 Filtering out non-Form 2s deal: ${deal.id} (pipeline: ${pipeline})`);
+        return false;
+      }
+
       return true;
     });
 
-    console.log(`[Dashboard Complete] 🎉 Returning ${clientVisibleDeals.length} client-visible deals (filtered out ${completeDeals.length - clientVisibleDeals.length} drafts)`);
+    console.log(`[Dashboard Complete] 🎉 Returning ${clientVisibleDeals.length} client-visible Form 2s deals (filtered out ${completeDeals.length - clientVisibleDeals.length} drafts/other pipelines)`);
     res.json({ deals: clientVisibleDeals });
 
   } catch (error) {
@@ -573,6 +590,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       'dealname',
       'property_address',
       'dealstage',
+      'pipeline', // Include pipeline to verify it's Form 2s
       'number_of_owners',
       ...questionnaireProperties
     ];
@@ -589,6 +607,13 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
     }
 
     const deal = dealResponse[0];
+
+    // Verify deal is in Form 2s pipeline
+    const pipeline = deal.properties?.pipeline;
+    if (pipeline !== HUBSPOT.PIPELINES.FORM_2S) {
+      console.log(`[Client Dashboard] 🚫 Deal ${dealId} not in Form 2s pipeline (pipeline: ${pipeline})`);
+      return res.status(404).json({ error: 'Property not found' });
+    }
 
     // Step 2: Get deal associations (primary seller, agency, agent, additional seller)
     let associations = {

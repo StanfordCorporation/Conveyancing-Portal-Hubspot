@@ -3,6 +3,7 @@ import { calculateQuote, getSearchDefinitions } from '../utils/dynamic-quotes-ca
 import { getDeal } from '../integrations/hubspot/deals.js';
 import { getContact } from '../integrations/hubspot/contacts.js';
 import { getAllMappings, getAllHubSpotProperties } from '../utils/questionnaireHelper.js';
+import { HUBSPOT } from '../config/constants.js';
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.post('/calculate', async (req, res) => {
     const propertiesToFetch = [
       'dealname',
       'property_address',
+      'pipeline', // Verify deal is in Form 2s pipeline
       'hs_contact_id',
       'contact_id',
       'agent_title_search', // Check if agent already did title search
@@ -45,6 +47,16 @@ router.post('/calculate', async (req, res) => {
       return res.status(404).json({
         error: 'Deal not found',
         message: `No deal found with ID: ${dealId}`
+      });
+    }
+
+    // Verify deal is in Form 2s pipeline
+    const pipeline = deal.properties?.pipeline;
+    if (pipeline !== HUBSPOT.PIPELINES.FORM_2S) {
+      console.log(`[Quote] 🚫 Deal ${dealId} not in Form 2s pipeline (pipeline: ${pipeline})`);
+      return res.status(404).json({
+        error: 'Deal not found',
+        message: 'This property is not eligible for quote calculation'
       });
     }
 

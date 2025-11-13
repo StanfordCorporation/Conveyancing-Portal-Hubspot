@@ -37,6 +37,7 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
   const [baseAmount, setBaseAmount] = useState(amount);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentsDisabled, setPaymentsDisabled] = useState(false);
 
   useEffect(() => {
     // Load Stripe
@@ -72,7 +73,14 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
       console.log(`[Payment] 💰 Base: ${response.data.feeBreakdown?.baseAmount}, Fee: ${response.data.feeBreakdown?.stripeFee}, Total: ${response.data.feeBreakdown?.totalAmount}`);
     } catch (err) {
       console.error('[Payment] ❌ Error creating payment intent:', err);
-      setError('Failed to initialize payment. Please try again.');
+
+      // Check if payments are disabled
+      if (err.response?.data?.paymentsDisabled) {
+        setPaymentsDisabled(true);
+        setError(err.response.data.message || 'Credit card payments are currently disabled.');
+      } else {
+        setError('Failed to initialize payment. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -88,6 +96,12 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
   }
 
   if (error) {
+    // If payments are disabled, don't show anything
+    if (paymentsDisabled) {
+      return null;
+    }
+
+    // For other errors, show retry option
     return (
       <div className="payment-error">
         <h3>Payment Initialization Error</h3>

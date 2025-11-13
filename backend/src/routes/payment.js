@@ -21,6 +21,7 @@ router.get('/config', (req, res) => {
   res.json({
     publishableKey: STRIPE_CONFIG.publishableKey,
     currency: STRIPE_CONFIG.currency,
+    paymentsEnabled: STRIPE_CONFIG.paymentsEnabled,
   });
 });
 
@@ -38,6 +39,16 @@ router.get('/config', (req, res) => {
  */
 router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
   try {
+    // Check if payments are enabled
+    if (!STRIPE_CONFIG.paymentsEnabled) {
+      console.log('[Payment] ⚠️ Payment attempted but payments are currently disabled');
+      return res.status(503).json({
+        error: 'Payments are temporarily unavailable',
+        paymentsDisabled: true,
+        message: 'Credit card payments are currently disabled. Please contact us for alternative payment methods.'
+      });
+    }
+
     const { dealId, amount } = req.body;
     const contactId = req.user.contactId;
     const userEmail = req.user.email;

@@ -34,7 +34,14 @@ export const HUBSPOT = {
     CLIENT: 'Client',
   },
 
-  // Deal Pipeline Stages
+  // Deal Pipelines
+  PIPELINES: {
+    FORM_2S: 'default',           // Form 2s (our main pipeline)
+    SALES: '1242388962',          // Sales pipeline
+    PURCHASES: '1242422748',      // Purchases pipeline
+  },
+
+  // Deal Pipeline Stages (Form 2s Pipeline)
   DEAL_STAGES: {
     STAGE_1: '1923713518',
     STAGE_2: '1923713520',

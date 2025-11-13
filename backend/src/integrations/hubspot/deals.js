@@ -1,7 +1,8 @@
 import hubspotClient from './client.js';
+import { HUBSPOT } from '../../config/constants.js';
 
 /**
- * Create a new deal
+ * Create a new deal in the Form 2s pipeline
  * Valid stage IDs from your HubSpot pipeline: 1923713518, 1923713520, 1923682791, 1923682792, 1924069846, 1904359900, 1904359901, 1904359902, closedwon, closedlost
  * Using 1923713518 (first stage) as default for new deals
  */
@@ -15,7 +16,7 @@ export const createDeal = async (dealData, associations = []) => {
     properties: {
       dealname: dealData.dealname,
       dealstage: dealData.dealstage || '1923713518', // Use valid stage ID instead of custom name
-      pipeline: dealData.pipeline || 'default',
+      pipeline: HUBSPOT.PIPELINES.FORM_2S, // ALWAYS use Form 2s pipeline
       property_address: dealData.property_address || '',
       number_of_owners: dealData.number_of_owners || 1,
       

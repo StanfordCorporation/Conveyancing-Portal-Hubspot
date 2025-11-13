@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api.js';
 import './payment-method-selection.css';
 
 /**
@@ -6,10 +7,42 @@ import './payment-method-selection.css';
  * Allows users to choose between Credit Card (Stripe) or Bank Transfer
  */
 export default function PaymentMethodSelection({ amount, onSelectMethod }) {
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+
+  useEffect(() => {
+    // Check if payments are enabled
+    const checkPaymentStatus = async () => {
+      try {
+        const response = await api.get('/payment/config');
+        setPaymentsEnabled(response.data.paymentsEnabled);
+        console.log(`[Payment Method Selection] Payments enabled: ${response.data.paymentsEnabled}`);
+      } catch (error) {
+        console.error('[Payment Method Selection] Error checking payment status:', error);
+        // Default to false if we can't check
+        setPaymentsEnabled(false);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+
+    checkPaymentStatus();
+  }, []);
+
   const handleMethodSelect = (method) => {
     console.log(`[Payment Method Selection] Selected: ${method}`);
     onSelectMethod(method);
   };
+
+  if (loadingConfig) {
+    return (
+      <div className="payment-method-selection-container">
+        <div className="payment-loading">
+          <p>Loading payment options...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="payment-method-selection-container">
@@ -23,43 +56,46 @@ export default function PaymentMethodSelection({ amount, onSelectMethod }) {
       </div>
 
       <div className="payment-methods-grid">
-        {/* Credit Card Payment - Recommended */}
-        <div 
-          className="payment-method-card recommended"
-          onClick={() => handleMethodSelect('Stripe')}
-          role="button"
-          tabIndex={0}
-          onKeyPress={(e) => e.key === 'Enter' && handleMethodSelect('Stripe')}
-        >
-          <div className="recommended-badge">Recommended</div>
-          <div className="method-icon">💳</div>
-          <h3 className="method-title">Pay by Credit Card</h3>
-          <div className="method-feature instant-badge">⚡ Instant Processing</div>
-          <div className="method-description">
-            <p>Pay securely with your credit or debit card</p>
-            <ul className="method-features">
-              <li>✓ Immediate search ordering</li>
-              <li>✓ Secure payment via Stripe</li>
-              <li>✓ Instant confirmation</li>
-              <li>✓ Accepts Visa, Mastercard, Amex</li>
-            </ul>
+        {/* Credit Card Payment - Only show if payments are enabled */}
+        {paymentsEnabled && (
+          <div
+            className="payment-method-card recommended"
+            onClick={() => handleMethodSelect('Stripe')}
+            role="button"
+            tabIndex={0}
+            onKeyPress={(e) => e.key === 'Enter' && handleMethodSelect('Stripe')}
+          >
+            <div className="recommended-badge">Recommended</div>
+            <div className="method-icon">💳</div>
+            <h3 className="method-title">Pay by Credit Card</h3>
+            <div className="method-feature instant-badge">⚡ Instant Processing</div>
+            <div className="method-description">
+              <p>Pay securely with your credit or debit card</p>
+              <ul className="method-features">
+                <li>✓ Immediate search ordering</li>
+                <li>✓ Secure payment via Stripe</li>
+                <li>✓ Instant confirmation</li>
+                <li>✓ Accepts Visa, Mastercard, Amex</li>
+              </ul>
+            </div>
+            <div className="method-note info-note">
+              💡 <strong>Credit Card Payment allows us to Order searches immediately</strong>
+            </div>
+            <button className="select-method-button primary">
+              Select Credit Card
+            </button>
           </div>
-          <div className="method-note info-note">
-            💡 <strong>Credit Card Payment allows us to Order searches immediately</strong>
-          </div>
-          <button className="select-method-button primary">
-            Select Credit Card
-          </button>
-        </div>
+        )}
 
         {/* Bank Transfer Payment */}
-        <div 
-          className="payment-method-card"
+        <div
+          className={`payment-method-card ${!paymentsEnabled ? 'recommended' : ''}`}
           onClick={() => handleMethodSelect('Bank Transfer')}
           role="button"
           tabIndex={0}
           onKeyPress={(e) => e.key === 'Enter' && handleMethodSelect('Bank Transfer')}
         >
+          {!paymentsEnabled && <div className="recommended-badge">Only Option</div>}
           <div className="method-icon">🏦</div>
           <h3 className="method-title">Pay by Bank Transfer</h3>
           <div className="method-feature">Manual Processing</div>

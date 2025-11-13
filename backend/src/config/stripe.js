@@ -27,6 +27,10 @@ export const STRIPE_CONFIG = {
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   currency: 'aud', // Australian Dollar
 
+  // Payments enabled/disabled flag
+  // Set to false to temporarily disable all Stripe payments
+  paymentsEnabled: false, // TODO: Set to true to re-enable payments
+
   // Fee surcharging configuration
   feeConfig: {
     // Set to true to enable dynamic card country detection

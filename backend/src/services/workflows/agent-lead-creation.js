@@ -10,6 +10,7 @@ import { createDealWithAssociations } from '../../integrations/hubspot/deals.js'
 import hubspotClient from '../../integrations/hubspot/client.js';
 import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
 import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
+import { HUBSPOT } from '../../config/constants.js';
 
 /**
  * Process agent-initiated lead creation
@@ -158,7 +159,7 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
     const dealData = {
       dealname: `${leadData.property.address} - ${primarySellerNames.firstname} ${primarySellerNames.lastname}`,
       dealstage: '1923713518', // Stage 1: Client Disclosure
-      pipeline: 'default',
+      pipeline: HUBSPOT.PIPELINES.FORM_2S, // Form 2s pipeline only
       property_address: leadData.property.address,
       number_of_owners: (additionalSellerIds.length + 1).toString(),
       is_draft: leadData.isDraft ? 'Yes' : null, // Use is_draft property (Yes or null)

@@ -34,10 +34,23 @@ export const createPaymentIntent = async (paymentData) => {
       metadata: metadata || {},
       // Manual capture allows adjusting amount after card country is known
       capture_method: manualCapture ? 'manual' : 'automatic',
+
+      // ============================================================
+      // PAYMENT METHODS DISABLED - CREDIT CARDS TEMPORARILY OFF
+      // ============================================================
+      // To re-enable credit card payments:
+      // 1. Set paymentsEnabled: true in backend/src/config/stripe.js
+      // 2. Uncomment the automatic_payment_methods block below
+      // 3. Comment out or remove the payment_method_types: [] line
+      // ============================================================
+
       // Automatically determine supported payment methods (cards, Apple Pay, Google Pay, etc.)
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      // automatic_payment_methods: {
+      //   enabled: true,
+      // },
+
+      // Temporary: No payment methods enabled (disables all payment methods including cards)
+      payment_method_types: [], // Empty array = no payment methods available
     });
 
     console.log(`[Stripe Payments] ✅ Payment intent created: ${paymentIntent.id}`);

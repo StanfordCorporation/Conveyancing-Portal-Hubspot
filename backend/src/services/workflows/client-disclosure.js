@@ -4,6 +4,7 @@ import { createDealWithAssociations } from '../../integrations/hubspot/deals.js'
 import hubspotClient from '../../integrations/hubspot/client.js';
 import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
 import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
+import { HUBSPOT } from '../../config/constants.js';
 
 /**
  * Workflow: Client-Initiated Disclosure Form
@@ -186,7 +187,7 @@ export const processClientDisclosure = async (formData) => {
     const dealData = {
       dealname: `${formData.property.address} - ${formData.seller.firstname} ${formData.seller.lastname}`,
       dealstage: '1923713518', // First stage ID from HubSpot pipeline
-      pipeline: 'default',
+      pipeline: HUBSPOT.PIPELINES.FORM_2S, // Form 2s pipeline only
       property_address: formData.property.address,
       transaction_type: 'sale', // Disclosure form is always for selling property
       number_of_owners: (additionalSellerIds.length + 1).toString(),

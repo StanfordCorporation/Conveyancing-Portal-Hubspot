@@ -396,9 +396,21 @@ export const getAgentDeals = async (agentId) => {
         }
       })
     );
-    
-    console.log(`[Agent Service] Successfully fetched ${dealsWithSellers.length} deals with sellers`);
-    return dealsWithSellers;
+
+    // Filter to only show Form 2s pipeline deals
+    const form2sDeals = dealsWithSellers.filter(deal => {
+      const pipeline = deal.pipeline;
+      const isForm2sPipeline = pipeline === HUBSPOT.PIPELINES.FORM_2S;
+
+      if (!isForm2sPipeline) {
+        console.log(`[Agent Service] 🚫 Filtering out non-Form 2s deal: ${deal.id} (pipeline: ${pipeline})`);
+      }
+
+      return isForm2sPipeline;
+    });
+
+    console.log(`[Agent Service] Successfully fetched ${form2sDeals.length} Form 2s deals (filtered out ${dealsWithSellers.length - form2sDeals.length} deals from other pipelines)`);
+    return form2sDeals;
   } catch (error) {
     console.error(`[Agent Service] Error fetching deals:`, error.message);
     throw error;

@@ -2,6 +2,7 @@ import { createContact } from '../../integrations/hubspot/contacts.js';
 import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
 import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
 import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
+import { HUBSPOT } from '../../config/constants.js';
 
 /**
  * Workflow 2: Agent-Initiated Client Creation
@@ -43,7 +44,7 @@ export const processAgentClientCreation = async (formData) => {
     const dealData = {
       dealname: `${formData.property.address} - ${formData.client.firstname} ${formData.client.lastname}`,
       dealstage: '1923713518', // First stage ID from HubSpot pipeline
-      pipeline: 'default',
+      pipeline: HUBSPOT.PIPELINES.FORM_2S, // Form 2s pipeline only
       property_address: formData.property.address,
       number_of_owners: formData.property.number_of_owners?.toString() || '1',
       // Include any property disclosure data if provided
