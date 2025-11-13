@@ -34,7 +34,7 @@ All webhook infrastructure has been implemented and is ready for deployment!
 #### Smokeball Webhook Worker
 - **File:** `workers/smokeball-webhook/src/index.js`
 - **Purpose:** Receives Smokeball matter events
-- **Updates:** HubSpot deal properties (`lead_uid`, `matter_uid`)
+- **Updates:** HubSpot deal properties (`smokeball_lead_uid`, `matter_uid`)
 - **Events:** `matter.created`, `matter.converted`, `matter.updated`
 - **Security:** API key validation (optional)
 

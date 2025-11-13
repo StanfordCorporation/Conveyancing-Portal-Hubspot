@@ -380,6 +380,8 @@ router.post('/create-signing-session', async (req, res) => {
       console.log(`[DocuSign Route]   ${index + 1}. ${signer.name} (${signer.email}) - Order: ${signer.routingOrder}, Role: ${signer.roleName}`);
     });
 
+    console.log(`[DocuSign Route] 🆔 Passing dealId to envelope: ${dealId}`);
+
     // Create embedded signing session with all signers
     const result = await createEmbeddedSigningSession({
       accessToken,

@@ -278,35 +278,25 @@ export default {
       // Get HubSpot token
       const hubspotToken = await env.HUBSPOT_ACCESS_TOKEN;
       
-      // Find deal by lead_uid
-      const searchResponse = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
-        method: 'POST',
+      // Find deal by smokeball_lead_uid using direct lookup
+      const dealUrl = `https://api.hubapi.com/crm/v3/objects/deals/${matterData.id}?idProperty=smokeball_lead_uid&properties=dealname,smokeball_lead_uid,matter_uid`;
+      const dealResponse = await fetch(dealUrl, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${hubspotToken}`
-        },
-        body: JSON.stringify({
-          filterGroups: [{
-            filters: [{
-              propertyName: 'lead_uid',
-              operator: 'EQ',
-              value: matterData.id
-            }]
-          }],
-          properties: ['dealname', 'lead_uid']
-        })
+        }
       });
       
-      const searchData = await searchResponse.json();
-      const deal = searchData.results?.[0];
-      
-      if (!deal) {
+      if (dealResponse.status === 404) {
         console.warn({ message: 'No deal found', leadUid: matterData.id });
         return new Response(JSON.stringify({ received: true, warning: 'No matching deal' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         });
       }
+      
+      const deal = await dealResponse.json();
       
       // Update based on event type
       let updates = {};

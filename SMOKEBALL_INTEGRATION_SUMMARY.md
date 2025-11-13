@@ -56,8 +56,8 @@ All core Smokeball API integrations are **FIXED** and **TESTED**:
      referralType: "Real Estate Agent"
    }
    ↓
-8. Update HubSpot deal with lead_uid
-   - lead_uid: "smokeball-lead-uuid"
+8. Update HubSpot deal with smokeball_lead_uid
+   - smokeball_lead_uid: "smokeball-lead-uuid"
    - smokeball_sync_status: "Successfull"
 ```
 
@@ -67,7 +67,7 @@ All core Smokeball API integrations are **FIXED** and **TESTED**:
 - `backend/src/services/workflows/agent-lead-creation.js` (line 221-229)
 
 **HubSpot Properties Set:**
-- `lead_uid` - Smokeball lead UUID
+- `smokeball_lead_uid` - Smokeball lead UUID
 - `smokeball_sync_status` - "Successfull" or "Failed"
 - `smokeball_last_sync` - Timestamp
 
@@ -246,7 +246,7 @@ Stage 9: Searches Returned
      "leadOpenedDate": "2025-11-10T..."
    }
    ```
-7. ✅ Save `lead_uid` to HubSpot deal
+7. ✅ Save `smokeball_lead_uid` to HubSpot deal
 
 **Result in Smokeball:**
 - ✅ New **LEAD** appears (not a matter yet - no matter number)
@@ -378,7 +378,7 @@ If you want automation at **Stage 6 (Funds Provided)** instead:
 │    - Contacts: John Smith + Additional Sellers                  │
 │    - Staff: Sean Kerswill (responsible) + Laura Stuart (assist) │
 │    - Status: LEAD (not matter yet)                             │
-│    - Stored in HubSpot: lead_uid                               │
+│    - Stored in HubSpot: smokeball_lead_uid                     │
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐

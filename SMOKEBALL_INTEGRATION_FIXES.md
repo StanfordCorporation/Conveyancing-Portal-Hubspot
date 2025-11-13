@@ -229,7 +229,7 @@ node test-smokeball-contacts.js
    });
    ```
 
-7. **Update HubSpot** with lead_uid
+7. **Update HubSpot** with smokeball_lead_uid
 
 ---
 

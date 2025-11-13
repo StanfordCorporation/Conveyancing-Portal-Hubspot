@@ -22,7 +22,7 @@ Your Smokeball integration is **fully functional** for immediate use:
       → Laura Stuart (assistant)
    5. Create LEAD in Smokeball
       → Status: Open, isLead: true
-   6. Save lead_uid to HubSpot
+   6. Save smokeball_lead_uid to HubSpot
 ```
 
 **Files:**
@@ -109,7 +109,7 @@ Stage 1: Client Disclosure
     ✅ CREATE SMOKEBALL LEAD
          • Contacts created
          • Sean & Laura assigned
-         • lead_uid saved to HubSpot
+         • smokeball_lead_uid saved to HubSpot
          ↓
 Stage 3: Quote Accepted
          ↓

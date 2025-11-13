@@ -292,7 +292,7 @@ async function handleMatterCreated(matterData) {
     } catch (error) {
       if (error.response?.status === 404) {
         console.warn(`[Smokeball Webhook] ⚠️ No deal found with smokeball_lead_uid: ${matterData.id}`);
-        return;
+      return;
       }
       throw error;
     }
@@ -340,7 +340,7 @@ async function handleMatterConverted(matterData) {
     } catch (error) {
       if (error.response?.status === 404) {
         console.warn(`[Smokeball Webhook] ⚠️ No deal found with smokeball_lead_uid: ${matterData.id}`);
-        return;
+      return;
       }
       throw error;
     }

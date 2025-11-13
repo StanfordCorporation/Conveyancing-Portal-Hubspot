@@ -104,7 +104,7 @@ Stage 1: Client Disclosure
     API: Create Smokeball Lead
     ↓
     ✅ Lead created
-    ✅ lead_uid saved to HubSpot
+    ✅ smokeball_lead_uid saved to HubSpot
     
 Stage 3: Quote Accepted
     ↓
@@ -123,7 +123,7 @@ Stage 1: Client Disclosure
     API: Create Smokeball Lead
     ↓
     ✅ Lead created
-    ✅ lead_uid saved to HubSpot
+    ✅ smokeball_lead_uid saved to HubSpot
     ↓
     📡 WEBHOOK: matter.created
     ↓ (Background - Async)
@@ -169,7 +169,7 @@ Stage 3: Quote Accepted
 ```
 
 **Your Backend Does:**
-1. Find HubSpot deal by `lead_uid`
+1. Find HubSpot deal by `smokeball_lead_uid`
 2. Get matter from Smokeball (to find property layout)
 3. Parse property address
 4. Update property details layout fields
@@ -201,7 +201,7 @@ Stage 3: Quote Accepted
 ```
 
 **Your Backend Does:**
-1. Find HubSpot deal by `lead_uid`
+1. Find HubSpot deal by `smokeball_lead_uid`
 2. Extract matter number: "2025-CV-001"
 3. Update HubSpot deal:
    - `matter_uid` = "2025-CV-001"

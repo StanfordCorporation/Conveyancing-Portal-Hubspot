@@ -281,6 +281,7 @@ function makeEnvelopeFromTemplate(args) {
   } = args;
 
   console.log(`[DocuSign] Using template: ${templateId}`);
+  console.log(`[DocuSign] dealId received in args: ${args.dealId ? args.dealId : 'UNDEFINED/NULL - WEBHOOKS WILL FAIL!'}`);
 
   // Create envelope definition
   const env = new docusign.EnvelopeDefinition();
@@ -348,6 +349,9 @@ function makeEnvelopeFromTemplate(args) {
         }
       ]
     });
+    console.log(`[DocuSign] ✅ Custom field 'hs_deal_id' added to envelope with value: ${args.dealId}`);
+  } else {
+    console.error(`[DocuSign] ❌ CRITICAL: No dealId provided! Custom field 'hs_deal_id' NOT added. Webhooks will fail!`);
   }
 
   // Create template roles (signers)

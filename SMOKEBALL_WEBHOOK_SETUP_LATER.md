@@ -95,7 +95,7 @@ curl https://your-backend.vercel.app/api/smokeball/webhooks/list
 
 **What It Does:**
 ```javascript
-1. Find matching HubSpot deal by lead_uid
+1. Find matching HubSpot deal by smokeball_lead_uid
 2. Update property details in Smokeball
    → Parse property address
    → Populate property layout fields:
@@ -119,7 +119,7 @@ curl https://your-backend.vercel.app/api/smokeball/webhooks/list
 
 **What It Does:**
 ```javascript
-1. Find matching HubSpot deal by lead_uid
+1. Find matching HubSpot deal by smokeball_lead_uid
 2. Capture matter number from webhook
 3. Update HubSpot deal:
    → matter_uid = "2025-CV-001"

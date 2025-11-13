@@ -1275,6 +1275,14 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
     const { dealId } = req.params;
     const { stage, stepNumber } = req.body;
 
+    console.log(`[Deal Stage] ========================================`);
+    console.log(`[Deal Stage] 📥 STAGE UPDATE REQUEST RECEIVED`);
+    console.log(`[Deal Stage] Deal ID: ${dealId}`);
+    console.log(`[Deal Stage] Request Body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[Deal Stage] stepNumber: ${stepNumber} (type: ${typeof stepNumber})`);
+    console.log(`[Deal Stage] stage: ${stage}`);
+    console.log(`[Deal Stage] ========================================`);
+
     // Validate stage ID
     const validStages = {
       1: '1923713518',
@@ -1297,8 +1305,11 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
     // Prepare update payload
     const updatePayload = { dealstage };
 
+    console.log(`[Deal Stage] Current stepNumber: ${stepNumber}, dealstage: ${dealstage}`);
+
     // If moving to Step 4 (Quote Accepted - Awaiting Retainer), determine which searches to order
     if (stepNumber === 4) {
+      console.log(`[Deal Stage] ✅ Step 4 detected - will process quote acceptance workflows`);
       console.log(`[Deal Stage] 🔍 Quote accepted - determining which searches to order`);
 
       try {
@@ -1400,16 +1411,25 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
       // ==================================================================
       // CONVERT SMOKEBALL LEAD TO MATTER (Quote Accepted)
       // ==================================================================
+      console.log(`[Deal Stage] ========================================`);
+      console.log(`[Deal Stage] 🔄 STARTING SMOKEBALL LEAD TO MATTER CONVERSION`);
+      console.log(`[Deal Stage] ========================================`);
+      
       try {
         console.log(`[Deal Stage] 🎯 Quote accepted - converting Smokeball lead to matter`);
 
         // Get smokeball_lead_uid and property address from deal
+        console.log(`[Deal Stage] 📋 Fetching smokeball_lead_uid and property_address from deal ${dealId}`);
         const leadDeal = await dealsIntegration.getDeal(dealId, ['smokeball_lead_uid', 'property_address']);
         const leadUid = leadDeal.properties.smokeball_lead_uid;
         const propertyAddress = leadDeal.properties.property_address;
 
+        console.log(`[Deal Stage] 🆔 smokeball_lead_uid: ${leadUid || 'NOT FOUND'}`);
+        console.log(`[Deal Stage] 🏠 property_address: ${propertyAddress || 'NOT FOUND'}`);
+
         if (!leadUid) {
           console.warn(`[Deal Stage] ⚠️  No smokeball_lead_uid found - skipping Smokeball conversion`);
+          console.warn(`[Deal Stage] ⚠️  Lead must be created in Smokeball first (usually happens at Stage 1)`);
         } else {
           console.log(`[Deal Stage] 📋 Lead UID: ${leadUid}`);
 
@@ -1445,16 +1465,25 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
           console.log(`[Deal Stage] ✅ Client Role: ${matterType.clientRole}`);
 
           // Convert lead to matter
+          console.log(`[Deal Stage] 🔄 Calling Smokeball API to convert lead to matter...`);
           await smokeballMatters.convertLeadToMatter(leadUid, matterType.id, matterType.clientRole);
 
+          console.log(`[Deal Stage] ========================================`);
           console.log(`[Deal Stage] ✅ Lead conversion initiated in Smokeball`);
           console.log(`[Deal Stage] 📨 Awaiting matter.converted webhook for matter number`);
+          console.log(`[Deal Stage] ========================================`);
         }
 
       } catch (smokeballError) {
-        console.error(`[Deal Stage] ⚠️  Smokeball conversion error:`, smokeballError.message);
+        console.log(`[Deal Stage] ========================================`);
+        console.error(`[Deal Stage] ❌ SMOKEBALL CONVERSION FAILED`);
+        console.error(`[Deal Stage] Error:`, smokeballError.message);
+        console.error(`[Deal Stage] Stack:`, smokeballError.stack);
+        console.log(`[Deal Stage] ========================================`);
         // Don't fail the whole stage update if Smokeball conversion fails
       }
+    } else {
+      console.log(`[Deal Stage] ℹ️  Not Step 4 - skipping Smokeball conversion (only runs at Step 4: Awaiting Retainer)`);
     }
 
     // Update deal stage (and searches if applicable) in HubSpot

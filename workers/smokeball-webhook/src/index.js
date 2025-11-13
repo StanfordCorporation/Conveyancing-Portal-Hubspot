@@ -31,35 +31,25 @@ export default {
       // Get HubSpot token
       const hubspotToken = env.HUBSPOT_ACCESS_TOKEN;
       
-      // Find HubSpot deal by lead_uid
-      const searchResponse = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
-        method: 'POST',
+      // Find HubSpot deal by smokeball_lead_uid using direct lookup
+      const dealUrl = `https://api.hubapi.com/crm/v3/objects/deals/${matterData.id}?idProperty=smokeball_lead_uid&properties=dealname,smokeball_lead_uid,matter_uid`;
+      const dealResponse = await fetch(dealUrl, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${hubspotToken}`
-        },
-        body: JSON.stringify({
-          filterGroups: [{
-            filters: [{
-              propertyName: 'lead_uid',
-              operator: 'EQ',
-              value: matterData.id
-            }]
-          }],
-          properties: ['dealname', 'lead_uid', 'matter_uid']
-        })
+        }
       });
       
-      const searchData = await searchResponse.json();
-      const deal = searchData.results?.[0];
-      
-      if (!deal) {
+      if (dealResponse.status === 404) {
         console.warn({ message: 'No HubSpot deal found for Smokeball lead', leadUid: matterData.id });
         return new Response(JSON.stringify({ received: true, warning: 'No matching deal' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         });
       }
+      
+      const deal = await dealResponse.json();
       
       console.info({ message: 'Found matching deal', dealId: deal.id, dealName: deal.properties.dealname });
       
@@ -76,7 +66,6 @@ export default {
           
         case 'matter.converted':
           updates = {
-            lead_uid: matterData.id,
             matter_uid: matterData.number,
             smokeball_sync_status: 'synced',
             smokeball_last_sync: new Date().toISOString()
