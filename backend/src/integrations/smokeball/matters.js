@@ -109,7 +109,7 @@ export async function getMatter(matterId) {
  * 
  * Note: Smokeball returns 202 Accepted (async processing). The actual matter number
  * will be assigned asynchronously and captured via matter.converted webhook.
- * 
+ *
  * IMPORTANT: Uses hardcoded matter type ID matching legacy PHP implementation.
  * This ensures consistent conversion behavior across all Queensland sales.
  *

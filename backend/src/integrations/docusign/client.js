@@ -389,11 +389,13 @@ function makeEnvelopeFromTemplate(args) {
     console.log(`[DocuSign] Creating envelope with ${signers.length} signers (routing order enabled)`);
 
     templateRoles = signers.map((signer, index) => {
-      // All signers get embedded signing capability (clientUserId)
-      // Signers receive email from DocuSign AND can sign in portal (hybrid approach)
       const isFirstSigner = signer.routingOrder === 1;
-      const signingMethod = 'Hybrid (Portal OR Email)';
-      
+
+      // SIGNING METHOD:
+      // - First signer (routingOrder 1): Embedded signing (signs in portal via clientUserId)
+      // - Subsequent signers (routingOrder 2+): Remote signing (receives email from DocuSign)
+      const signingMethod = isFirstSigner ? 'Embedded (Portal)' : 'Remote (Email)';
+
       console.log(`[DocuSign]   Signer ${index + 1}: ${signer.name} (${signer.email}) - Role: ${signer.roleName}, Order: ${signer.routingOrder}, Method: ${signingMethod}`);
 
       const role = {
@@ -403,11 +405,14 @@ function makeEnvelopeFromTemplate(args) {
         routingOrder: signer.routingOrder.toString() // "1", "2", etc. - defines signing order
       };
 
-      // Set clientUserId for ALL signers (enables hybrid: portal OR email)
-      // DocuSign will still send email notifications due to envelope event configuration
-      // This allows signers to choose: sign via portal (embedded) OR via email link
-      // Routing order is still enforced by DocuSign (sequential signing)
+      // IMPORTANT: Only set clientUserId for the FIRST signer (embedded signing)
+      // Subsequent signers should NOT have clientUserId (they receive email from DocuSign)
+      if (isFirstSigner) {
         role.clientUserId = signer.clientUserId;
+        console.log(`[DocuSign]     ↳ clientUserId set: ${signer.clientUserId} (embedded signing enabled)`);
+      } else {
+        console.log(`[DocuSign]     ↳ No clientUserId (DocuSign will send email to signer)`);
+      }
 
       return docusign.TemplateRole.constructFromObject(role);
     });

@@ -26,4 +26,17 @@ export const STRIPE_CONFIG = {
   publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   currency: 'aud', // Australian Dollar
+
+  // Fee surcharging configuration
+  feeConfig: {
+    // Set to true to enable dynamic card country detection
+    // When true: Detects if card is domestic/international and adjusts fees accordingly
+    // When false: Uses defaultCardType for all transactions (simpler, recommended)
+    useDynamicDetection: false,
+
+    // Default card type when useDynamicDetection is false
+    // Options: 'domestic' (1.75%) or 'international' (2.9%)
+    // Recommendation: 'domestic' since most AU customers use AU cards
+    defaultCardType: 'domestic',
+  },
 };

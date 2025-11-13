@@ -9,6 +9,7 @@ import * as stripeCustomers from '../integrations/stripe/customers.js';
 import * as stripePayments from '../integrations/stripe/payments.js';
 import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import { STRIPE_CONFIG } from '../config/stripe.js';
+import { calculateAmountWithFees, getFeeBreakdown } from '../utils/stripe-fees.js';
 
 const router = express.Router();
 
@@ -26,7 +27,14 @@ router.get('/config', (req, res) => {
 /**
  * POST /api/payment/create-payment-intent
  * Create a payment intent for a deal
- * Requires: dealId, amount
+ * Requires: dealId, amount (net amount you want to receive)
+ *
+ * Note: Stripe fees are automatically added to the charge amount
+ * so the customer pays the fees and you receive the full net amount
+ *
+ * Behavior depends on STRIPE_CONFIG.feeConfig.useDynamicDetection:
+ * - false: Uses default card type (simpler, recommended)
+ * - true: Creates with international rates, adjusts after card detection
  */
 router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
   try {
@@ -38,8 +46,20 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: dealId, amount' });
     }
 
+    const { useDynamicDetection, defaultCardType } = STRIPE_CONFIG.feeConfig;
+
+    // For dynamic detection, start with international rates (conservative)
+    // For static, use configured default
+    const useDomestic = useDynamicDetection ? false : defaultCardType === 'domestic';
+
+    // Calculate gross amount including Stripe fees
+    const feeCalculation = calculateAmountWithFees(amount, { useDomestic });
+
     console.log(`[Payment] 💳 Creating payment intent for deal ${dealId}`);
-    console.log(`[Payment] 💰 Amount: $${(amount / 100).toFixed(2)}`);
+    console.log(`[Payment] 🔧 Dynamic detection: ${useDynamicDetection ? 'ENABLED' : 'DISABLED'} (${useDomestic ? 'domestic' : 'international'} rates)`);
+    console.log(`[Payment] 💰 Net amount (what you receive): ${feeCalculation.breakdown.netAmount}`);
+    console.log(`[Payment] 💳 Stripe fee: ${feeCalculation.breakdown.stripeFee} (${feeCalculation.breakdown.feePercentage})`);
+    console.log(`[Payment] 💵 Total charge to customer: ${feeCalculation.breakdown.grossAmount}`);
 
     // Get deal information
     const deal = await dealsIntegration.getDeal(dealId, ['dealname', 'property_address']);
@@ -54,16 +74,23 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
       },
     });
 
-    // Create payment intent
+    // Create payment intent with gross amount (includes fees)
     const paymentIntent = await stripePayments.createPaymentIntent({
-      amount: amount,
+      amount: feeCalculation.grossAmountInCents,
       customerId: customer.id,
-      description: `Payment for ${deal.properties.property_address || deal.properties.dealname}`,
+      description: `Conveyancing Fee for ${deal.properties.property_address || deal.properties.dealname} (includes card surcharge)`,
       metadata: {
         deal_id: dealId,
         contact_id: contactId,
         deal_name: deal.properties.dealname || 'Property Purchase',
+        base_amount: amount,
+        fee_percent: feeCalculation.feePercent,
+        fixed_fee: feeCalculation.fixedFee,
+        gross_amount: feeCalculation.grossAmountInCents,
+        stripe_fee: feeCalculation.stripeFeeInCents,
       },
+      // Enable manual capture for dynamic detection
+      manualCapture: useDynamicDetection,
     });
 
     console.log(`[Payment] ✅ Payment intent created successfully`);
@@ -72,6 +99,18 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       customerId: customer.id,
+      useDynamicDetection: useDynamicDetection,
+      baseAmount: amount, // Pass base amount for adjust-and-capture endpoint
+      // Include fee breakdown for frontend display
+      feeBreakdown: {
+        baseAmount: feeCalculation.breakdown.netAmount,
+        stripeFee: feeCalculation.breakdown.stripeFee,
+        totalAmount: feeCalculation.breakdown.grossAmount,
+        feePercentage: feeCalculation.breakdown.feePercentage,
+        baseAmountCents: feeCalculation.netAmountInCents,
+        stripeFeeInCents: feeCalculation.stripeFeeInCents,
+        totalAmountCents: feeCalculation.grossAmountInCents,
+      },
     });
   } catch (error) {
     console.error(`[Payment] ❌ Error creating payment intent:`, error.message);
@@ -121,6 +160,72 @@ router.post('/cancel/:paymentIntentId', authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error(`[Payment] ❌ Error cancelling payment:`, error.message);
     res.status(500).json({ error: 'Failed to cancel payment' });
+  }
+});
+
+/**
+ * POST /api/payment/adjust-and-capture/:paymentIntentId
+ * Detect card country, adjust fee if needed, and capture payment
+ * Used for dynamic domestic/international fee adjustment
+ *
+ * Flow:
+ * 1. Payment is authorized (not captured) on frontend
+ * 2. This endpoint detects card country
+ * 3. Adjusts amount based on domestic (1.75%) or international (2.9%) rates
+ * 4. Captures the payment with correct amount
+ */
+router.post('/adjust-and-capture/:paymentIntentId', authenticateJWT, async (req, res) => {
+  try {
+    const { paymentIntentId } = req.params;
+    const { baseAmount } = req.body; // The net amount you want to receive
+
+    if (!baseAmount) {
+      return res.status(400).json({ error: 'Missing required field: baseAmount' });
+    }
+
+    console.log(`[Payment] 🔍 Detecting card country for payment ${paymentIntentId}`);
+
+    // Step 1: Get card country
+    const cardInfo = await stripePayments.getCardCountry(paymentIntentId);
+
+    // Step 2: Calculate correct fee based on card type
+    const feeCalculation = calculateAmountWithFees(baseAmount, {
+      useDomestic: cardInfo.isDomestic,
+    });
+
+    console.log(`[Payment] 💳 Card type: ${cardInfo.cardType} (${cardInfo.cardCountry})`);
+    console.log(`[Payment] 💰 Adjusted amount: ${feeCalculation.breakdown.grossAmount}`);
+
+    // Step 3: Update payment intent amount
+    await stripePayments.updatePaymentIntentAmount(
+      paymentIntentId,
+      feeCalculation.grossAmountInCents
+    );
+
+    // Step 4: Capture the payment
+    const capturedPayment = await stripePayments.capturePaymentIntent(paymentIntentId);
+
+    console.log(`[Payment] ✅ Payment captured with adjusted fee`);
+
+    res.json({
+      success: true,
+      paymentIntentId: capturedPayment.id,
+      status: capturedPayment.status,
+      cardType: cardInfo.cardType,
+      cardCountry: cardInfo.cardCountry,
+      feeBreakdown: {
+        baseAmount: feeCalculation.breakdown.netAmount,
+        stripeFee: feeCalculation.breakdown.stripeFee,
+        totalAmount: feeCalculation.breakdown.grossAmount,
+        feePercentage: feeCalculation.breakdown.feePercentage,
+        baseAmountCents: feeCalculation.netAmountInCents,
+        stripeFeeInCents: feeCalculation.stripeFeeInCents,
+        totalAmountCents: feeCalculation.grossAmountInCents,
+      },
+    });
+  } catch (error) {
+    console.error(`[Payment] ❌ Error adjusting and capturing payment:`, error.message);
+    res.status(500).json({ error: 'Failed to adjust and capture payment' });
   }
 });
 

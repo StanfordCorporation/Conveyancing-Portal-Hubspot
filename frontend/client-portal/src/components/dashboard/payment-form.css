@@ -96,6 +96,74 @@
   margin: 0;
 }
 
+/* Payment Breakdown (Fee Display) */
+.payment-breakdown {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 15px;
+}
+
+.breakdown-row.surcharge {
+  color: #6B7280;
+  font-size: 14px;
+  border-top: 1px solid #E5E7EB;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.breakdown-row.total {
+  border-top: 2px solid #D1D5DB;
+  margin-top: 8px;
+  padding-top: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #1F2937;
+}
+
+.breakdown-label {
+  color: #4B5563;
+}
+
+.breakdown-value {
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.breakdown-row.surcharge .breakdown-label {
+  font-size: 13px;
+}
+
+.breakdown-row.surcharge .breakdown-value {
+  color: #6B7280;
+}
+
+.total-amount {
+  color: #0E6DFF;
+  font-size: 20px;
+}
+
+.surcharge-notice {
+  margin: 16px 0 0 0;
+  padding: 12px;
+  background: #FEF3C7;
+  border: 1px solid #FDE047;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #78350F;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .payment-element-container {
   margin: 24px 0;
   padding: 20px;

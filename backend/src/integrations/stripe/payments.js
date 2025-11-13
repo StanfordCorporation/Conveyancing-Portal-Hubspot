@@ -13,14 +13,18 @@ import { STRIPE_CONFIG } from '../../config/stripe.js';
  * @param {string} paymentData.customerId - Stripe customer ID
  * @param {string} paymentData.description - Payment description
  * @param {Object} paymentData.metadata - Additional metadata (e.g., dealId, contactId)
+ * @param {boolean} paymentData.manualCapture - If true, use manual capture for fee adjustment
  * @returns {Promise<Object>} Payment intent object with client_secret
  */
 export const createPaymentIntent = async (paymentData) => {
   try {
-    const { amount, customerId, description, metadata } = paymentData;
+    const { amount, customerId, description, metadata, manualCapture = false } = paymentData;
 
     console.log(`[Stripe Payments] 💳 Creating payment intent: ${description || 'Payment'}`);
     console.log(`[Stripe Payments] 💰 Amount: $${(amount / 100).toFixed(2)} ${STRIPE_CONFIG.currency.toUpperCase()}`);
+    if (manualCapture) {
+      console.log(`[Stripe Payments] 🔒 Manual capture enabled for fee adjustment`);
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
@@ -28,6 +32,8 @@ export const createPaymentIntent = async (paymentData) => {
       customer: customerId,
       description: description || 'Property conveyancing payment',
       metadata: metadata || {},
+      // Manual capture allows adjusting amount after card country is known
+      capture_method: manualCapture ? 'manual' : 'automatic',
       // Automatically determine supported payment methods (cards, Apple Pay, Google Pay, etc.)
       automatic_payment_methods: {
         enabled: true,
@@ -96,6 +102,95 @@ export const listCustomerPayments = async (customerId, limit = 10) => {
     return paymentIntents.data;
   } catch (error) {
     console.error(`[Stripe Payments] ❌ Error listing payment intents:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Update payment intent amount (useful for fee adjustment after card country detection)
+ * @param {string} paymentIntentId - Payment intent ID
+ * @param {number} newAmount - New amount in cents
+ * @returns {Promise<Object>} Updated payment intent
+ */
+export const updatePaymentIntentAmount = async (paymentIntentId, newAmount) => {
+  try {
+    console.log(`[Stripe Payments] 💳 Updating payment intent ${paymentIntentId} amount to $${(newAmount / 100).toFixed(2)}`);
+
+    const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
+      amount: newAmount,
+    });
+
+    console.log(`[Stripe Payments] ✅ Payment intent amount updated`);
+    return paymentIntent;
+  } catch (error) {
+    console.error(`[Stripe Payments] ❌ Error updating payment intent:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Capture a manually authorized payment intent
+ * @param {string} paymentIntentId - Payment intent ID
+ * @param {number} amountToCapture - Optional: amount to capture (defaults to full amount)
+ * @returns {Promise<Object>} Captured payment intent
+ */
+export const capturePaymentIntent = async (paymentIntentId, amountToCapture = null) => {
+  try {
+    console.log(`[Stripe Payments] 💰 Capturing payment intent: ${paymentIntentId}`);
+
+    const params = {};
+    if (amountToCapture !== null) {
+      params.amount_to_capture = amountToCapture;
+      console.log(`[Stripe Payments] 💰 Capturing amount: $${(amountToCapture / 100).toFixed(2)}`);
+    }
+
+    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, params);
+
+    console.log(`[Stripe Payments] ✅ Payment captured successfully`);
+    return paymentIntent;
+  } catch (error) {
+    console.error(`[Stripe Payments] ❌ Error capturing payment:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Get card country from payment intent
+ * @param {string} paymentIntentId - Payment intent ID
+ * @returns {Promise<Object>} Object with card country and type info
+ */
+export const getCardCountry = async (paymentIntentId) => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    // Extract payment method details
+    const paymentMethodId = paymentIntent.payment_method;
+    if (!paymentMethodId) {
+      throw new Error('No payment method attached to payment intent');
+    }
+
+    // Get full payment method details
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    const cardCountry = paymentMethod.card?.country;
+
+    if (!cardCountry) {
+      throw new Error('Card country not available');
+    }
+
+    const merchantCountry = 'AU'; // Australian business
+    const isDomestic = cardCountry === merchantCountry;
+
+    console.log(`[Stripe Payments] 🌍 Card country: ${cardCountry}`);
+    console.log(`[Stripe Payments] ${isDomestic ? '🏠' : '🌏'} Card type: ${isDomestic ? 'Domestic' : 'International'}`);
+
+    return {
+      cardCountry,
+      merchantCountry,
+      isDomestic,
+      cardType: isDomestic ? 'domestic' : 'international',
+    };
+  } catch (error) {
+    console.error(`[Stripe Payments] ❌ Error getting card country:`, error.message);
     throw error;
   }
 };

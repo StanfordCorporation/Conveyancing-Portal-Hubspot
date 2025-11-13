@@ -31,6 +31,10 @@ const getStripePromise = async () => {
 export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
   const [stripePromiseState, setStripePromiseState] = useState(null);
   const [clientSecret, setClientSecret] = useState('');
+  const [feeBreakdown, setFeeBreakdown] = useState(null);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [useDynamicDetection, setUseDynamicDetection] = useState(false);
+  const [baseAmount, setBaseAmount] = useState(amount);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -58,7 +62,14 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
       });
 
       setClientSecret(response.data.clientSecret);
+      setFeeBreakdown(response.data.feeBreakdown);
+      setPaymentIntentId(response.data.paymentIntentId);
+      setUseDynamicDetection(response.data.useDynamicDetection);
+      setBaseAmount(response.data.baseAmount);
+
       console.log('[Payment] ✅ Payment intent created');
+      console.log(`[Payment] 🔧 Dynamic detection: ${response.data.useDynamicDetection ? 'ENABLED' : 'DISABLED'}`);
+      console.log(`[Payment] 💰 Base: ${response.data.feeBreakdown?.baseAmount}, Fee: ${response.data.feeBreakdown?.stripeFee}, Total: ${response.data.feeBreakdown?.totalAmount}`);
     } catch (err) {
       console.error('[Payment] ❌ Error creating payment intent:', err);
       setError('Failed to initialize payment. Please try again.');
@@ -113,6 +124,10 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
         <CheckoutForm
           dealId={dealId}
           amount={amount}
+          feeBreakdown={feeBreakdown}
+          paymentIntentId={paymentIntentId}
+          useDynamicDetection={useDynamicDetection}
+          baseAmount={baseAmount}
           onSuccess={onSuccess}
           onCancel={onCancel}
         />
@@ -124,7 +139,7 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
 /**
  * Checkout Form with Stripe Elements
  */
-function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
+function CheckoutForm({ dealId, amount, feeBreakdown, paymentIntentId, useDynamicDetection, baseAmount, onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -144,8 +159,9 @@ function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
 
     try {
       console.log('[Payment] 💳 Processing payment...');
+      console.log(`[Payment] 🔧 Dynamic detection: ${useDynamicDetection ? 'ENABLED' : 'DISABLED'}`);
 
-      const { error: submitError } = await stripe.confirmPayment({
+      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/dashboard?payment=success&dealId=${dealId}`,
@@ -158,7 +174,26 @@ function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
         setError(submitError.message);
         setProcessing(false);
       } else {
-        console.log('[Payment] ✅ Payment succeeded!');
+        console.log('[Payment] ✅ Payment authorized!');
+
+        // If dynamic detection is enabled, adjust and capture
+        if (useDynamicDetection) {
+          console.log('[Payment] 🔍 Detecting card country and adjusting fee...');
+          try {
+            const adjustResponse = await api.post(`/payment/adjust-and-capture/${paymentIntentId}`, {
+              baseAmount: baseAmount,
+            });
+
+            console.log(`[Payment] 🌍 Card type: ${adjustResponse.data.cardType}`);
+            console.log(`[Payment] ✅ Payment captured with adjusted fee: ${adjustResponse.data.feeBreakdown.totalAmount}`);
+          } catch (adjustError) {
+            console.error('[Payment] ❌ Error adjusting fee:', adjustError);
+            setError('Payment authorized but fee adjustment failed. Please contact support.');
+            setProcessing(false);
+            return;
+          }
+        }
+
         setSucceeded(true);
         setProcessing(false);
 
@@ -179,7 +214,7 @@ function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
       <div className="payment-success">
         <div className="success-icon">✓</div>
         <h2>Payment Successful!</h2>
-        <p>Your payment of ${(amount / 100).toFixed(2)} AUD has been processed.</p>
+        <p>Your payment of {feeBreakdown?.totalAmount || `$${(amount / 100).toFixed(2)}`} AUD has been processed.</p>
         <p className="success-message">
           Thank you for your payment. You will receive a confirmation email shortly.
         </p>
@@ -191,7 +226,30 @@ function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
     <form onSubmit={handleSubmit} className="payment-form">
       <div className="payment-header">
         <h3>Complete Payment</h3>
-        <p className="payment-amount">Amount: ${(amount / 100).toFixed(2)} AUD</p>
+
+        {feeBreakdown ? (
+          <div className="payment-breakdown">
+            <div className="breakdown-row">
+              <span className="breakdown-label">Conveyancing Fee:</span>
+              <span className="breakdown-value">{feeBreakdown.baseAmount}</span>
+            </div>
+            <div className="breakdown-row surcharge">
+              <span className="breakdown-label">
+                Card Processing Surcharge ({feeBreakdown.feePercentage}):
+              </span>
+              <span className="breakdown-value">{feeBreakdown.stripeFee}</span>
+            </div>
+            <div className="breakdown-row total">
+              <span className="breakdown-label">Total Charge:</span>
+              <span className="breakdown-value total-amount">{feeBreakdown.totalAmount}</span>
+            </div>
+            <p className="surcharge-notice">
+              A {feeBreakdown.feePercentage} card processing surcharge applies to this payment.
+            </p>
+          </div>
+        ) : (
+          <p className="payment-amount">Amount: ${(amount / 100).toFixed(2)} AUD</p>
+        )}
       </div>
 
       <div className="payment-element-container">
@@ -219,7 +277,7 @@ function CheckoutForm({ dealId, amount, onSuccess, onCancel }) {
           className="pay-button"
           disabled={!stripe || processing}
         >
-          {processing ? 'Processing...' : `Pay $${(amount / 100).toFixed(2)}`}
+          {processing ? 'Processing...' : `Pay ${feeBreakdown?.totalAmount || `$${(amount / 100).toFixed(2)}`}`}
         </button>
       </div>
 

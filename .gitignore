@@ -35,6 +35,8 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs_result*.json
+logs_result*.csv
 
 # Build outputs
 dist/

@@ -175,7 +175,13 @@ async function handlePaymentCanceled(paymentIntent) {
 router.post('/docusign', express.json(), async (req, res) => {
   try {
     const payload = req.body;
+    const envelopeId = payload.data?.envelopeSummary?.envelopeId || 'unknown';
+
     console.log('[DocuSign Webhook] 📥 Received envelope status update');
+    console.log(`[DocuSign Webhook] 📨 Envelope ID: ${envelopeId}`);
+
+    // Log full payload for debugging
+    console.log('[DocuSign Webhook] 🔍 Full payload structure:', JSON.stringify(payload, null, 2));
 
     // Extract envelope status
     const envelope_status = payload.data?.envelopeSummary?.status;
@@ -190,21 +196,33 @@ router.post('/docusign', express.json(), async (req, res) => {
     const recipient_status = signers.map(({ email, status }) => ({ email, status }));
 
     if (!dealId) {
-      console.warn('[DocuSign Webhook] ⚠️ No hs_deal_id found in custom fields');
-      return res.status(400).json({ error: 'Missing hs_deal_id in envelope custom fields' });
+      console.warn(`[DocuSign Webhook] ⚠️ No hs_deal_id found for envelope ${envelopeId}`);
+      console.warn(`[DocuSign Webhook] Custom fields:`, JSON.stringify(customFields));
+      console.warn(`[DocuSign Webhook] This envelope was likely not created through our system - skipping`);
+      // Return 200 to acknowledge receipt and prevent retries
+      // This is expected for envelopes not created through our system
+      return res.status(200).json({
+        success: true,
+        message: 'Webhook received but no hs_deal_id found - envelope not tracked',
+        envelopeId
+      });
     }
 
     console.log(`[DocuSign Webhook] 📋 Deal ID: ${dealId}`);
     console.log(`[DocuSign Webhook] ✍️ Envelope Status: ${envelope_status}`);
     console.log(`[DocuSign Webhook] 👥 Recipients:`, recipient_status);
 
-    // Update HubSpot deal with envelope status
-    await dealsIntegration.updateDeal(dealId, {
-      envelope_status,
-      recipient_status: JSON.stringify(recipient_status),
-    });
+    // Store webhook data (payload.data) in HubSpot
+    const hubspotUpdateData = {
+      docusign_csa_json: JSON.stringify(payload.data),
+    };
+    console.log('[DocuSign Webhook] 📤 Storing webhook data in docusign_csa_json property');
 
-    console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with envelope status`);
+    // Update HubSpot deal with full webhook payload
+    const updateResult = await dealsIntegration.updateDeal(dealId, hubspotUpdateData);
+
+    console.log('[DocuSign Webhook] 📥 HubSpot API response:', JSON.stringify(updateResult, null, 2));
+    console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with full DocuSign webhook payload`);
 
     // If all signers completed, progress to next stage
     const allCompleted = signers.every(signer => signer.status === 'completed');
