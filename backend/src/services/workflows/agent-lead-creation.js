@@ -184,7 +184,7 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
         to: { id: agentId },
         types: [{
           associationCategory: 'USER_DEFINED',
-          associationTypeId: 5 // Agent to Deal
+          associationTypeId: 6 // Agent to Deal
         }]
       }
     ];

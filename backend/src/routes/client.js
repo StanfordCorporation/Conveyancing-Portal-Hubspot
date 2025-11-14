@@ -686,7 +686,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
           firstname: props.firstname || '',
           lastname: props.lastname || '',
           email: props.email || '',
-          phone: props.phone || ''
+          phone: props.phone || '',
+          address: props.address || ''
         };
 
         // Check association type metadata - a contact can have MULTIPLE roles
@@ -794,7 +795,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             firstname: props.firstname || '',
             lastname: props.lastname || '',
             email: props.email || '',
-            phone: props.phone || ''
+            phone: props.phone || '',
+            address: props.address || ''
           };
 
           // Check contact properties for hints about their role
@@ -837,7 +839,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             firstname: primarySellerContact.properties.firstname || '',
             lastname: primarySellerContact.properties.lastname || '',
             email: primarySellerContact.properties.email || '',
-            phone: primarySellerContact.properties.phone || ''
+            phone: primarySellerContact.properties.phone || '',
+            address: primarySellerContact.properties.address || ''
           };
         }
       }
@@ -873,7 +876,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             firstname: primarySellerContact.properties.firstname || '',
             lastname: primarySellerContact.properties.lastname || '',
             email: primarySellerContact.properties.email || '',
-            phone: primarySellerContact.properties.phone || ''
+            phone: primarySellerContact.properties.phone || '',
+            address: primarySellerContact.properties.address || ''
           };
         }
       } catch (fallbackErr) {

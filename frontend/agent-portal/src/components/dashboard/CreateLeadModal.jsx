@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import CreateLeadStep1 from './CreateLeadStep1';
 import CreateLeadStep2 from './CreateLeadStep2';
@@ -8,8 +8,30 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLea
   const isEditMode = !!existingLead;
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Initialize form data from existing lead or with defaults
-  const getInitialFormData = () => {
+  // Extract questionnaire data from existing lead
+  const extractQuestionnaireData = useCallback((lead) => {
+    if (!lead) return {};
+
+    const questionnaireFields = [
+      'body_corporate', 'body_corporate_details', 'registered_encumbrances',
+      'tenancy_agreement', 'formal_tenancy_agreement', 'tenancy_end_date',
+      'weekly_rent', 'rental_agreement_post_settlement', 'resume_notice',
+      'swimming_pool', 'owner_builder', 'contaminated_land', 'tree_disputes',
+      'environmental_management', 'unauthorised_works', 'non_statutory_encumbrances'
+    ];
+
+    const data = {};
+    questionnaireFields.forEach(field => {
+      if (lead[field]) {
+        data[field] = lead[field];
+      }
+    });
+
+    return data;
+  }, []);
+
+  // Initialize form data from existing lead or with defaults (memoized)
+  const getInitialFormData = useCallback(() => {
     if (existingLead) {
       return {
         dealId: existingLead.id,
@@ -46,43 +68,21 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLea
       questionnaireData: {},
       sendInvitation: true
     };
-  };
+  }, [existingLead, extractQuestionnaireData]);
 
   const [formData, setFormData] = useState(getInitialFormData());
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Extract questionnaire data from existing lead
-  const extractQuestionnaireData = (lead) => {
-    if (!lead) return {};
-
-    const questionnaireFields = [
-      'body_corporate', 'body_corporate_details', 'registered_encumbrances',
-      'tenancy_agreement', 'formal_tenancy_agreement', 'tenancy_end_date',
-      'weekly_rent', 'rental_agreement_post_settlement', 'resume_notice',
-      'swimming_pool', 'owner_builder', 'contaminated_land', 'tree_disputes',
-      'environmental_management', 'unauthorised_works', 'non_statutory_encumbrances'
-    ];
-
-    const data = {};
-    questionnaireFields.forEach(field => {
-      if (lead[field]) {
-        data[field] = lead[field];
-      }
-    });
-
-    return data;
-  };
-
-  // Reset form when modal opens/closes or when existingLead changes
+  // Reset form when modal opens (not on every render)
   React.useEffect(() => {
     if (isOpen) {
       setFormData(getInitialFormData());
       setCurrentStep(1);
       setError('');
     }
-  }, [isOpen, existingLead]);
+  }, [isOpen, getInitialFormData]);
 
   if (!isOpen) return null;
 

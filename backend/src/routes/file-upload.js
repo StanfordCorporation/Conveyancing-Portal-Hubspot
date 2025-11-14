@@ -49,7 +49,7 @@ export const uploadFile = async (req, res) => {
       access: 'PRIVATE',
       overwrite: false,
       duplicateValidationStrategy: 'NONE',
-      folderPath: '/temp-uploads'
+      duplicateValidationScope: 'ENTIRE_PORTAL'
     }));
 
     // Upload to HubSpot
