@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * Payment Instructions Component
  * Displays payment information and Stripe payment form
  */
-export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete }) {
+export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete, isActive }) {
   const [paymentMethod, setPaymentMethod] = useState(null); // 'Stripe' or 'Bank Transfer'
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
@@ -115,37 +115,46 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
   useEffect(() => {
     const fetchReferenceNumber = async () => {
       try {
-        // Fetch deal to get matter_uid
-        const response = await api.get(`/client/property/${dealId}`);
+        console.log(`[Payment Instructions] 🔄 Fetching reference number...`);
+        
+        // Fetch deal to get matter_uid (with cache-busting to prevent stale data)
+        const response = await api.get(`/client/property/${dealId}?_t=${Date.now()}`);
         const dealData = response.data;
+
+        console.log(`[Payment Instructions] 📋 Deal data received:`, {
+          matter_uid: dealData.matter_uid || 'NOT SET',
+          smokeball_lead_uid: dealData.smokeball_lead_uid || 'NOT SET',
+          has_phone: !!dealData.primarySeller?.phone
+        });
 
         // Try to use matter_uid first
         if (dealData.matter_uid) {
           setReferenceNumber(dealData.matter_uid);
-          console.log(`[Payment Instructions] Using matter_uid as reference: ${dealData.matter_uid}`);
+          console.log(`[Payment Instructions] ✅ Using matter_uid as reference: ${dealData.matter_uid}`);
         } else if (dealData.primarySeller?.phone) {
           // Use client phone number if matter_uid not available
           const phoneRef = dealData.primarySeller.phone.replace(/\D/g, ''); // Remove non-digits
           setReferenceNumber(phoneRef);
-          console.log(`[Payment Instructions] Using phone as reference: ${phoneRef}`);
+          console.log(`[Payment Instructions] ⚠️ matter_uid not available, using phone as reference: ${phoneRef}`);
         } else {
           // Fallback to deal ID
           const shortId = dealId.slice(-4);
           setReferenceNumber(`25-${shortId}`);
-          console.log(`[Payment Instructions] Using deal ID as reference: 25-${shortId}`);
+          console.log(`[Payment Instructions] ⚠️ No matter_uid or phone, using deal ID as reference: 25-${shortId}`);
         }
       } catch (error) {
-        console.error('[Payment Instructions] Error fetching reference:', error);
+        console.error('[Payment Instructions] ❌ Error fetching reference:', error);
         // Fallback to deal ID
         const shortId = dealId.slice(-4);
         setReferenceNumber(`25-${shortId}`);
       }
     };
 
-    if (dealId && paymentMethod === 'Bank Transfer') {
+    // Refetch whenever user navigates to payment section
+    if (dealId && paymentMethod === 'Bank Transfer' && isActive) {
       fetchReferenceNumber();
     }
-  }, [dealId, paymentMethod]);
+  }, [dealId, paymentMethod, isActive]);
 
   if (loading) {
     return (

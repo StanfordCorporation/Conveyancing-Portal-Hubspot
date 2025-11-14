@@ -843,6 +843,7 @@ export default function ClientDashboard() {
                   dealId={currentProperty.id}
                   quoteAmount={quoteAmounts[currentProperty.id] || '0.00'}
                   propertyAddress={currentProperty.subtitle || currentProperty.title}
+                  isActive={activeSection === 'payment'}
                   onComplete={async () => {
                     console.log('[Dashboard] 💳 Payment completed for deal:', currentProperty.id);
                     

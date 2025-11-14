@@ -618,6 +618,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       'dealstage',
       'pipeline', // Include pipeline to verify it's Form 2s
       'number_of_owners',
+      'matter_uid', // Smokeball matter number for payment reference
+      'smokeball_lead_uid', // Smokeball lead UID
       ...questionnaireProperties
     ];
 
@@ -914,6 +916,8 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
 
     const stageName = getStageName(deal.properties.dealstage, deal) || 'Unknown';
     console.log(`[Client Dashboard] 📊 Deal stage: ID=${deal.properties.dealstage}, Name=${stageName}`);
+    console.log(`[Client Dashboard] 🆔 matter_uid: ${deal.properties.matter_uid || 'NOT SET'}`);
+    console.log(`[Client Dashboard] 🆔 smokeball_lead_uid: ${deal.properties.smokeball_lead_uid || 'NOT SET'}`);
 
     const propertyInfo = {
       dealId: deal.id,
@@ -922,6 +926,10 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       dealStage: stageName, // Get human-readable stage name
       dealStageId: deal.properties.dealstage, // Keep ID for internal use
       numberOfOwners: deal.properties.number_of_owners || 1,
+      
+      // Smokeball Integration
+      matter_uid: deal.properties.matter_uid || null, // Smokeball matter number (for payment reference)
+      smokeball_lead_uid: deal.properties.smokeball_lead_uid || null, // Smokeball lead UID
 
       // Seller Information
       primarySeller: {
