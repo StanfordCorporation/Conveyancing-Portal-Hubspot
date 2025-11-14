@@ -154,7 +154,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLea
   };
 
   const updateFormData = (updates) => {
-    setFormData({ ...formData, ...updates });
+    setFormData(prevFormData => ({ ...prevFormData, ...updates }));
   };
 
   const getStepTitle = () => {
