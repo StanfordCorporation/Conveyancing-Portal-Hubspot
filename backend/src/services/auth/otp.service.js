@@ -224,7 +224,7 @@ export const verifyOTPForClient = async (identifier, otp, method = 'email') => {
       //   - Type 2 (USER_DEFINED) = Primary Seller (reverse of Type 1)
       //   - Type 4 (USER_DEFINED) = Additional Seller
       //   - Type 4 (HUBSPOT_DEFINED) = Standard deal association (ignore)
-      //   - Type 6 (USER_DEFINED) = Agent
+      //   - Type 5 (USER_DEFINED) = Agent
       
       // Check if they're a Primary Seller (Type 1 or Type 2 with USER_DEFINED)
       const hasPrimarySellerAssociation = dealAssociations.some(dealAssoc => {

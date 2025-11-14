@@ -106,7 +106,7 @@ export const batchGetDealsForAgents = async (agentIds) => {
     const dealAssocs = result.to || [];
 
     dealAssocs.forEach(dealAssoc => {
-      // Only include deals with agent association (type 6)
+      // Only include deals with agent association (type 5)
       const hasAgentAssoc = dealAssoc.associationTypes?.some(
         t => t.typeId === HUBSPOT.ASSOCIATION_TYPES.AGENT_TO_DEAL
       );
@@ -392,7 +392,7 @@ export const demoteAgent = async (adminId, agencyId, targetAgentId, newPermissio
 
 /**
  * Reassign deal to different agent
- * Changes association type 6 from old agent to new agent
+ * Changes association type 5 from old agent to new agent
  * @param {string} adminId - ID of admin performing action
  * @param {string} agencyId - Agency ID
  * @param {string} dealId - Deal ID
@@ -412,7 +412,7 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
     throw new Error('Target agent does not belong to this agency');
   }
 
-  // Step 2: Get current agent association for deal (type 6)
+  // Step 2: Get current agent association for deal (type 5)
   const dealContactAssoc = await hubspotClient.post(
     '/crm/v4/associations/deal/contact/batch/read',
     {
@@ -424,7 +424,7 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
     assoc => assoc.associationTypes?.some(t => t.typeId === HUBSPOT.ASSOCIATION_TYPES.AGENT_TO_DEAL)
   );
 
-  // Step 3: Delete old agent association (type 6)
+  // Step 3: Delete old agent association (type 5)
   if (currentAgentAssoc) {
     await hubspotClient.delete(
       `/crm/v4/objects/deals/${dealId}/associations/contacts/${currentAgentAssoc.toObjectId}`,
@@ -438,7 +438,7 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
     console.log(`[Agency Owner] Removed old agent association: ${currentAgentAssoc.toObjectId}`);
   }
 
-  // Step 4: Create new agent association (type 6)
+  // Step 4: Create new agent association (type 5)
   await hubspotClient.put(
     `/crm/v4/objects/deals/${dealId}/associations/contacts/${newAgentId}`,
     [{

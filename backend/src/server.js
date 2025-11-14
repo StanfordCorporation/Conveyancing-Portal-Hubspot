@@ -28,6 +28,8 @@ import webhookRoutes from './routes/webhook.js';
 import smokeballRoutes from './routes/smokeball.js';
 import smokeballWebhookRoutes from './routes/smokeball-webhook.js';
 import timelineRoutes from './routes/timeline.js';
+import * as fileUploadRoutes from './routes/file-upload.js';
+import multer from 'multer';
 
 dotenv.config();
 
@@ -62,6 +64,14 @@ app.use('/api/webhook', webhookRoutes);
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Multer setup for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 // ============================================================================
 // PUBLIC ROUTES (No Authentication)
@@ -114,6 +124,12 @@ app.post('/crm/v3/objects/property-questionnaire/:dealId/files/upload', question
  * Public - provides single source of truth for questionnaire configuration
  */
 app.get('/api/questionnaire/schema', questionnaireSchemaRoutes.getSchema);
+
+/**
+ * Generic File Upload Route
+ * Public - used by agent portal when creating leads (before deal exists)
+ */
+app.post('/api/upload/file', upload.single('file'), fileUploadRoutes.uploadFile);
 
 /**
  * Client Portal Routes (Protected)
@@ -211,6 +227,10 @@ app.get('/', (req, res) => {
       questionnaireSchema: {
         description: 'Single source of truth for questionnaire configuration',
         getSchema: 'GET /api/questionnaire/schema'
+      },
+      upload: {
+        description: 'Generic file upload (pre-deal)',
+        uploadFile: 'POST /api/upload/file'
       }
     }
   });

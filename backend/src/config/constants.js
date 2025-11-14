@@ -11,7 +11,7 @@ export const HUBSPOT = {
     PRIMARY_SELLER_TO_DEAL: 1,     // Primary Seller → Deal (USER_DEFINED)
     CONTACT_TO_DEAL: 3,            // Contact → Deal (HUBSPOT_DEFINED)
     ADDITIONAL_SELLER_TO_DEAL: 4,  // Additional Seller → Deal (USER_DEFINED)
-    AGENT_TO_DEAL: 6,              // Agent → Deal (USER_DEFINED)
+    AGENT_TO_DEAL: 5,              // Agent → Deal (USER_DEFINED) - Fixed from 6 to 5 based on actual HubSpot API response
     COMPANY_TO_DEAL: 341,          // Company/Agency → Deal (HUBSPOT_DEFINED)
   },
 

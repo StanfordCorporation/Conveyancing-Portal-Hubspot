@@ -161,10 +161,12 @@ export default function PropertyQuestionnaireAgent({
 
   // Handle form field changes
   const handleFieldChange = (fieldName, value) => {
-    setFormData(prev => ({
-      ...prev,
+    const updatedFormData = {
+      ...formData,
       [fieldName]: value
-    }));
+    };
+    
+    setFormData(updatedFormData);
 
     // Clear any validation errors for this field
     if (errors[fieldName]) {
@@ -177,6 +179,11 @@ export default function PropertyQuestionnaireAgent({
 
     // Update conditional fields
     updateConditionalFields(fieldName, value);
+    
+    // 🔑 KEY FIX: Propagate to parent immediately (for create mode)
+    if (onDataUpdate) {
+      onDataUpdate(dealId, updatedFormData);
+    }
   };
 
   // Update visibility of conditional fields (supports nested conditionals)
@@ -190,7 +197,7 @@ export default function PropertyQuestionnaireAgent({
     // Recalculate ALL conditional fields based on current form state
     // This handles nested conditionals correctly (parent → child → grandchild)
     const updates = {};
-    const fieldsToCleare = [];
+    const fieldsToClear = [];
 
     Object.entries(propertyMapping).forEach(([fieldName, config]) => {
       if (config.conditional && config.conditionalOn) {
@@ -200,21 +207,28 @@ export default function PropertyQuestionnaireAgent({
         updates[fieldName] = shouldShow;
 
         // Track fields that need to be cleared if hidden
-        if (!shouldShow && formData[fieldName]) {
-          fieldsToCleare.push(fieldName);
+        if (!shouldShow && updatedFormData[fieldName]) {
+          fieldsToClear.push(fieldName);
         }
       }
     });
 
     // Clear data for all hidden fields (including nested children)
-    if (fieldsToCleare.length > 0) {
+    if (fieldsToClear.length > 0) {
       setFormData(prev => {
         const newData = { ...prev, [changedField]: value };
-        fieldsToCleare.forEach(field => {
+        fieldsToClear.forEach(field => {
           delete newData[field];
         });
         return newData;
       });
+      
+      // Propagate cleared fields to parent
+      if (onDataUpdate) {
+        const clearedData = { ...updatedFormData };
+        fieldsToClear.forEach(field => delete clearedData[field]);
+        onDataUpdate(dealId, clearedData);
+      }
     }
 
     setConditionalFields(updates);
@@ -373,36 +387,25 @@ export default function PropertyQuestionnaireAgent({
 
   // Save questionnaire data
   const handleSave = async () => {
+    // Note: Save Progress button removed from agent UI
+    // This function kept for potential programmatic calls only
+    if (!dealId) {
+      console.log(`[Questionnaire Agent] ℹ️ No dealId - data is auto-syncing to parent`);
+      return;
+    }
+
     try {
       setSaving(true);
-
-      // If no dealId (create mode), just save to parent state
-      if (!dealId) {
-        console.log(`[Questionnaire Agent] 💾 Saving to parent form state (no dealId yet)`);
-        if (onDataUpdate) {
-          onDataUpdate(null, formData);
-        }
-        alert('Progress saved!');
-        setSaving(false);
-        return;
-      }
-
       console.log(`[Questionnaire Agent] 💾 Saving questionnaire data for deal: ${dealId}`);
 
       await api.post(`/agent/leads/${dealId}/questionnaire`, formData);
-
       console.log(`[Questionnaire Agent] ✅ Questionnaire saved successfully`);
 
-      // Notify parent component about the data update (use current form data)
       if (onDataUpdate) {
         onDataUpdate(dealId, formData);
-        console.log(`[Questionnaire Agent] 🔄 Parent component notified of data update`);
       }
-
-      alert('Progress saved successfully!');
     } catch (err) {
       console.error(`[Questionnaire Agent] ❌ Error saving questionnaire:`, err.message);
-      alert('Failed to save progress. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -747,13 +750,8 @@ export default function PropertyQuestionnaireAgent({
             </button>
           )}
 
-          <button
-            className="btn-secondary"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Progress'}
-          </button>
+          {/* Save Progress button removed - agents only use questionnaire during creation */}
+          {/* Data automatically syncs to parent on every field change */}
 
           {sectionNumber < 5 ? (
             <button

@@ -261,7 +261,7 @@ export const getAgentDeals = async (agentId) => {
   console.log(`[Agent Service] Fetching deals for agent ${agentId}`);
   
   try {
-    // Get all deals associated with agent (association type 6)
+    // Get all deals associated with agent (association type 5)
     const dealAssocResponse = await hubspotClient.post(
       '/crm/v4/associations/contact/deal/batch/read',
       {

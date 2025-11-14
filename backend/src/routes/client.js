@@ -285,7 +285,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         // HubSpot association types (USER_DEFINED):
         // - Type 1: Primary Seller
         // - Type 4: Additional Seller
-        // - Type 6: Agent/Listing Salesperson
+        // - Type 5: Agent/Listing Salesperson
         // Note: A contact can have MULTIPLE association types (e.g., both seller and agent)
 
         // First pass: assign roles based on association types
@@ -324,9 +324,9 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
               console.log(`[Dashboard Complete]    - Type ID: ${typeId}, Category: ${assocType.category || 'N/A'}`);
 
               // Match by numeric ID - note: NOT using else-if because a contact can have multiple types
-              if (typeId === 6 || typeId === '6') {
+              if (typeId === 5 || typeId === '5') {
                 isAgent = true;
-                console.log(`[Dashboard Complete]    ✅ Identified as AGENT (Type 6)`);
+                console.log(`[Dashboard Complete]    ✅ Identified as AGENT (Type 5)`);
               }
               if (typeId === 4 || typeId === '4') {
                 isAdditionalSeller = true;
@@ -518,6 +518,8 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       propertyDetails.dealStage = stageName; // Get human-readable stage name
       propertyDetails.dealStageId = dealstage; // Keep ID for internal use
       propertyDetails.numberOfOwners = deal.properties.number_of_owners || 1;
+      propertyDetails.agentTitleSearch = deal.properties.agent_title_search || null;
+      propertyDetails.agentTitleSearchFile = agentTitleSearchFileData;
 
       console.log(`[Dashboard Complete] 📊 Deal ${deal.id} - Stage ID: ${dealstage}, Stage Name: ${stageName}`);
       console.log(`[Dashboard Complete] 🏠 Property Address: ${propertyAddress || 'NOT SET'}`);
@@ -668,7 +670,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       // HubSpot association types (USER_DEFINED):
       // - Type 1: Primary Seller
       // - Type 4: Additional Seller
-      // - Type 6: Agent/Listing Salesperson
+      // - Type 5: Agent/Listing Salesperson
       // Note: A contact can have MULTIPLE association types (e.g., both seller and agent)
 
       // First pass: assign roles based on association types if available
@@ -704,7 +706,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             console.log(`[Client Dashboard] 🔍    AssociationType - ID: ${typeId}, Label: ${typeLabel || 'N/A'}`);
 
             // Match by numeric ID - note: NOT using else-if because a contact can have multiple types
-            if (typeId === 6 || typeId === '6') {
+            if (typeId === 5 || typeId === '5') {
               isAgent = true;
             }
             if (typeId === 4 || typeId === '4') {
@@ -715,7 +717,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             }
             // Match by label if numeric ID not found
             if (typeLabel && !isAgent && !isAdditionalSeller && !isPrimarySeller) {
-              if (typeLabel.includes('agent') || typeLabel.includes('6')) {
+              if (typeLabel.includes('agent') || typeLabel.includes('5')) {
                 isAgent = true;
               }
               if (typeLabel.includes('additional') || typeLabel.includes('4')) {

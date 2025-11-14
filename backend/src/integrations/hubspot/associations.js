@@ -135,7 +135,7 @@ export const batchGetDealProperties = async (dealIds, properties = []) => {
  * Association Types (USER_DEFINED):
  * - Type 1: Primary Seller
  * - Type 4: Additional Seller
- * - Type 6: Agent/Listing Salesperson
+ * - Type 5: Agent/Listing Salesperson
  */
 export const getDealContacts = async (dealId) => {
   try {

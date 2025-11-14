@@ -69,12 +69,12 @@ export const processAgentClientCreation = async (formData) => {
           associationTypeId: 341 // Company to Deal
         }]
       },
-      // Agent (USER_DEFINED type 6)
+      // Agent (USER_DEFINED type 5)
       {
         to: { id: formData.agentId },
         types: [{
           associationCategory: 'USER_DEFINED',
-          associationTypeId: 6 // Agent to Deal
+          associationTypeId: 5 // Agent to Deal
         }]
       }
     ];

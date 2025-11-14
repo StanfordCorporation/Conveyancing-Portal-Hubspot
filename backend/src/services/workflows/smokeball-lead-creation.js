@@ -86,15 +86,15 @@ export async function createSmokeballLeadFromDeal(dealId) {
 
     const allContacts = await associationsIntegration.getDealContacts(dealId);
     
-    // Filter out agents (association type 6) - only create clients in Smokeball
-    // Type 1: Primary Seller, Type 4: Additional Seller, Type 6: Agent (exclude)
+    // Filter out agents (association type 5) - only create clients in Smokeball
+    // Type 1: Primary Seller, Type 4: Additional Seller, Type 5: Agent (exclude)
     const clientContacts = [];
     const excludedContacts = [];
     
     allContacts.forEach(contact => {
       // Check association type (primary filter)
       const hasAgentAssociation = contact.associationTypes?.some(
-        assocType => assocType.typeId === 6 || assocType.label?.toLowerCase().includes('agent')
+        assocType => assocType.typeId === 5 || assocType.label?.toLowerCase().includes('agent')
       );
       
       // Check contact_type property (backup filter)
@@ -102,7 +102,7 @@ export async function createSmokeballLeadFromDeal(dealId) {
       const isAgent = contactType?.includes('agent') || contactType?.includes('salesperson');
       
       if (hasAgentAssociation || isAgent) {
-        const reason = hasAgentAssociation ? 'Agent association (type 6)' : `contact_type="${contact.properties?.contact_type}"`;
+        const reason = hasAgentAssociation ? 'Agent association (type 5)' : `contact_type="${contact.properties?.contact_type}"`;
         excludedContacts.push({
           id: contact.id,
           name: `${contact.properties?.firstname || ''} ${contact.properties?.lastname || ''}`.trim(),

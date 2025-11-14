@@ -217,7 +217,7 @@ export const processClientDisclosure = async (formData) => {
         to: { id: agentContact.id },
         types: [{
           associationCategory: 'USER_DEFINED',
-          associationTypeId: 6 // Agent to Deal
+          associationTypeId: 5 // Agent to Deal
         }]
       }
     ];
