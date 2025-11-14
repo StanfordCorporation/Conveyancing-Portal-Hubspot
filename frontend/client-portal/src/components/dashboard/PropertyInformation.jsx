@@ -105,10 +105,18 @@ export default function PropertyInformation({ dealId, initialData }) {
 
   // Handle information reviewed - progress to next step
   const handleInformationReviewed = async () => {
+    // Validate Client Residential Address is filled in
+    const residentialAddress = propertyData.primarySeller?.residentialAddress;
+    if (!residentialAddress || residentialAddress.trim() === '' || residentialAddress === 'N/A') {
+      alert('⚠️ Client Residential Address is required.\n\nPlease click "Edit" to add the client\'s residential address before proceeding.');
+      console.log('[PropertyInfo] ⚠️ Validation failed: Client Residential Address is missing');
+      return; // Stop execution
+    }
+
     try {
       setReviewingInfo(true);
       console.log(`[PropertyInfo] ✅ Information reviewed for deal: ${dealId}`);
-      
+
       // Update deal stage to Awaiting Questionnaire (Step 2)
       // Using api instance which automatically adds Authorization header
       const response = await api.patch(

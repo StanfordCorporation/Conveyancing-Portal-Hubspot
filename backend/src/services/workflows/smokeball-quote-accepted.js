@@ -3,7 +3,7 @@
  * Triggered when deal reaches Stage 3: Searches Quote Provided/Accepted
  *
  * Actions:
- * 1. Update contact residential addresses in Smokeball
+ * 1. Update PRIMARY SELLER residential address in Smokeball (with fallback to property address)
  * 2. Convert lead to matter in Smokeball
  * 3. Create welcome tasks for Laura
  * 4. matter.converted webhook will store matter number
@@ -70,55 +70,81 @@ export async function handleQuoteAccepted(dealId) {
     console.log(`[Smokeball Quote Workflow] Found ${hubspotContactIds.length} associated contacts`);
 
     // ========================================
-    // STEP 4: Update residential addresses for contacts
+    // STEP 4: Update PRIMARY SELLER residential address
     // ========================================
-    console.log('[Smokeball Quote Workflow] 📍 Updating contact residential addresses...');
+    console.log('[Smokeball Quote Workflow] 📍 Updating primary seller residential address...');
 
-    let addressesUpdated = 0;
+    try {
+      // Find primary seller (association type 1)
+      const primarySellerAssoc = contacts.find(contact =>
+        contact.associationTypes?.some(assocType => assocType.typeId === 1)
+      );
 
-    for (const contactId of hubspotContactIds) {
-      try {
-        // Fetch HubSpot contact to get residential address
-        const hubspotContact = await contactsIntegration.getContact(contactId, [
+      if (!primarySellerAssoc) {
+        console.warn('[Smokeball Quote Workflow] ⚠️ No primary seller found - skipping address update');
+      } else {
+        const primarySellerContactId = primarySellerAssoc.id;
+        console.log(`[Smokeball Quote Workflow] 👤 Primary Seller Contact ID: ${primarySellerContactId}`);
+
+        // Fetch primary seller's HubSpot contact
+        const primarySeller = await contactsIntegration.getContact(primarySellerContactId, [
           'smokeball_contact_id',
           'address',
-          'city',
-          'state',
-          'zip',
+          'firstname',
+          'lastname'
         ]);
 
-        const smokeballContactId = hubspotContact.properties.smokeball_contact_id;
+        const smokeballContactId = primarySeller.properties.smokeball_contact_id;
+        let residentialAddressString = primarySeller.properties.address;
 
+        console.log(`[Smokeball Quote Workflow] 📋 Primary Seller: ${primarySeller.properties.firstname} ${primarySeller.properties.lastname}`);
+        console.log(`[Smokeball Quote Workflow] 🏠 Residential Address: ${residentialAddressString || 'N/A'}`);
+
+        // Validation checks
         if (!smokeballContactId) {
-          console.warn(`[Smokeball Quote Workflow] ⚠️ No Smokeball contact ID for HubSpot contact ${contactId}`);
-          continue;
+          console.warn('[Smokeball Quote Workflow] ⚠️ Primary seller has no Smokeball contact ID');
+        } else {
+          // Check residential address (with fallback to property address)
+          if (!residentialAddressString || residentialAddressString === 'N/A' || residentialAddressString.trim() === '') {
+            console.warn('[Smokeball Quote Workflow] ⚠️ No residential address for primary seller');
+
+            // Fallback to property address (matches PHP behavior)
+            const propertyAddress = deal.properties.property_address;
+            if (propertyAddress && propertyAddress !== 'N/A') {
+              console.log('[Smokeball Quote Workflow] ℹ️ Using property address as fallback');
+              residentialAddressString = propertyAddress;
+            } else {
+              console.warn('[Smokeball Quote Workflow] ❌ No residential or property address available');
+              residentialAddressString = null;
+            }
+          }
+
+          // Update Smokeball if we have an address
+          if (residentialAddressString) {
+            // Parse address using existing utility function
+            const residentialAddress = buildResidentialAddress({
+              address: residentialAddressString
+            });
+
+            if (residentialAddress) {
+              // Update primary seller's Smokeball contact
+              await smokeballContacts.updateContact(smokeballContactId, {
+                person: {
+                  residentialAddress
+                }
+              });
+
+              console.log(`[Smokeball Quote Workflow] ✅ Updated residential address for primary seller in Smokeball`);
+            } else {
+              console.warn('[Smokeball Quote Workflow] ⚠️ Failed to parse residential address');
+            }
+          }
         }
-
-        // Build residential address from HubSpot contact properties
-        const residentialAddress = buildResidentialAddress(hubspotContact.properties);
-
-        if (!residentialAddress) {
-          console.warn(`[Smokeball Quote Workflow] ⚠️ No residential address for contact ${contactId}`);
-          continue;
-        }
-
-        // Update contact in Smokeball
-        await smokeballContacts.updateContact(smokeballContactId, {
-          person: {
-            residentialAddress,
-          },
-        });
-
-        addressesUpdated++;
-        console.log(`[Smokeball Quote Workflow] ✅ Updated residential address for contact ${smokeballContactId}`);
-
-      } catch (contactError) {
-        console.error(`[Smokeball Quote Workflow] ⚠️ Error updating contact ${contactId}:`, contactError.message);
-        // Continue with other contacts
       }
+    } catch (addressError) {
+      console.error('[Smokeball Quote Workflow] ⚠️ Error updating residential address:', addressError.message);
+      // Don't fail workflow - address update is not critical
     }
-
-    console.log(`[Smokeball Quote Workflow] ✅ Updated ${addressesUpdated} contact addresses`);
 
     // ========================================
     // STEP 5: Convert lead to matter
@@ -189,10 +215,9 @@ export async function handleQuoteAccepted(dealId) {
       success: true,
       leadUid,
       dealId,
-      addressesUpdated,
       message: 'Quote accepted processing complete. Awaiting matter.converted webhook for matter number.',
       nextSteps: [
-        'Residential addresses updated in Smokeball',
+        'Primary seller residential address updated in Smokeball',
         'Lead-to-matter conversion initiated',
         'Welcome tasks created for Laura',
         'matter.converted webhook will sync matter number to HubSpot',
