@@ -211,21 +211,31 @@ export default function PropertyInformation({ dealId, initialData }) {
 
   // Handle field changes
   const handleFieldChange = (section, field, value) => {
-    setEditedData(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
-      }
-    }));
+    console.log(`[PropertyInfo] 🔄 Field change: ${section}.${field} =`, value);
+    setEditedData(prev => {
+      const updated = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value
+        }
+      };
+      console.log(`[PropertyInfo] 📝 Updated editedData:`, updated);
+      return updated;
+    });
   };
 
   // Handle direct property changes (not nested)
   const handlePropertyChange = (field, value) => {
-    setEditedData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    console.log(`[PropertyInfo] 🔄 Property change: ${field} =`, value);
+    setEditedData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      console.log(`[PropertyInfo] 📝 Updated editedData:`, updated);
+      return updated;
+    });
   };
 
   // Helper function to check if seller data exists and is not N/A

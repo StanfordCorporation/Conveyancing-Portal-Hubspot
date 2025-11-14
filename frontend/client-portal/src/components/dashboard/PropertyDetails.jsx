@@ -105,7 +105,10 @@ export default function PropertyDetails({
               <select
                 className="field-select"
                 value={agentTitleSearch || 'No'}
-                onChange={(e) => onChangeAgentTitleSearch(e.target.value)}
+                onChange={(e) => {
+                  console.log('[PropertyDetails] 🔍 Agent title search changed to:', e.target.value);
+                  onChangeAgentTitleSearch(e.target.value);
+                }}
               >
                 <option value="No">No - Not completed</option>
                 <option value="Yes">Yes - Completed by agent</option>

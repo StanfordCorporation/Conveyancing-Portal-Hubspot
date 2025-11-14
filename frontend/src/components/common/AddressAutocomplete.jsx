@@ -112,6 +112,7 @@ const AddressAutocomplete = ({
 
   // Handle manual input changes (typing without selecting from dropdown)
   const handleInputChange = (e) => {
+    console.log('[AddressAutocomplete] ⌨️ Manual input change:', e.target.value);
     onChange(e.target.value);
   };
 
