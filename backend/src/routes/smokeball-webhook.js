@@ -213,24 +213,6 @@ async function handleMatterUpdated(req, res, payload) {
       console.log('[Smokeball Webhook] 📝 Updating matter number:', matterNumber);
     }
 
-    // Detect lead-to-matter conversion (quote accepted)
-    // If isLead is now false and matterNumber exists, create welcome task
-    const wasConvertedToMatter = !isLead && matterNumber;
-    
-    if (wasConvertedToMatter) {
-      console.log('[Smokeball Webhook] 🎉 Lead converted to matter - creating welcome task');
-      
-      // Create welcome task now that quote is accepted
-      // Note: Task is created in Smokeball, not tracked in HubSpot
-      try {
-        await createWelcomeCallTask(matterId, deal);
-        console.log('[Smokeball Webhook] ✅ Welcome call task created in Smokeball');
-      } catch (taskError) {
-        console.error('[Smokeball Webhook] ⚠️ Welcome task creation failed:', taskError.message);
-        // Don't fail entire workflow - continue to update HubSpot
-      }
-    }
-
     await dealsIntegration.updateDeal(deal.id, updates);
 
     return res.json({
@@ -289,18 +271,6 @@ async function handleMatterConverted(req, res, payload) {
       console.log('[Smokeball Webhook] 💾 Matter number saved to HubSpot:', matterNumber);
     } else {
       console.warn('[Smokeball Webhook] ⚠️ matter.converted did not include matter number');
-    }
-
-    // Create welcome task now that quote is accepted and lead is converted to matter
-    // Note: Task is created in Smokeball, not tracked in HubSpot
-    console.log('[Smokeball Webhook] 🎉 Lead converted to matter - creating welcome task');
-    
-    try {
-      await createWelcomeCallTask(matterId, deal);
-      console.log('[Smokeball Webhook] ✅ Welcome call task created in Smokeball');
-    } catch (taskError) {
-      console.error('[Smokeball Webhook] ⚠️ Welcome task creation failed:', taskError.message);
-      // Don't fail entire workflow - continue to update HubSpot
     }
 
     await dealsIntegration.updateDeal(deal.id, updates);

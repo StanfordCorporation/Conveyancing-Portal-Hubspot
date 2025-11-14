@@ -5,8 +5,7 @@
  * Actions:
  * 1. Update PRIMARY SELLER residential address in Smokeball (with fallback to property address)
  * 2. Convert lead to matter in Smokeball
- * 3. Create welcome tasks for Laura
- * 4. matter.converted webhook will store matter number
+ * 3. matter.converted webhook will store matter number
  */
 
 import * as dealsIntegration from '../../integrations/hubspot/deals.js';
@@ -190,25 +189,6 @@ export async function handleQuoteAccepted(dealId) {
       throw conversionError;
     }
 
-    // ========================================
-    // STEP 6: Create welcome tasks for Laura
-    // ========================================
-    console.log('[Smokeball Quote Workflow] 📋 Creating welcome tasks for Laura...');
-
-    try {
-      const laura = await smokeballStaff.findLaura();
-
-      if (!laura) {
-        console.warn('[Smokeball Quote Workflow] ⚠️ Laura not found - skipping welcome tasks');
-      } else {
-        const tasks = await smokeballTasks.createWelcomeTasksForLaura(leadUid, laura.id);
-        console.log(`[Smokeball Quote Workflow] ✅ Created ${tasks.length} welcome tasks for Laura`);
-      }
-    } catch (taskError) {
-      console.error('[Smokeball Quote Workflow] ⚠️ Error creating tasks:', taskError.message);
-      // Don't fail workflow - tasks can be created manually
-    }
-
     console.log('[Smokeball Quote Workflow] ✅ Workflow completed successfully!');
 
     return {
@@ -219,7 +199,6 @@ export async function handleQuoteAccepted(dealId) {
       nextSteps: [
         'Primary seller residential address updated in Smokeball',
         'Lead-to-matter conversion initiated',
-        'Welcome tasks created for Laura',
         'matter.converted webhook will sync matter number to HubSpot',
       ],
     };

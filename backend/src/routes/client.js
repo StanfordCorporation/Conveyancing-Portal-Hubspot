@@ -16,6 +16,7 @@ import { shouldShowToClient, getStageName } from '../config/stageHelpers.js';
 import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
 import * as smokeballMatters from '../integrations/smokeball/matters.js';
 import * as smokeballMatterTypes from '../integrations/smokeball/matter-types.js';
+import * as smokeballQuoteWorkflow from '../services/workflows/smokeball-quote-accepted.js';
 import { HUBSPOT } from '../config/constants.js';
 
 const router = express.Router();
@@ -1481,53 +1482,19 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
       console.log(`[Deal Stage] ========================================`);
       
       try {
-        console.log(`[Deal Stage] 🎯 Quote accepted - converting Smokeball lead to matter`);
+        console.log(`[Deal Stage] 🎯 Quote accepted - running Smokeball quote workflow`);
 
-        // Get smokeball_lead_uid and property address from deal
-        console.log(`[Deal Stage] 📋 Fetching smokeball_lead_uid and property_address from deal ${dealId}`);
-        const leadDeal = await dealsIntegration.getDeal(dealId, ['smokeball_lead_uid', 'property_address']);
-        const leadUid = leadDeal.properties.smokeball_lead_uid;
-        const propertyAddress = leadDeal.properties.property_address;
+        // Call the complete quote acceptance workflow
+        // This workflow will:
+        // 1. Update primary seller residential address in Smokeball
+        // 2. Convert lead to matter
+        // 3. Create welcome tasks for Laura
+        await smokeballQuoteWorkflow.handleQuoteAccepted(dealId);
 
-        console.log(`[Deal Stage] 🆔 smokeball_lead_uid: ${leadUid || 'NOT FOUND'}`);
-        console.log(`[Deal Stage] 🏠 property_address: ${propertyAddress || 'NOT FOUND'}`);
-
-        if (!leadUid) {
-          console.warn(`[Deal Stage] ⚠️  No smokeball_lead_uid found - skipping Smokeball conversion`);
-          console.warn(`[Deal Stage] ⚠️  Lead must be created in Smokeball first (usually happens at Stage 1)`);
-        } else {
-          console.log(`[Deal Stage] 📋 Lead UID: ${leadUid}`);
-
-          // Extract state from property address
-          const stateMatch = propertyAddress?.match(/(NSW|QLD|VIC|SA|WA|TAS|NT|ACT)/i);
-          if (!stateMatch) {
-            throw new Error(`Could not extract state from address: ${propertyAddress}`);
-          }
-
-          const stateCode = stateMatch[1].toUpperCase();
-          const stateMap = {
-            'NSW': 'New South Wales',
-            'QLD': 'Queensland',
-            'VIC': 'Victoria',
-            'SA': 'South Australia',
-            'WA': 'Western Australia',
-            'TAS': 'Tasmania',
-            'NT': 'Northern Territory',
-            'ACT': 'Australian Capital Territory'
-          };
-          const stateName = stateMap[stateCode];
-
-          console.log(`[Deal Stage] 🗺️  State: ${stateName} (${stateCode})`);
-
-          // Convert lead to matter (uses hardcoded matter type ID internally)
-          console.log(`[Deal Stage] 🔄 Calling Smokeball API to convert lead to matter...`);
-          await smokeballMatters.convertLeadToMatter(leadUid);
-
-          console.log(`[Deal Stage] ========================================`);
-          console.log(`[Deal Stage] ✅ Lead conversion initiated in Smokeball`);
-          console.log(`[Deal Stage] 📨 Awaiting matter.converted webhook for matter number`);
-          console.log(`[Deal Stage] ========================================`);
-        }
+        console.log(`[Deal Stage] ========================================`);
+        console.log(`[Deal Stage] ✅ Quote acceptance workflow completed`);
+        console.log(`[Deal Stage] 📨 Awaiting matter.converted webhook for matter number`);
+        console.log(`[Deal Stage] ========================================`);
 
       } catch (smokeballError) {
         console.log(`[Deal Stage] ========================================`);
