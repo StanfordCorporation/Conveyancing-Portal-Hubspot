@@ -1,16 +1,16 @@
-/* Stanford Colors */
+/* Match Dashboard Color Scheme */
 :root {
-  --stanford-cardinal: #8C1515;
-  --stanford-cardinal-dark: #6B0F0F;
-  --stanford-cardinal-light: #B1040E;
-  --text-primary: #2C2C2C;
-  --text-secondary: #5F5F5F;
+  --primary-blue: #0E6DFF;
+  --primary-blue-light: #E8F1FF;
+  --primary-blue-dark: #0052CC;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
   --background: #FFFFFF;
-  --background-light: #F9F9F9;
-  --border-color: #E5E5E5;
-  --success-color: #2E7D32;
-  --success-hover: #1B5E20;
-  --warning-bg: #FFF9E6;
+  --background-light: #F9FAFB;
+  --border-color: #E5E7EB;
+  --success-color: #10B981;
+  --success-hover: #059669;
+  --warning-bg: #FEF3C7;
   --warning-border: #F59E0B;
 }
 
@@ -30,7 +30,7 @@
 .bank-transfer-header h2 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--stanford-cardinal);
+  color: var(--text-primary);
   margin-bottom: 1rem;
   letter-spacing: -0.5px;
 }
@@ -45,7 +45,7 @@
 
 .amount-highlight {
   font-weight: 700;
-  color: var(--stanford-cardinal);
+  color: var(--primary-blue);
   font-size: 1.2em;
 }
 
@@ -61,7 +61,7 @@
 }
 
 .bank-details-card:hover {
-  box-shadow: 0 4px 16px rgba(140, 21, 21, 0.08);
+  box-shadow: 0 4px 16px rgba(14, 109, 255, 0.08);
 }
 
 .card-title {
@@ -103,8 +103,8 @@
 
 /* Reference Section */
 .reference-section {
-  background: linear-gradient(135deg, #F4F4F9 0%, #FAFAFA 100%);
-  border: 2px solid var(--stanford-cardinal);
+  background: linear-gradient(135deg, var(--primary-blue-light) 0%, #F0F7FF 100%);
+  border: 2px solid var(--primary-blue);
   border-radius: 12px;
   padding: 2rem;
   margin-top: 2rem;
@@ -123,8 +123,8 @@
 
 .reference-number {
   background: var(--background);
-  border: 3px solid var(--stanford-cardinal);
-  color: var(--stanford-cardinal);
+  border: 3px solid var(--primary-blue);
+  color: var(--primary-blue);
   font-size: 2rem;
   font-weight: 800;
   font-family: 'Courier New', monospace;
@@ -133,7 +133,7 @@
   border-radius: 10px;
   margin: 0 auto 1.5rem;
   display: inline-block;
-  box-shadow: 0 4px 12px rgba(140, 21, 21, 0.1);
+  box-shadow: 0 4px 12px rgba(14, 109, 255, 0.15);
   user-select: all;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -141,7 +141,7 @@
 
 .reference-number:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(140, 21, 21, 0.15);
+  box-shadow: 0 6px 16px rgba(14, 109, 255, 0.25);
 }
 
 .reference-note {
@@ -156,7 +156,7 @@
 
 .info-icon {
   flex-shrink: 0;
-  color: var(--stanford-cardinal);
+  color: var(--primary-blue);
   margin-top: 2px;
 }
 
@@ -197,22 +197,23 @@
 
 .download-button {
   background: var(--background);
-  color: var(--stanford-cardinal);
-  border: 2px solid var(--stanford-cardinal);
+  color: var(--primary-blue);
+  border: 2px solid var(--primary-blue);
 }
 
 .download-button:hover {
-  background: var(--stanford-cardinal);
+  background: var(--primary-blue);
   color: white;
 }
 
 .confirm-button {
-  background: var(--success-color);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
   color: white;
 }
 
 .confirm-button:hover:not(:disabled) {
-  background: var(--success-hover);
+  background: linear-gradient(135deg, var(--primary-blue-dark) 0%, #003D99 100%);
+  box-shadow: 0 6px 16px rgba(14, 109, 255, 0.4);
 }
 
 .confirm-button:disabled {
@@ -266,7 +267,7 @@
 }
 
 .step-number {
-  background: var(--stanford-cardinal);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
   color: white;
   width: 36px;
   height: 36px;
@@ -277,6 +278,7 @@
   font-weight: 700;
   font-size: 1rem;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(14, 109, 255, 0.2);
 }
 
 .step-item p {
@@ -312,7 +314,7 @@
 }
 
 .processing-note strong {
-  color: var(--stanford-cardinal-dark);
+  color: var(--text-primary);
 }
 
 /* Responsive Design */
@@ -375,4 +377,3 @@
     font-size: 1.1rem;
   }
 }
-

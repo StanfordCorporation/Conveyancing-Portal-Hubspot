@@ -224,14 +224,29 @@ router.post('/docusign', express.json(), async (req, res) => {
 
     console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with DocuSign webhook data`);
 
-    // If all signers completed, progress to next stage
-    const allCompleted = signers.every(signer => signer.status === 'completed');
-    if (allCompleted && envelope_status === 'completed') {
-      console.log(`[DocuSign Webhook] 🎉 All signatures completed - progressing deal to Funds Requested`);
+    // Progress deal when FIRST signer (routing order 1) completes
+    // This allows the business to request funds while waiting for additional signatures
+    const firstSigner = signers.find(signer => signer.routingOrder === '1' || signer.routingOrder === 1);
+    
+    if (firstSigner && firstSigner.status === 'completed') {
+      console.log(`[DocuSign Webhook] 🎉 First signer completed - progressing deal to Funds Requested`);
+      console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email})`);
+      
+      // Check if additional signers exist
+      const additionalSigners = signers.filter(s => s.routingOrder !== '1' && s.routingOrder !== 1);
+      if (additionalSigners.length > 0) {
+        console.log(`[DocuSign Webhook] ⏳ ${additionalSigners.length} additional signer(s) still pending:`);
+        additionalSigners.forEach(signer => {
+          console.log(`[DocuSign Webhook]    - ${signer.name} (${signer.email}) - Status: ${signer.status}`);
+        });
+      }
+      
       await dealsIntegration.updateDeal(dealId, {
         dealstage: DEAL_STAGES.FUNDS_REQUESTED.id, // Stage 5
       });
       console.log(`[DocuSign Webhook] 🎯 Deal stage progressed to: ${DEAL_STAGES.FUNDS_REQUESTED.label}`);
+    } else if (firstSigner) {
+      console.log(`[DocuSign Webhook] ⏳ First signer has not completed yet - Status: ${firstSigner.status}`);
     }
 
     res.json({
