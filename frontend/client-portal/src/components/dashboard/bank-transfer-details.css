@@ -1,159 +1,185 @@
-.bank-transfer-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+/* Stanford Colors */
+:root {
+  --stanford-cardinal: #8C1515;
+  --stanford-cardinal-dark: #6B0F0F;
+  --stanford-cardinal-light: #B1040E;
+  --text-primary: #2C2C2C;
+  --text-secondary: #5F5F5F;
+  --background: #FFFFFF;
+  --background-light: #F9F9F9;
+  --border-color: #E5E5E5;
+  --success-color: #2E7D32;
+  --success-hover: #1B5E20;
+  --warning-bg: #FFF9E6;
+  --warning-border: #F59E0B;
 }
 
+.bank-transfer-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Header Section */
 .bank-transfer-header {
   text-align: center;
-  margin-bottom: 2rem;
-}
-
-.header-icon {
-  font-size: 3.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 2.5rem;
 }
 
 .bank-transfer-header h2 {
   font-size: 2rem;
-  color: #1f2937;
+  font-weight: 700;
+  color: var(--stanford-cardinal);
   margin-bottom: 1rem;
+  letter-spacing: -0.5px;
 }
 
 .header-subtitle {
   font-size: 1.1rem;
-  color: #4b5563;
-  line-height: 1.6;
-  max-width: 600px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 650px;
   margin: 0 auto;
 }
 
+.amount-highlight {
+  font-weight: 700;
+  color: var(--stanford-cardinal);
+  font-size: 1.2em;
+}
+
+/* Bank Details Card */
 .bank-details-card {
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  background: var(--background);
+  border: 2px solid var(--border-color);
   border-radius: 16px;
   padding: 2.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.3s ease;
+}
+
+.bank-details-card:hover {
+  box-shadow: 0 4px 16px rgba(140, 21, 21, 0.08);
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Detail Grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 10px 40px rgba(30, 64, 175, 0.25);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.bank-detail-row {
+.detail-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.bank-detail-row:last-of-type {
-  border-bottom: none;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .detail-label {
-  font-size: 1.15rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #dbeafe;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-size: 0.95rem;
 }
 
 .detail-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: right;
-  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.detail-value.bank-name {
-  font-size: 1.3rem;
+/* Reference Section */
+.reference-section {
+  background: linear-gradient(135deg, #F4F4F9 0%, #FAFAFA 100%);
+  border: 2px solid var(--stanford-cardinal);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 2rem;
+  text-align: center;
 }
 
-.reference-row {
-  margin-top: 1rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid rgba(255, 255, 255, 0.25);
-  background-color: rgba(255, 255, 255, 0.05);
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-left: -1rem;
-  margin-right: -1rem;
+.reference-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
 }
 
 .reference-number {
+  background: var(--background);
+  border: 3px solid var(--stanford-cardinal);
+  color: var(--stanford-cardinal);
   font-size: 2rem;
-  letter-spacing: 3px;
-  background-color: rgba(255, 255, 255, 0.95);
-  color: #1e40af;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-family: 'Courier New', monospace;
   font-weight: 800;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  margin: 0 auto 1.5rem;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(140, 21, 21, 0.1);
+  user-select: all;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reference-number:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(140, 21, 21, 0.15);
 }
 
 .reference-note {
-  background-color: rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin-top: 1.5rem;
   display: flex;
-  gap: 0.75rem;
   align-items: flex-start;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 0.75rem;
+  background: var(--background);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-align: left;
 }
 
-.note-icon {
-  font-size: 1.5rem;
+.info-icon {
   flex-shrink: 0;
+  color: var(--stanford-cardinal);
+  margin-top: 2px;
 }
 
 .reference-note p {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.6;
-  color: #ffffff;
+  color: var(--text-secondary);
 }
 
-.what-happens-next {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  border: 1px solid #93c5fd;
-}
-
-.what-happens-next h3 {
-  color: #1e40af;
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
-
-.next-steps p {
-  color: #1e3a8a;
-  line-height: 1.7;
-  margin-bottom: 1rem;
-  font-weight: 500;
-}
-
-.next-steps p:last-child {
-  margin-bottom: 0;
-}
-
+/* Action Buttons */
 .action-buttons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .action-buttons button {
-  flex: 1;
   padding: 1rem 1.5rem;
   border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
+  border-radius: 10px;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -161,44 +187,50 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .download-button {
-  background-color: white;
-  color: #1e40af;
-  border: 2px solid #1e40af;
+  background: var(--background);
+  color: var(--stanford-cardinal);
+  border: 2px solid var(--stanford-cardinal);
 }
 
 .download-button:hover {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);
+  background: var(--stanford-cardinal);
+  color: white;
 }
 
 .confirm-button {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: var(--success-color);
   color: white;
 }
 
 .confirm-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+  background: var(--success-hover);
 }
 
 .confirm-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .button-icon {
-  font-size: 1.2rem;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .spinner-small {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
@@ -211,66 +243,136 @@
   }
 }
 
+/* Next Steps Card */
+.next-steps-card {
+  background: var(--background);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.step-number {
+  background: var(--stanford-cardinal);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.step-item p {
+  margin: 0;
+  padding-top: 6px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* Processing Note */
 .processing-note {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-left: 4px solid #f59e0b;
-  border-radius: 8px;
+  background: var(--warning-bg);
+  border: 2px solid var(--warning-border);
+  border-radius: 12px;
   padding: 1.25rem;
   display: flex;
-  gap: 0.75rem;
   align-items: flex-start;
-  border: 1px solid #fbbf24;
+  gap: 0.75rem;
 }
 
 .warning-icon {
-  font-size: 1.5rem;
   flex-shrink: 0;
+  color: var(--warning-border);
+  margin-top: 2px;
 }
 
 .processing-note p {
   margin: 0;
-  color: #78350f;
-  line-height: 1.6;
   font-size: 0.95rem;
-  font-weight: 600;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.processing-note strong {
+  color: var(--stanford-cardinal-dark);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .bank-transfer-container {
-    padding: 1rem;
+    padding: 1.5rem 1rem;
   }
 
   .bank-transfer-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
   }
 
   .header-subtitle {
     font-size: 1rem;
   }
 
-  .bank-details-card {
+  .bank-details-card,
+  .next-steps-card {
     padding: 1.5rem;
   }
 
-  .detail-label {
-    font-size: 1rem;
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
-  .detail-value {
-    font-size: 1.1rem;
+  .reference-section {
+    padding: 1.5rem;
   }
 
   .reference-number {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    letter-spacing: 2px;
   }
 
   .action-buttons {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
-  .action-buttons button {
-    width: 100%;
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .bank-transfer-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .reference-number {
+    font-size: 1.25rem;
+    padding: 0.6rem 1rem;
+    letter-spacing: 1px;
+  }
+
+  .card-title {
+    font-size: 1.1rem;
   }
 }
 

@@ -212,17 +212,17 @@ router.post('/docusign', express.json(), async (req, res) => {
     console.log(`[DocuSign Webhook] ✍️ Envelope Status: ${envelope_status}`);
     console.log(`[DocuSign Webhook] 👥 Recipients:`, recipient_status);
 
-    // Store webhook data (payload.data) in HubSpot
+    // Store ONLY docusign_csa_json (single source of truth)
+    // Frontend will parse this to extract envelope_status and recipient_status
     const hubspotUpdateData = {
       docusign_csa_json: JSON.stringify(payload.data),
     };
-    console.log('[DocuSign Webhook] 📤 Storing webhook data in docusign_csa_json property');
+    console.log('[DocuSign Webhook] 📤 Storing full webhook payload in docusign_csa_json');
 
-    // Update HubSpot deal with full webhook payload
+    // Update HubSpot deal
     const updateResult = await dealsIntegration.updateDeal(dealId, hubspotUpdateData);
 
-    console.log('[DocuSign Webhook] 📥 HubSpot API response:', JSON.stringify(updateResult, null, 2));
-    console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with full DocuSign webhook payload`);
+    console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with DocuSign webhook data`);
 
     // If all signers completed, progress to next stage
     const allCompleted = signers.every(signer => signer.status === 'completed');

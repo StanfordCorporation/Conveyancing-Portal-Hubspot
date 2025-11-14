@@ -204,8 +204,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       'is_draft', // Include is_draft to filter out draft deals
       'agent_title_search', // Did agent complete title search?
       'agent_title_search_file', // Agent's title search file ID
-      'envelope_status', // DocuSign envelope status (sent, completed, etc)
-      'recipient_status', // JSON array of signer statuses
+      'docusign_csa_json', // DocuSign webhook data (contains envelope_status and recipient_status)
       ...questionnaireProperties
     ];
 
@@ -524,6 +523,29 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       console.log(`[Dashboard Complete] 🏠 Property Address: ${propertyAddress || 'NOT SET'}`);
       console.log(`[Dashboard Complete] 📝 Deal Name: ${dealName || 'NOT SET'}`);
 
+      // Parse DocuSign data from docusign_csa_json
+      let envelopeStatus = null;
+      let recipientStatus = null;
+      
+      if (deal.properties.docusign_csa_json) {
+        try {
+          const docusignData = JSON.parse(deal.properties.docusign_csa_json);
+          envelopeStatus = docusignData.envelopeSummary?.status || null;
+          
+          // Extract recipient status (simplified format for frontend)
+          const signers = docusignData.envelopeSummary?.recipients?.signers || [];
+          recipientStatus = signers.map(signer => ({
+            email: signer.email,
+            status: signer.status,
+            name: signer.name
+          }));
+          
+          console.log(`[Dashboard Complete] ✉️ DocuSign Status: ${envelopeStatus}, Signers: ${recipientStatus.length}`);
+        } catch (parseError) {
+          console.error(`[Dashboard Complete] ⚠️ Error parsing docusign_csa_json for deal ${deal.id}:`, parseError.message);
+        }
+      }
+
       return {
         id: deal.id,
         index: index,
@@ -538,9 +560,8 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         files: files,
         agentTitleSearch: deal.properties.agent_title_search || null,
         agentTitleSearchFile: agentTitleSearchFileData,
-        envelopeStatus: deal.properties.envelope_status || null,
-        recipientStatus: deal.properties.recipient_status ? 
-          JSON.parse(deal.properties.recipient_status) : null
+        envelopeStatus: envelopeStatus,
+        recipientStatus: recipientStatus
       };
     }));
 
