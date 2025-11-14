@@ -1,0 +1,27 @@
+/* TEMPORARY DEBUG STYLES - Remove after testing */
+
+@media (max-width: 768px) {
+  /* Make sidebar VERY obvious when open */
+  .sidebar.mobile-open {
+    background: linear-gradient(45deg, #ff0000, #00ff00) !important;
+    left: 0 !important;
+    width: 320px !important;
+    z-index: 99999 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    position: fixed !important;
+  }
+
+  /* Test: Add visual border to all sidebars on mobile */
+  .sidebar {
+    outline: 5px solid yellow !important;
+  }
+
+  /* Test: Make sure backdrop is below */
+  .mobile-backdrop {
+    z-index: 999 !important;
+    background: rgba(255, 0, 0, 0.8) !important; /* Red to see it clearly */
+  }
+}
+

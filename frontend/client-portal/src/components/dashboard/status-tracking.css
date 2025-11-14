@@ -386,21 +386,26 @@
 
 @media (max-width: 768px) {
   .status-tracking-container {
-    padding: 16px;
+    padding: 0;
   }
 
   .status-current-card {
     flex-direction: column;
     text-align: center;
-    padding: 24px;
+    padding: 20px 16px;
   }
 
   .status-stage-name {
     font-size: 20px;
   }
 
+  .status-stage-description {
+    font-size: 14px;
+  }
+
   .timeline-step {
     gap: 12px;
+    padding: 16px 12px;
   }
 
   .timeline-marker-inner {
@@ -413,14 +418,76 @@
     height: 28px;
   }
 
+  .timeline-step-title {
+    font-size: 16px;
+  }
+
+  .timeline-step-description {
+    font-size: 13px;
+  }
+
+  .timeline-date {
+    font-size: 12px;
+  }
+
   .property-detail-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    padding: 12px;
+  }
+
+  .detail-label {
+    font-size: 12px;
   }
 
   .detail-value {
     text-align: left;
+    font-size: 14px;
+  }
+
+  .tracking-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .action-button,
+  .refresh-button {
+    width: 100%;
+    min-height: 44px; /* Touch-friendly */
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .progress-indicator {
+    padding: 16px 12px;
+  }
+
+  .progress-bar-fill {
+    height: 8px;
+  }
+
+  .progress-text {
+    font-size: 14px;
+  }
+
+  .milestone-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .milestone-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .milestone-title {
+    font-size: 16px;
+  }
+
+  .status-badge {
+    align-self: flex-start;
   }
 }
 

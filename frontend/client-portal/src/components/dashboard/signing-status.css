@@ -261,6 +261,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .signing-status-container {
+    padding: 0;
+  }
+
   .status-message {
     padding: 2rem 1rem;
   }
@@ -275,6 +279,50 @@
 
   .status-icon {
     font-size: 48px;
+  }
+
+  .signing-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sign-button,
+  .view-envelope-button,
+  .refresh-button {
+    width: 100%;
+    min-height: 44px; /* Touch-friendly */
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .signer-list {
+    padding: 0;
+  }
+
+  .signer-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .signer-name,
+  .signer-email {
+    font-size: 14px;
+  }
+
+  .status-badge {
+    align-self: flex-start;
+    padding: 6px 12px;
+  }
+
+  .document-preview {
+    padding: 16px;
+  }
+
+  .signing-info {
+    padding: 14px;
+    font-size: 13px;
   }
 }
 

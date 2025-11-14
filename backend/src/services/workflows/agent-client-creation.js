@@ -52,13 +52,14 @@ export const processAgentClientCreation = async (formData) => {
     };
 
     // Step 3: Build associations
+    // NOTE: During deal creation, ONLY HUBSPOT_DEFINED associations work inline
     const associations = [
-      // Client contact
+      // Client contact (use standard contact association)
       {
         to: { id: clientContact.id },
         types: [{
           associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 3 // Contact to Deal
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       },
       // Agency
@@ -66,15 +67,15 @@ export const processAgentClientCreation = async (formData) => {
         to: { id: formData.agencyId },
         types: [{
           associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 341 // Company to Deal
+          associationTypeId: 341 // Deal to Company
         }]
       },
-      // Agent (USER_DEFINED type 5)
+      // Agent (use standard contact association)
       {
         to: { id: formData.agentId },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 5 // Agent to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       }
     ];

@@ -380,38 +380,110 @@
 @media (max-width: 768px) {
   .quote-container {
     padding: 16px;
+    border-radius: 8px;
+  }
+
+  .quote-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
   }
 
   .quote-header h2 {
-    font-size: 24px;
+    font-size: 22px;
+  }
+
+  .property-address {
+    font-size: 15px;
+  }
+
+  .calculated-at {
+    font-size: 12px;
+  }
+
+  /* Stacked layout for quote sections */
+  .quote-section {
+    margin-bottom: 24px;
+    padding: 16px;
   }
 
   .quote-grand-total {
     flex-direction: column;
     gap: 12px;
     text-align: center;
+    padding: 20px 16px;
+  }
+
+  .quote-grand-total .total-label {
+    font-size: 16px;
   }
 
   .quote-grand-total .total-amount {
-    font-size: 28px;
+    font-size: 32px;
   }
 
+  /* Stack search items vertically */
   .search-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    padding: 12px;
+  }
+
+  .search-name {
+    font-size: 14px;
   }
 
   .search-cost {
     text-align: left;
+    font-size: 16px;
   }
 
+  /* Responsive table */
   .breakdown-table {
-    font-size: 12px;
+    font-size: 13px;
+    display: block;
+    overflow-x: auto;
   }
 
   .breakdown-table th,
   .breakdown-table td {
-    padding: 8px;
+    padding: 10px 8px;
+  }
+
+  /* Quote actions full width */
+  .quote-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .back-btn,
+  .accept-quote-btn {
+    width: 100%;
+    min-height: 44px; /* Touch-friendly */
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+
+  /* Quote note responsive */
+  .quote-note {
+    padding: 14px;
+    margin-top: 20px;
+  }
+
+  .quote-note p {
+    font-size: 13px;
+  }
+
+  /* Fee cards stacked */
+  .fee-card {
+    margin-bottom: 16px;
+  }
+
+  .fee-card-header {
+    padding: 12px 14px;
+  }
+
+  .fee-card-body {
+    padding: 14px;
   }
 }

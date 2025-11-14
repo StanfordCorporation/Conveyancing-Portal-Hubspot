@@ -170,21 +170,23 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
     };
 
     // Build associations array
+    // NOTE: During deal creation, ONLY HUBSPOT_DEFINED associations work inline
+    // USER_DEFINED custom associations are added separately after deal creation
     const associations = [
-      // Primary seller
+      // Primary seller (use standard contact association)
       {
         to: { id: primarySeller.id },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 1 // Primary Seller to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       },
-      // Agent
+      // Agent (use standard contact association)
       {
         to: { id: agentId },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 6 // Agent to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       }
     ];
@@ -195,18 +197,18 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
         to: { id: agencyId },
         types: [{
           associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 341 // Company to Deal
+          associationTypeId: 341 // Deal to Company
         }]
       });
     }
 
-    // Add additional sellers
+    // Add additional sellers (use standard contact association)
     for (const sellerId of additionalSellerIds) {
       associations.push({
         to: { id: sellerId },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 4 // Additional Seller to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       });
     }

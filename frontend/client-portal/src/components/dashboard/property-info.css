@@ -15,6 +15,18 @@
   margin-top: 8px;
 }
 
+/* Mobile responsive grid */
+@media (max-width: 768px) {
+  .info-grid-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .info-grid-row:last-child {
+    margin-top: 0;
+  }
+}
+
 .loading-spinner,
 .error-message,
 .empty-state {
@@ -191,12 +203,15 @@
 
   .property-info-actions {
     gap: 12px;
+    flex-direction: column;
   }
 
   .review-btn,
   .edit-btn {
     font-size: 14px;
-    padding: 12px 24px;
+    padding: 14px 24px;
+    width: 100%;
+    min-height: 44px; /* Touch-friendly height */
   }
 }
 

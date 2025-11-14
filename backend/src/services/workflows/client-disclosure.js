@@ -195,13 +195,15 @@ export const processClientDisclosure = async (formData) => {
     };
 
     // Build associations array
+    // NOTE: During deal creation, ONLY HUBSPOT_DEFINED associations work inline
+    // We use standard type 3 (Deal to Contact) for all contacts during creation
     const associations = [
-      // Primary seller
+      // Primary seller (use standard contact association)
       {
         to: { id: primarySeller.id },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 1 // Primary Seller to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       },
       // Agency
@@ -209,31 +211,75 @@ export const processClientDisclosure = async (formData) => {
         to: { id: agency.id },
         types: [{
           associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 341 // Company to Deal
+          associationTypeId: 341 // Deal to Company
         }]
       },
-      // Agent
+      // Agent (use standard contact association)
       {
         to: { id: agentContact.id },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 5 // Agent to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       }
     ];
 
-    // Add additional sellers
+    // Add additional sellers (use standard contact association)
     for (const sellerId of additionalSellerIds) {
       associations.push({
         to: { id: sellerId },
         types: [{
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 4 // Additional Seller to Deal
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 3 // Deal to Contact (standard HubSpot association)
         }]
       });
     }
 
     const deal = await createDealWithAssociations(dealData, associations);
+    
+    // ========================================
+    // STEP 6B: Add custom association labels to distinguish contact roles
+    // ========================================
+    console.log('[Client Disclosure] ⏳ STEP 6B: Adding custom association labels...');
+    
+    try {
+      // Add Primary Seller label (USER_DEFINED type 1)
+      console.log(`[Client Disclosure] 🏷️  Labeling Primary Seller: ${primarySeller.id}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${primarySeller.id}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 1 // Primary Seller label (Deal → Primary Seller)
+        }]
+      );
+      
+      // Add Agent label (USER_DEFINED type 6)
+      console.log(`[Client Disclosure] 🏷️  Labeling Agent: ${agentContact.id}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${agentContact.id}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 6 // Agent label (Deal → Agent)
+        }]
+      );
+      
+      // Add Additional Seller labels (USER_DEFINED type 4)
+      for (const sellerId of additionalSellerIds) {
+        console.log(`[Client Disclosure] 🏷️  Labeling Additional Seller: ${sellerId}`);
+        await hubspotClient.put(
+          `/crm/v4/objects/deal/${deal.id}/associations/contact/${sellerId}`,
+          [{
+            associationCategory: 'USER_DEFINED',
+            associationTypeId: 4 // Additional Seller label (Deal → Additional Seller)
+          }]
+        );
+      }
+      
+      console.log('[Client Disclosure] ✅ Custom association labels added successfully');
+    } catch (labelError) {
+      console.error('[Client Disclosure] ⚠️  Failed to add custom labels (non-critical):', labelError.message);
+      // Don't fail the entire workflow - labels are nice to have but not critical
+    }
 
     console.log('[Client Disclosure] Deal created successfully:', deal.id);
 

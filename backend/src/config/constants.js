@@ -4,15 +4,33 @@
  */
 
 export const HUBSPOT = {
-  // Association Types
+  // Association Types (directional - each association has a forward and reverse)
   ASSOCIATION_TYPES: {
-    CONTACT_TO_COMPANY: 279,       // Contact → Company
-    COMPANY_TO_CONTACT: 280,       // Company → Contact
-    PRIMARY_SELLER_TO_DEAL: 1,     // Primary Seller → Deal (USER_DEFINED)
-    CONTACT_TO_DEAL: 3,            // Contact → Deal (HUBSPOT_DEFINED)
-    ADDITIONAL_SELLER_TO_DEAL: 4,  // Additional Seller → Deal (USER_DEFINED)
-    AGENT_TO_DEAL: 5,              // Agent → Deal (USER_DEFINED) - Fixed from 6 to 5 based on actual HubSpot API response
+    CONTACT_TO_COMPANY: 279,       // Contact → Company (HUBSPOT_DEFINED)
+    COMPANY_TO_CONTACT: 280,       // Company → Contact (HUBSPOT_DEFINED)
+    
+    // Primary Seller associations (USER_DEFINED)
+    PRIMARY_SELLER_TO_DEAL: 2,     // Primary Seller (Contact) → Deal (USER_DEFINED)
+    DEAL_TO_PRIMARY_SELLER: 1,     // Deal → Primary Seller (Contact) (USER_DEFINED) [REVERSE of 2]
+    
+    // Standard Contact associations (HUBSPOT_DEFINED)
+    CONTACT_TO_DEAL: 4,            // Contact → Deal (HUBSPOT_DEFINED)
+    DEAL_TO_CONTACT: 3,            // Deal → Contact (HUBSPOT_DEFINED) [REVERSE of 4]
+    
+    // Additional Seller associations (USER_DEFINED)
+    ADDITIONAL_SELLER_TO_DEAL: 3,  // Additional Seller (Contact) → Deal (USER_DEFINED)
+    DEAL_TO_ADDITIONAL_SELLER: 4,  // Deal → Additional Seller (Contact) (USER_DEFINED) [REVERSE of 3]
+    
+    // Agent associations (USER_DEFINED)
+    AGENT_TO_DEAL: 5,              // Agent (Contact) → Deal (USER_DEFINED) - for client-disclosure workflow
+    DEAL_TO_AGENT: 6,              // Deal → Agent (Contact) (USER_DEFINED) [REVERSE of 5]
+    
+    AGENT_LEAD_TO_DEAL: 6,         // Agent (Contact) → Deal (USER_DEFINED) - for agent-lead-creation workflow
+    DEAL_TO_AGENT_LEAD: 7,         // Deal → Agent (Contact) (USER_DEFINED) [REVERSE of 6]
+    
+    // Company associations (HUBSPOT_DEFINED)
     COMPANY_TO_DEAL: 341,          // Company/Agency → Deal (HUBSPOT_DEFINED)
+    DEAL_TO_COMPANY: 342,          // Deal → Company/Agency (HUBSPOT_DEFINED) [REVERSE of 341]
   },
 
   // Permission Types (for Agent Permissions via Association Types)

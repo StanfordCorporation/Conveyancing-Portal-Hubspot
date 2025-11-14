@@ -278,3 +278,112 @@
   color: #78350F;
   font-weight: 600;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .payment-instructions-container {
+    padding: 0;
+  }
+
+  .payment-header {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .payment-header h2 {
+    font-size: 22px;
+  }
+
+  .payment-header p {
+    font-size: 14px;
+  }
+
+  .payment-tabs {
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+    background: transparent;
+  }
+
+  .payment-tab {
+    width: 100%;
+    padding: 14px 16px;
+    min-height: 44px; /* Touch-friendly */
+    border-radius: 8px;
+    justify-content: flex-start;
+  }
+
+  .payment-method-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .method-header {
+    padding: 14px;
+  }
+
+  .method-body {
+    padding: 16px;
+  }
+
+  .transfer-instructions .instruction-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .instruction-value {
+    font-size: 15px;
+  }
+
+  .copy-button {
+    min-height: 40px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .payment-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .payment-btn,
+  .cancel-btn {
+    width: 100%;
+    min-height: 44px; /* Touch-friendly */
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .payment-amount {
+    font-size: 28px;
+  }
+
+  .payment-note {
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  .payment-complete-message h2 {
+    font-size: 24px;
+  }
+
+  .payment-complete-message > p {
+    font-size: 16px;
+  }
+
+  .complete-icon {
+    width: 80px;
+    height: 80px;
+    font-size: 48px;
+  }
+
+  .complete-details {
+    padding: 16px;
+  }
+
+  .test-cards-info {
+    padding: 16px;
+  }
+}

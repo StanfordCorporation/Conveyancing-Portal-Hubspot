@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import api from '../../services/api.js';
 import { getStepFromStage, getStageFromStep } from '../../constants/dealStages.js';
 import PropertyInformation from './PropertyInformation.jsx';
@@ -26,6 +26,7 @@ export default function ClientDashboard() {
   const [activeQuestionnaireTab, setActiveQuestionnaireTab] = useState('q-section1');
   const [propertyStages, setPropertyStages] = useState({});
   const [quoteRefreshKey, setQuoteRefreshKey] = useState(Date.now());
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Check if user is additional seller
   const isAdditionalSeller = storedUser?.sellerType === 'additional';
@@ -341,6 +342,9 @@ export default function ClientDashboard() {
       6: 'tracking'  // Step 6: Status Tracking
     };
     setActiveSection(sectionMap[stageNumber]);
+    
+    // Auto-close mobile menu after selection
+    setIsMobileMenuOpen(false);
   };
 
   const switchSection = (section) => {
@@ -427,6 +431,13 @@ export default function ClientDashboard() {
     <div className="app-container" id="appContainer">
       <header className="header">
         <div className="header-left">
+          <button 
+            className="hamburger-btn" 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
           <div className="logo">
             <img src="/logo (1).webp" alt="Property Logo" className="logo-image" />
           </div>
@@ -464,13 +475,22 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          <button onClick={handleLogout} className="notification-btn" title="Logout">
+          <button onClick={handleLogout} className="logout-btn" title="Logout">
             <LogOut size={20} />
           </button>
         </div>
       </header>
 
-      <aside className="sidebar" id="sidebar">
+      {/* Mobile backdrop overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="mobile-backdrop" 
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`} id="sidebar">
         <div className="property-header">
           {isAdditionalSeller && (
             <div style={{

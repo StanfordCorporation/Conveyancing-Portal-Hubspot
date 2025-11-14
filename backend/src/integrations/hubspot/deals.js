@@ -12,6 +12,20 @@ export const createDeal = async (dealData, associations = []) => {
   console.log(`[HubSpot Deals] 📊 Stage: ${dealData.dealstage || '1923713518'}`);
   console.log(`[HubSpot Deals] 🔗 Associations: ${associations.length} object(s)`);
 
+  // Separate HUBSPOT_DEFINED and USER_DEFINED associations
+  // HubSpot API only allows HUBSPOT_DEFINED associations during deal creation
+  // USER_DEFINED associations must be added via separate PUT requests after creation
+  const hubspotDefinedAssociations = associations.filter(
+    assoc => assoc.types[0].associationCategory === 'HUBSPOT_DEFINED'
+  );
+  const userDefinedAssociations = associations.filter(
+    assoc => assoc.types[0].associationCategory === 'USER_DEFINED'
+  );
+
+  if (userDefinedAssociations.length > 0) {
+    console.log(`[HubSpot Deals] ⚠️  Found ${userDefinedAssociations.length} USER_DEFINED associations - these will be added AFTER deal creation`);
+  }
+
   const payload = {
     properties: {
       dealname: dealData.dealname,
@@ -64,17 +78,53 @@ export const createDeal = async (dealData, associations = []) => {
     }
   };
 
-  // Add associations if provided
-  if (associations.length > 0) {
-    payload.associations = associations;
-    console.log(`[HubSpot Deals] 🔗 Association details:`);
-    associations.forEach((assoc, index) => {
+  // Add only HUBSPOT_DEFINED associations during creation
+  if (hubspotDefinedAssociations.length > 0) {
+    payload.associations = hubspotDefinedAssociations;
+    console.log(`[HubSpot Deals] 🔗 HUBSPOT_DEFINED associations (inline):`);
+    hubspotDefinedAssociations.forEach((assoc, index) => {
       console.log(`[HubSpot Deals]    ${index + 1}. To Object ID: ${assoc.to.id}, Type: ${assoc.types[0].associationTypeId}`);
     });
   }
 
+  // Create the deal
   const response = await hubspotClient.post('/crm/v3/objects/deals', payload);
-  console.log(`[HubSpot Deals] ✅ Deal created successfully: ID ${response.data.id}`);
+  const dealId = response.data.id;
+  console.log(`[HubSpot Deals] ✅ Deal created successfully: ID ${dealId}`);
+
+  // Add USER_DEFINED associations separately
+  if (userDefinedAssociations.length > 0) {
+    console.log(`[HubSpot Deals] 🔗 Adding ${userDefinedAssociations.length} USER_DEFINED associations...`);
+    
+    for (const assoc of userDefinedAssociations) {
+      const toObjectId = assoc.to.id;
+      const associationTypeId = assoc.types[0].associationTypeId;
+      
+      // Determine the object type based on the association
+      // For contacts: use 'contact', for companies: use 'company'
+      let toObjectType = 'contact'; // Default to contact
+      
+      // Company associations typically use type 341/342
+      if (associationTypeId === 341 || associationTypeId === 342) {
+        toObjectType = 'company';
+      }
+      
+      try {
+        console.log(`[HubSpot Deals]    Adding association: Deal ${dealId} -> ${toObjectType} ${toObjectId} (Type: ${associationTypeId})`);
+        
+        await hubspotClient.put(
+          `/crm/v3/objects/deal/${dealId}/associations/${toObjectType}/${toObjectId}/${associationTypeId}`,
+          {}
+        );
+        
+        console.log(`[HubSpot Deals]    ✅ Association added successfully`);
+      } catch (error) {
+        console.error(`[HubSpot Deals]    ❌ Failed to add association: ${error.message}`);
+        // Don't throw - continue with other associations
+      }
+    }
+  }
+
   return response.data;
 };
 

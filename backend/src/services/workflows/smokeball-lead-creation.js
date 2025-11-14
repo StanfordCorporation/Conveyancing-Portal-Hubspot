@@ -86,23 +86,40 @@ export async function createSmokeballLeadFromDeal(dealId) {
 
     const allContacts = await associationsIntegration.getDealContacts(dealId);
     
-    // Filter out agents (association type 5) - only create clients in Smokeball
-    // Type 1: Primary Seller, Type 4: Additional Seller, Type 5: Agent (exclude)
+    // Filter out agents - only create clients in Smokeball
+    // Custom association types (Deal → Contact):
+    // Type 1 = Primary Seller, Type 4 = Additional Seller, Type 6 = Agent (exclude)
     const clientContacts = [];
     const excludedContacts = [];
     
     allContacts.forEach(contact => {
-      // Check association type (primary filter)
+      // Check for explicit client associations (PRIORITY - these override contact_type)
+      const hasPrimarySeller = contact.associationTypes?.some(assocType => assocType.typeId === 1);
+      const hasAdditionalSeller = contact.associationTypes?.some(assocType => assocType.typeId === 4);
+      const isClientBySeller = hasPrimarySeller || hasAdditionalSeller;
+      
+      // Check for agent associations
+      // Type 6 = Agent (client-disclosure), Type 7 = Agent (agent-lead-creation if used)
       const hasAgentAssociation = contact.associationTypes?.some(
-        assocType => assocType.typeId === 5 || assocType.label?.toLowerCase().includes('agent')
+        assocType => assocType.typeId === 6 || assocType.typeId === 7 || assocType.label?.toLowerCase().includes('agent')
       );
       
-      // Check contact_type property (backup filter)
+      // Check contact_type property (LOWEST PRIORITY - only used if no explicit associations)
       const contactType = contact.properties?.contact_type?.toLowerCase();
-      const isAgent = contactType?.includes('agent') || contactType?.includes('salesperson');
+      const isAgentByType = contactType?.includes('agent') || contactType?.includes('salesperson');
       
-      if (hasAgentAssociation || isAgent) {
-        const reason = hasAgentAssociation ? 'Agent association (type 5)' : `contact_type="${contact.properties?.contact_type}"`;
+      // Decision logic: 
+      // 1. If has Primary Seller (type 1) or Additional Seller (type 4) → INCLUDE as client
+      // 2. Else if has Agent (type 6/7) → EXCLUDE
+      // 3. Else fallback to contact_type property
+      if (isClientBySeller) {
+        // Include as client (seller association takes priority)
+        clientContacts.push(contact);
+      } else if (hasAgentAssociation || (isAgentByType && !isClientBySeller)) {
+        // Exclude as agent
+        const reason = hasAgentAssociation 
+          ? `Agent association (type ${contact.associationTypes?.find(a => a.typeId === 6 || a.typeId === 7)?.typeId})`
+          : `contact_type="${contact.properties?.contact_type}"`;
         excludedContacts.push({
           id: contact.id,
           name: `${contact.properties?.firstname || ''} ${contact.properties?.lastname || ''}`.trim(),
@@ -110,6 +127,7 @@ export async function createSmokeballLeadFromDeal(dealId) {
           reason
         });
       } else {
+        // No explicit seller or agent association - include as generic contact
         clientContacts.push(contact);
       }
     });
