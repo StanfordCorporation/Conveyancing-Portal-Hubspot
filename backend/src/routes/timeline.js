@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateJWT } from '../middleware/auth.js';
 import { getDeal } from '../integrations/hubspot/deals.js';
-import { buildTimelineFromDeal } from '../services/timeline/dealTimeline.js';
+import { buildTimelineFromDeal, DEAL_STAGE_MAP } from '../services/timeline/dealTimeline.js';
 
 const router = express.Router();
 
@@ -17,12 +17,26 @@ const router = express.Router();
 router.get('/:dealId', authenticateJWT, async (req, res) => {
   try {
     const { dealId } = req.params;
-    
+
     console.log(`[Timeline] 📅 Fetching timeline for deal: ${dealId}`);
 
-    // Fetch deal with all properties
-    // HubSpot returns all properties by default when no specific properties are requested
-    const deal = await getDeal(dealId);
+    // Build list of properties to fetch
+    // IMPORTANT: hs_v2_date_entered_* properties must be explicitly requested
+    const stageEntryProperties = Object.keys(DEAL_STAGE_MAP).map(
+      stageId => `hs_v2_date_entered_${stageId}`
+    );
+
+    const propertiesToFetch = [
+      'createdate',
+      'dealstage',
+      'closedate',
+      ...stageEntryProperties
+    ];
+
+    console.log(`[Timeline] 📋 Fetching ${propertiesToFetch.length} properties (${stageEntryProperties.length} stage entry dates)`);
+
+    // Fetch deal with timeline-specific properties
+    const deal = await getDeal(dealId, propertiesToFetch);
     
     if (!deal || !deal.properties) {
       console.warn(`[Timeline] ⚠️ Deal ${dealId} not found or has no properties`);

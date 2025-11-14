@@ -100,6 +100,9 @@ export function getStageLabel(stageId) {
   return DEAL_STAGE_MAP[stageId] || 'Unknown';
 }
 
+// Named exports for DEAL_STAGE_MAP (buildTimelineFromDeal and getStageLabel already exported above)
+export { DEAL_STAGE_MAP };
+
 export default {
   buildTimelineFromDeal,
   getStageLabel,
