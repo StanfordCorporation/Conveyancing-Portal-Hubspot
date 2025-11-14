@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { X, ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import CreateLeadStep1 from './CreateLeadStep1';
 import CreateLeadStep2 from './CreateLeadStep2';
@@ -7,6 +7,7 @@ import CreateLeadStep3 from './CreateLeadStep3';
 export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLead = null }) {
   const isEditMode = !!existingLead;
   const [currentStep, setCurrentStep] = useState(1);
+  const wasOpenRef = useRef(false);
 
   // Extract questionnaire data from existing lead
   const extractQuestionnaireData = useCallback((lead) => {
@@ -75,13 +76,17 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit, existingLea
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset form when modal opens (not on every render)
-  React.useEffect(() => {
-    if (isOpen) {
+  // Reset form ONLY when modal opens (transitions from closed to open)
+  useEffect(() => {
+    // Only reset if modal is opening (was closed, now open)
+    if (isOpen && !wasOpenRef.current) {
       setFormData(getInitialFormData());
       setCurrentStep(1);
       setError('');
     }
+    
+    // Update the ref to track current state
+    wasOpenRef.current = isOpen;
   }, [isOpen, getInitialFormData]);
 
   if (!isOpen) return null;

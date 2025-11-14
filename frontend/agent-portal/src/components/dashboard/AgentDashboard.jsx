@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AgentHeader from './AgentHeader';
 import AgentSidebar from './AgentSidebar';
+import BetaBanner from '../ui/BetaBanner';
 import DashboardHome from './DashboardHome';
 import LeadsManagement from './LeadsManagement';
 import DocumentsTasks from './DocumentsTasks';
@@ -243,6 +244,8 @@ export default function AgentDashboard() {
         onLogout={handleLogout}
         onMenuClick={() => setIsSidebarOpen(true)}
       />
+
+      <BetaBanner />
 
       <AgentSidebar
         activeSection={activeSection}
