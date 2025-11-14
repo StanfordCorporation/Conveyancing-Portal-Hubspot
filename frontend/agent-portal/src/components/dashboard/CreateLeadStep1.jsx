@@ -5,57 +5,63 @@ import AddressAutocomplete from '../../../../src/components/common/AddressAutoco
 export default function CreateLeadStep1({ formData, updateFormData }) {
   const [uploadingTitleSearch, setUploadingTitleSearch] = useState(false);
   const handlePrimarySellerChange = (field, value) => {
-    updateFormData({
+    updateFormData(prev => ({
       primarySeller: {
-        ...formData.primarySeller,
+        ...prev.primarySeller,
         [field]: value
       }
-    });
+    }));
   };
 
   const handleAddAdditionalSeller = () => {
-    updateFormData({
+    updateFormData(prev => ({
       additionalSellers: [
-        ...formData.additionalSellers,
+        ...prev.additionalSellers,
         { fullName: '', email: '', mobile: '', address: '' }
       ]
-    });
+    }));
   };
 
   const handleRemoveAdditionalSeller = (index) => {
-    const updated = formData.additionalSellers.filter((_, i) => i !== index);
-    updateFormData({ additionalSellers: updated });
+    updateFormData(prev => ({
+      additionalSellers: prev.additionalSellers.filter((_, i) => i !== index)
+    }));
   };
 
   const handleAdditionalSellerChange = (index, field, value) => {
-    const updated = [...formData.additionalSellers];
-    updated[index] = { ...updated[index], [field]: value };
-    updateFormData({ additionalSellers: updated });
+    updateFormData(prev => {
+      const updated = [...prev.additionalSellers];
+      updated[index] = { ...updated[index], [field]: value };
+      return { additionalSellers: updated };
+    });
   };
 
   const handleNumberOfOwnersChange = (value) => {
     const numOwners = parseInt(value);
-    updateFormData({ numberOfOwners: value });
     
-    // Adjust additional sellers array
-    const currentAdditional = formData.additionalSellers.length;
-    const neededAdditional = numOwners - 1;
-    
-    if (neededAdditional > currentAdditional) {
-      // Add more sellers
-      const toAdd = neededAdditional - currentAdditional;
-      const newSellers = Array(toAdd).fill(null).map(() => ({
-        fullName: '', email: '', mobile: '', address: ''
-      }));
-      updateFormData({
-        additionalSellers: [...formData.additionalSellers, ...newSellers]
-      });
-    } else if (neededAdditional < currentAdditional) {
-      // Remove extra sellers
-      updateFormData({
-        additionalSellers: formData.additionalSellers.slice(0, neededAdditional)
-      });
-    }
+    updateFormData(prev => {
+      const currentAdditional = prev.additionalSellers.length;
+      const neededAdditional = numOwners - 1;
+      
+      let additionalSellers = prev.additionalSellers;
+      
+      if (neededAdditional > currentAdditional) {
+        // Add more sellers
+        const toAdd = neededAdditional - currentAdditional;
+        const newSellers = Array(toAdd).fill(null).map(() => ({
+          fullName: '', email: '', mobile: '', address: ''
+        }));
+        additionalSellers = [...prev.additionalSellers, ...newSellers];
+      } else if (neededAdditional < currentAdditional) {
+        // Remove extra sellers
+        additionalSellers = prev.additionalSellers.slice(0, neededAdditional);
+      }
+      
+      return {
+        numberOfOwners: value,
+        additionalSellers
+      };
+    });
   };
 
   return (
