@@ -233,7 +233,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  grid-row: 2 / 4;
+  grid-row: 3;
+  grid-column: 1;
 }
 
 .sidebar.collapsed {
@@ -354,7 +355,8 @@ body {
   overflow-y: auto;
   background: transparent;
   max-height: calc(100vh - var(--header-height));
-  grid-row: 3 / 4;
+  grid-row: 3;
+  grid-column: 2;
 }
 
 .dashboard-home {
