@@ -428,7 +428,7 @@ export const demoteAgent = async (adminId, agencyId, targetAgentId, newPermissio
 
 /**
  * Reassign deal to different agent
- * Changes association type 5 from old agent to new agent
+ * Changes association type 6 (Deal → Agent) from old agent to new agent
  * @param {string} adminId - ID of admin performing action
  * @param {string} agencyId - Agency ID
  * @param {string} dealId - Deal ID
@@ -448,7 +448,7 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
     throw new Error('Target agent does not belong to this agency');
   }
 
-  // Step 2: Get current agent association for deal (type 5)
+  // Step 2: Get current agent association for deal (type 6 - Deal → Agent)
   const dealContactAssoc = await hubspotClient.post(
     '/crm/v4/associations/deal/contact/batch/read',
     {
@@ -457,29 +457,29 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
   );
 
   const currentAgentAssoc = dealContactAssoc.data.results[0]?.to?.find(
-    assoc => assoc.associationTypes?.some(t => t.typeId === HUBSPOT.ASSOCIATION_TYPES.AGENT_TO_DEAL)
+    assoc => assoc.associationTypes?.some(t => t.typeId === HUBSPOT.ASSOCIATION_TYPES.DEAL_TO_AGENT)
   );
 
-  // Step 3: Delete old agent association (type 5)
+  // Step 3: Delete old agent association (type 6 - Deal → Agent)
   if (currentAgentAssoc) {
     await hubspotClient.delete(
       `/crm/v4/objects/deals/${dealId}/associations/contacts/${currentAgentAssoc.toObjectId}`,
       {
         data: [{
           associationCategory: HUBSPOT.ASSOCIATION_CATEGORIES.USER_DEFINED,
-          associationTypeId: HUBSPOT.ASSOCIATION_TYPES.AGENT_TO_DEAL
+          associationTypeId: HUBSPOT.ASSOCIATION_TYPES.DEAL_TO_AGENT
         }]
       }
     );
     console.log(`[Agency Owner] Removed old agent association: ${currentAgentAssoc.toObjectId}`);
   }
 
-  // Step 4: Create new agent association (type 5)
+  // Step 4: Create new agent association (type 6 - Deal → Agent)
   await hubspotClient.put(
     `/crm/v4/objects/deals/${dealId}/associations/contacts/${newAgentId}`,
     [{
       associationCategory: HUBSPOT.ASSOCIATION_CATEGORIES.USER_DEFINED,
-      associationTypeId: HUBSPOT.ASSOCIATION_TYPES.AGENT_TO_DEAL
+      associationTypeId: HUBSPOT.ASSOCIATION_TYPES.DEAL_TO_AGENT
     }]
   );
 

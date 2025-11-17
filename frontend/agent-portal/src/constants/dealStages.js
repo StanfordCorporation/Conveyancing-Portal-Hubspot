@@ -16,7 +16,7 @@ export const DEAL_STAGES = {
   CLIENT_DETAILS_REQUIRED: {
     id: '1923713518',
     label: 'Client Details Required',
-    agentNextStep: 'Send to Client Portal',
+    agentNextStep: 'Client to Login to Portal',
     color: 'draft'
   },
 

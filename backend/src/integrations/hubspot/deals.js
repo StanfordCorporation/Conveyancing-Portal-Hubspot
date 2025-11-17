@@ -33,10 +33,13 @@ export const createDeal = async (dealData, associations = []) => {
       pipeline: HUBSPOT.PIPELINES.FORM_2S, // ALWAYS use Form 2s pipeline
       property_address: dealData.property_address || '',
       number_of_owners: dealData.number_of_owners || 1,
-      
+
+      // Lead source tracking
+      lead_source: dealData.lead_source || null,
+
       // Draft status (Yes or null)
       is_draft: dealData.is_draft === 'Yes' ? 'Yes' : null,
-      
+
       // Agent title search
       agent_title_search: dealData.agent_title_search || null,
       agent_title_search_file: dealData.agent_title_search_file || null,
