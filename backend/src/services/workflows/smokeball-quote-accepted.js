@@ -126,12 +126,21 @@ export async function handleQuoteAccepted(dealId) {
             });
 
             if (residentialAddress) {
-              // Update primary seller's Smokeball contact
-              await smokeballContacts.updateContact(smokeballContactId, {
+              // PUT requires COMPLETE contact object (not partial update)
+              // 1. Get current contact data
+              const currentContact = await smokeballContacts.getContact(smokeballContactId);
+
+              // 2. Merge residential address into complete contact object
+              const updatePayload = {
+                ...currentContact,
                 person: {
+                  ...currentContact.person,
                   residentialAddress
                 }
-              });
+              };
+
+              // 3. PUT entire contact back with updated address
+              await smokeballContacts.updateContact(smokeballContactId, updatePayload);
 
               console.log(`[Smokeball Quote Workflow] ✅ Updated residential address for primary seller in Smokeball`);
             } else {
@@ -221,63 +230,99 @@ export async function handleQuoteAccepted(dealId) {
 }
 
 /**
- * Build residential address object from HubSpot contact properties
+ * Build residential address object from Google-formatted address string
  *
- * @param {Object} contactProps - HubSpot contact properties
+ * Parses addresses in format: "55 Allen St, Hamilton QLD 4007, Australia"
+ *
+ * @param {Object} contactProps - Contains address string
  * @returns {Object|null} Smokeball residential address format
  */
 function buildResidentialAddress(contactProps) {
-  const address = contactProps.address;
-  const city = contactProps.city;
-  const state = contactProps.state;
-  const zipCode = contactProps.zip;
+  const fullAddress = contactProps.address;
 
-  // Need at least street address
-  if (!address) {
+  if (!fullAddress) {
     return null;
   }
 
-  // Parse street address into components
-  // Format: "123 Main Street" or "456 Home Avenue"
-  const addressParts = address.trim().split(' ');
+  // Parse Google-formatted address: "[Street], [Suburb State Postcode], [Country]"
+  // Example: "55 Allen St, Hamilton QLD 4007, Australia"
+
+  const parts = fullAddress.split(',').map(p => p.trim());
 
   let streetNumber = '';
   let streetName = '';
   let streetType = '';
+  let city = '';
+  let state = '';
+  let zipCode = '';
+  let country = 'Australia';
 
-  if (addressParts.length >= 2) {
-    // First part is likely street number
-    if (/^\d+/.test(addressParts[0])) {
-      streetNumber = addressParts[0];
+  // Part 1: Street address (e.g., "55 Allen St")
+  if (parts[0]) {
+    const streetParts = parts[0].trim().split(/\s+/);
 
-      // Last part is likely street type (Street, Avenue, Road, etc.)
-      if (addressParts.length > 2) {
-        streetType = addressParts[addressParts.length - 1];
-        streetName = addressParts.slice(1, -1).join(' ');
-      } else {
-        streetName = addressParts.slice(1).join(' ');
+    // First part is street number (e.g., "55")
+    if (streetParts[0] && /^\d+/.test(streetParts[0])) {
+      streetNumber = streetParts[0];
+
+      // Last part is street type (e.g., "St", "Street", "Ave", "Road")
+      if (streetParts.length > 2) {
+        streetType = streetParts[streetParts.length - 1];
+        streetName = streetParts.slice(1, -1).join(' ');
+      } else if (streetParts.length === 2) {
+        // Just number + name (no type)
+        streetName = streetParts[1];
       }
     } else {
-      // No street number, use full address as street name
-      if (addressParts.length > 1) {
-        streetType = addressParts[addressParts.length - 1];
-        streetName = addressParts.slice(0, -1).join(' ');
+      // No street number - put everything in streetName
+      if (streetParts.length > 1) {
+        streetType = streetParts[streetParts.length - 1];
+        streetName = streetParts.slice(0, -1).join(' ');
       } else {
-        streetName = address;
+        streetName = parts[0];
       }
     }
-  } else {
-    streetName = address;
+  }
+
+  // Part 2: Suburb, State, Postcode (e.g., "Hamilton QLD 4007")
+  if (parts[1]) {
+    const localityParts = parts[1].trim().split(/\s+/);
+
+    // Last part is postcode (e.g., "4007")
+    if (localityParts.length > 0) {
+      const lastPart = localityParts[localityParts.length - 1];
+      if (/^\d{4}$/.test(lastPart)) {
+        zipCode = lastPart;
+
+        // Second-to-last is state (e.g., "QLD", "NSW", "VIC")
+        if (localityParts.length > 1) {
+          state = localityParts[localityParts.length - 2];
+
+          // Everything before state is city/suburb
+          if (localityParts.length > 2) {
+            city = localityParts.slice(0, -2).join(' ');
+          }
+        }
+      } else {
+        // No postcode - treat as city
+        city = localityParts.join(' ');
+      }
+    }
+  }
+
+  // Part 3: Country (e.g., "Australia")
+  if (parts[2]) {
+    country = parts[2].trim();
   }
 
   return {
     streetNumber,
     streetName,
     streetType,
-    city: city || '',
-    state: state || '',
-    zipCode: zipCode || '',
-    country: 'Australia',
+    city,
+    state,
+    zipCode,
+    country,
   };
 }
 

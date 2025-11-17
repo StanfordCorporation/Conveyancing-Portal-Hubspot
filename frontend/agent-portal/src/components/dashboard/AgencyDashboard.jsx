@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, Briefcase, TrendingUp, Search } from 'lucide-react';
+import { Building2, Users, Briefcase, TrendingUp, Search, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import LeadDetailsModal from './LeadDetailsModal';
 import './agency-dashboard.css';
 
 export default function AgencyDashboard({ onRefresh }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isViewAll } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
+
+  // Modal states
+  const [isLeadDetailsModalOpen, setIsLeadDetailsModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [loadingDealDetails, setLoadingDealDetails] = useState(false);
 
   useEffect(() => {
     loadAgencyDashboard();
@@ -30,6 +36,29 @@ export default function AgencyDashboard({ onRefresh }) {
       setError(err.response?.data?.message || 'Failed to load agency dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewLead = async (deal) => {
+    try {
+      setLoadingDealDetails(true);
+      console.log('[Agency Dashboard] Fetching deal details for:', deal.id);
+
+      // Fetch complete deal details from backend
+      const response = await api.get(`/agency-owner/deals/${deal.id}`);
+      console.log('[Agency Dashboard] Deal details loaded:', response.data);
+
+      // Set selected lead and open modal
+      setSelectedLead(response.data.deal);
+      setIsLeadDetailsModalOpen(true);
+    } catch (err) {
+      console.error('[Agency Dashboard] Error fetching deal details:', err);
+
+      // Show user-friendly error message
+      const errorMessage = err.response?.data?.message || 'Failed to load deal details';
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setLoadingDealDetails(false);
     }
   };
 
@@ -165,14 +194,13 @@ export default function AgencyDashboard({ onRefresh }) {
               <th>Property Address</th>
               <th>Stage</th>
               <th>Assigned Agent</th>
-              <th>Created Date</th>
-              {isAdmin() && <th>Actions</th>}
+              {(isAdmin() || isViewAll()) && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {searchedDeals?.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin() ? 6 : 5} className="text-center">
+                <td colSpan={(isAdmin() || isViewAll()) ? 5 : 4} className="text-center">
                   No deals found
                 </td>
               </tr>
@@ -182,7 +210,7 @@ export default function AgencyDashboard({ onRefresh }) {
                   <td>{deal.dealname || 'Untitled'}</td>
                   <td>{deal.property_address || 'N/A'}</td>
                   <td>
-                    <span className="deal-stage">{deal.dealstage || 'Unknown'}</span>
+                    <span className="deal-stage">{deal.dealstage_name || 'Unknown'}</span>
                   </td>
                   <td>
                     <div className="agent-cell">
@@ -192,28 +220,40 @@ export default function AgencyDashboard({ onRefresh }) {
                       )}
                     </div>
                   </td>
-                  <td>{new Date(deal.createdate).toLocaleDateString()}</td>
-                  {isAdmin() && (
+                  {(isAdmin() || isViewAll()) && (
                     <td>
-                      <select
-                        className="reassign-select"
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleReassignDeal(deal.id, e.target.value);
-                            e.target.value = ''; // Reset
-                          }
-                        }}
-                      >
-                        <option value="" disabled>Reassign to...</option>
-                        {dashboardData.agents
-                          .filter(a => a.id !== deal.assignedAgentId)
-                          .map(agent => (
-                            <option key={agent.id} value={agent.id}>
-                              {agent.firstname} {agent.lastname}
-                            </option>
-                          ))}
-                      </select>
+                      <div className="action-buttons">
+                        <button
+                          className="action-btn view-btn"
+                          title="View Details"
+                          onClick={() => handleViewLead(deal)}
+                          disabled={loadingDealDetails}
+                        >
+                          <Eye size={16} />
+                        </button>
+
+                        {isAdmin() && (
+                          <select
+                            className="reassign-select"
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleReassignDeal(deal.id, e.target.value);
+                                e.target.value = ''; // Reset
+                              }
+                            }}
+                          >
+                            <option value="" disabled>Reassign to...</option>
+                            {dashboardData.agents
+                              .filter(a => a.id !== deal.assignedAgentId)
+                              .map(agent => (
+                                <option key={agent.id} value={agent.id}>
+                                  {agent.firstname} {agent.lastname}
+                                </option>
+                              ))}
+                          </select>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -222,6 +262,16 @@ export default function AgencyDashboard({ onRefresh }) {
           </tbody>
         </table>
       </div>
+
+      {/* Lead Details Modal */}
+      <LeadDetailsModal
+        isOpen={isLeadDetailsModalOpen}
+        onClose={() => {
+          setIsLeadDetailsModalOpen(false);
+          setSelectedLead(null);
+        }}
+        deal={selectedLead}
+      />
     </div>
   );
 }

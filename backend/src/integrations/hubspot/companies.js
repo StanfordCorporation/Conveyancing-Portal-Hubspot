@@ -168,8 +168,8 @@ export const searchCompaniesByTokens = async (businessName, suburb) => {
     const results = response.data.results || [];
     console.log(`[HubSpot Companies] 📊 Found ${results.length} initial matches`);
 
-    // Score and sort results
-    const combinedSearchTerm = `${businessName} ${suburb}`;
+    // Score and sort results using filtered tokens (without stopwords)
+    const combinedSearchTerm = allTokens.join(' ');
     const scoredResults = searchAndScore(results, combinedSearchTerm);
 
     console.log(`[HubSpot Companies] ✅ Scored and filtered to ${scoredResults.length} relevant matches`);

@@ -98,7 +98,9 @@ export async function updateContact(contactId, updateData) {
   try {
     console.log(`[Smokeball Contacts] 🔄 Updating contact: ${contactId}`);
 
-    const response = await client.patch(
+    // Smokeball uses PUT (not PATCH) for contact updates
+    // Content-Type: application/json-patch+json is automatically added by client.put()
+    const response = await client.put(
       SMOKEBALL_API.endpoints.contact(contactId),
       updateData
     );

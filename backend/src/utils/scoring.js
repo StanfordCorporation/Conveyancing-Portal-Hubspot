@@ -4,6 +4,12 @@
  */
 
 /**
+ * Common stopwords to filter out from agency name searches
+ * These words are too generic and don't help narrow down search results
+ */
+const AGENCY_STOPWORDS = ['real', 'estate', 'agency', 'group', 'realty', 'properties'];
+
+/**
  * Calculate Levenshtein distance between two strings
  * Measures minimum edits needed to transform one string into another
  */
@@ -153,7 +159,7 @@ export const generateTokenFilterGroups = (tokens) => {
 
 /**
  * Extract tokens from search input
- * Splits on whitespace and returns unique, non-empty tokens
+ * Splits on whitespace, removes stopwords, and returns unique, non-empty tokens
  */
 export const extractTokens = (input) => {
   if (!input) return [];
@@ -163,6 +169,7 @@ export const extractTokens = (input) => {
       .trim()
       .split(/\s+/)
       .filter((token) => token.length > 0)
+      .filter((token) => !AGENCY_STOPWORDS.includes(token)) // Remove stopwords
       .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
   );
 };

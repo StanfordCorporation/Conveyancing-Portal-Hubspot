@@ -44,6 +44,49 @@ router.get('/dashboard', requireViewAll, requireAgency, async (req, res) => {
 });
 
 /**
+ * GET /api/agency-owner/deals/:dealId
+ * Get complete deal details (for view modal)
+ * Permission: View All or Admin
+ */
+router.get('/deals/:dealId', requireViewAll, requireAgency, async (req, res) => {
+  try {
+    const { id: userId, agencyId } = req.user;
+    const { dealId } = req.params;
+
+    console.log(`[Agency Owner Routes] Deal details requested for ${dealId} by user ${userId}`);
+
+    const dealDetails = await agencyOwnerService.getDealDetails(dealId, agencyId, userId);
+
+    return res.json({
+      success: true,
+      deal: dealDetails
+    });
+  } catch (error) {
+    console.error('[Agency Owner Routes] Get deal details error:', error);
+
+    // Handle specific errors
+    if (error.message.includes('does not belong to this agency')) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to view this deal'
+      });
+    }
+
+    if (error.response?.status === 404) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Deal not found'
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Server Error',
+      message: error.message || 'Failed to fetch deal details'
+    });
+  }
+});
+
+/**
  * GET /api/agency-owner/agents
  * Get all agents with permission levels
  * Permission: View All or Admin

@@ -9,6 +9,41 @@
 import hubspotClient from '../../integrations/hubspot/client.js';
 import * as contactsIntegration from '../../integrations/hubspot/contacts.js';
 import { HUBSPOT } from '../../config/constants.js';
+import { getStageLabel } from '../../config/dealStages.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Get all HubSpot property names from questionnaire schema
+ * @returns {Array<string>} Array of HubSpot property names
+ */
+const getQuestionnaireProperties = () => {
+  try {
+    const schemaPath = path.join(__dirname, '../../config/questionnaire.json');
+    const schemaData = fs.readFileSync(schemaPath, 'utf-8');
+    const schema = JSON.parse(schemaData);
+
+    const properties = [];
+    schema.sections.forEach(section => {
+      section.questions.forEach(question => {
+        if (question.HubSpot_Property_Name) {
+          properties.push(question.HubSpot_Property_Name);
+        }
+      });
+    });
+
+    console.log(`[Agency Owner] Loaded ${properties.length} questionnaire properties from schema`);
+    return properties;
+  } catch (error) {
+    console.error('[Agency Owner] Error loading questionnaire properties:', error);
+    return [];
+  }
+};
 
 /**
  * Get all agents in agency WITH permission levels
@@ -207,7 +242,7 @@ export const getAgencyDashboardData = async (adminId, agencyId) => {
   const agentIds = agents.map(a => a.id);
   const { deals, dealToAgentMap } = await batchGetDealsForAgents(agentIds);
 
-  // Step 3: Enhance deals with agent info
+  // Step 3: Enhance deals with agent info and stage names
   const dealsWithAgents = deals.map(deal => {
     const assignedAgentId = dealToAgentMap[deal.id];
     const assignedAgent = agents.find(a => a.id === assignedAgentId);
@@ -215,6 +250,7 @@ export const getAgencyDashboardData = async (adminId, agencyId) => {
     return {
       id: deal.id,
       ...deal,
+      dealstage_name: getStageLabel(deal.dealstage), // Add human-readable stage name
       assignedAgentId,
       assignedAgent: assignedAgent ? {
         id: assignedAgent.id,
@@ -452,11 +488,120 @@ export const reassignDeal = async (adminId, agencyId, dealId, newAgentId) => {
   return { success: true, previousAgentId: currentAgentAssoc?.toObjectId || null };
 };
 
+/**
+ * Get complete deal details for Agency Dashboard view modal
+ * Fetches deal with all questionnaire properties and primary seller info
+ * @param {string} dealId - Deal ID
+ * @param {string} agencyId - Agency ID (for security verification)
+ * @param {string} requestingUserId - User ID making the request
+ * @returns {Promise<Object>} Complete deal details
+ */
+export const getDealDetails = async (dealId, agencyId, requestingUserId) => {
+  console.log(`[Agency Owner] Fetching deal details for ${dealId} (requested by ${requestingUserId})`);
+
+  // Step 1: Get all questionnaire properties
+  const questionnaireProperties = getQuestionnaireProperties();
+
+  const allProperties = [
+    // Core deal properties
+    'dealname',
+    'dealstage',
+    'property_address',
+    'number_of_owners',
+    'is_draft',
+    'createdate',
+    'hs_lastmodifieddate',
+    'closedate',
+    'amount',
+    'pipeline',
+    // All questionnaire properties
+    ...questionnaireProperties
+  ];
+
+  // Step 2: Fetch deal with all properties
+  const dealResponse = await hubspotClient.get(
+    `/crm/v3/objects/deals/${dealId}`,
+    {
+      params: {
+        properties: allProperties.join(',')
+      }
+    }
+  );
+
+  const deal = dealResponse.data;
+
+  // Step 3: Verify deal belongs to agency (security check)
+  const dealCompanyAssocResponse = await hubspotClient.get(
+    `/crm/v3/objects/deals/${dealId}/associations/companies`
+  );
+
+  const dealAgencyId = dealCompanyAssocResponse.data.results[0]?.id;
+
+  if (String(dealAgencyId) !== String(agencyId)) {
+    console.error(`[Agency Owner] Security violation: Deal ${dealId} does not belong to agency ${agencyId}`);
+    throw new Error('Deal does not belong to this agency');
+  }
+
+  // Step 4: Fetch primary seller
+  const sellersResponse = await hubspotClient.get(
+    `/crm/v3/objects/deals/${dealId}/associations/contacts`
+  );
+
+  const sellerAssociations = sellersResponse.data.results;
+
+  // Find primary seller (association type ID 1 = Primary Seller)
+  const primarySellerAssoc = sellerAssociations.find(assoc =>
+    assoc.type === 'deal_to_contact' ||
+    assoc.associationTypes?.some(t => t.typeId === HUBSPOT.ASSOCIATION_TYPES.DEAL_TO_PRIMARY_SELLER)
+  );
+
+  let primarySeller = null;
+  if (primarySellerAssoc) {
+    try {
+      const sellerResponse = await hubspotClient.get(
+        `/crm/v3/objects/contacts/${primarySellerAssoc.id}`,
+        {
+          params: {
+            properties: 'firstname,lastname,email,phone,contact_type'
+          }
+        }
+      );
+
+      // Only include if it's not an agent
+      if (sellerResponse.data.properties.contact_type !== 'Agent') {
+        primarySeller = {
+          id: primarySellerAssoc.id,
+          firstname: sellerResponse.data.properties.firstname,
+          lastname: sellerResponse.data.properties.lastname,
+          email: sellerResponse.data.properties.email,
+          phone: sellerResponse.data.properties.phone
+        };
+      }
+    } catch (error) {
+      console.error(`[Agency Owner] Error fetching primary seller ${primarySellerAssoc.id}:`, error.message);
+      // Continue without primary seller (graceful degradation)
+    }
+  }
+
+  // Step 5: Return enhanced deal
+  const enhancedDeal = {
+    id: deal.id,
+    ...deal.properties,
+    dealstage_name: getStageLabel(deal.properties.dealstage),
+    primarySeller
+  };
+
+  console.log(`[Agency Owner] ✅ Deal details loaded for ${dealId}`);
+
+  return enhancedDeal;
+};
+
 export default {
   getAgentsWithPermissions,
   batchGetDealsForAgents,
   getAgencyDashboardData,
   promoteAgentToAdmin,
   demoteAgent,
-  reassignDeal
+  reassignDeal,
+  getDealDetails
 };
