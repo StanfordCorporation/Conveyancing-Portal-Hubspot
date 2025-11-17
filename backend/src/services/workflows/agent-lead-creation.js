@@ -219,6 +219,50 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
     console.log('[Agent Lead Creation] Deal created successfully:', deal.id);
 
     // ========================================
+    // STEP 4B: Add custom association labels to distinguish contact roles
+    // ========================================
+    console.log('[Agent Lead Creation] ⏳ STEP 4B: Adding custom association labels...');
+
+    try {
+      // Add Primary Seller label (USER_DEFINED type 1)
+      console.log(`[Agent Lead Creation] 🏷️  Labeling Primary Seller: ${primarySeller.id}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${primarySeller.id}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 1 // Primary Seller label (Deal → Primary Seller)
+        }]
+      );
+
+      // Add Agent label (USER_DEFINED type 6)
+      console.log(`[Agent Lead Creation] 🏷️  Labeling Agent: ${agentId}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${agentId}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 6 // Agent label (Deal → Agent)
+        }]
+      );
+
+      // Add Additional Seller labels (USER_DEFINED type 4)
+      for (const sellerId of additionalSellerIds) {
+        console.log(`[Agent Lead Creation] 🏷️  Labeling Additional Seller: ${sellerId}`);
+        await hubspotClient.put(
+          `/crm/v4/objects/deal/${deal.id}/associations/contact/${sellerId}`,
+          [{
+            associationCategory: 'USER_DEFINED',
+            associationTypeId: 4 // Additional Seller label (Deal → Additional Seller)
+          }]
+        );
+      }
+
+      console.log('[Agent Lead Creation] ✅ Custom association labels added successfully');
+    } catch (labelError) {
+      console.error('[Agent Lead Creation] ⚠️  Failed to add custom labels (non-critical):', labelError.message);
+      // Don't fail the entire workflow - labels are nice to have but not critical
+    }
+
+    // ========================================
     // STEP 5: Create Smokeball lead (if enabled and not draft)
     // ========================================
     let smokeballLead = null;

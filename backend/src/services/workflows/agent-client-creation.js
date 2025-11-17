@@ -1,5 +1,6 @@
 import { createContact } from '../../integrations/hubspot/contacts.js';
 import { createDealWithAssociations } from '../../integrations/hubspot/deals.js';
+import hubspotClient from '../../integrations/hubspot/client.js';
 import { createSmokeballLeadFromDeal } from './smokeball-lead-creation.js';
 import { SMOKEBALL_ENABLED } from '../../config/smokeball.js';
 import { HUBSPOT } from '../../config/constants.js';
@@ -83,6 +84,38 @@ export const processAgentClientCreation = async (formData) => {
     const deal = await createDealWithAssociations(dealData, associations);
 
     console.log('[Agent Client Creation] Deal created successfully:', deal.id);
+
+    // ========================================
+    // STEP 3B: Add custom association labels to distinguish contact roles
+    // ========================================
+    console.log('[Agent Client Creation] ⏳ STEP 3B: Adding custom association labels...');
+
+    try {
+      // Add Primary Seller label to client (USER_DEFINED type 1)
+      console.log(`[Agent Client Creation] 🏷️  Labeling Client as Primary Seller: ${clientContact.id}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${clientContact.id}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 1 // Primary Seller label (Deal → Primary Seller)
+        }]
+      );
+
+      // Add Agent label (USER_DEFINED type 6)
+      console.log(`[Agent Client Creation] 🏷️  Labeling Agent: ${formData.agentId}`);
+      await hubspotClient.put(
+        `/crm/v4/objects/deal/${deal.id}/associations/contact/${formData.agentId}`,
+        [{
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 6 // Agent label (Deal → Agent)
+        }]
+      );
+
+      console.log('[Agent Client Creation] ✅ Custom association labels added successfully');
+    } catch (labelError) {
+      console.error('[Agent Client Creation] ⚠️  Failed to add custom labels (non-critical):', labelError.message);
+      // Don't fail the entire workflow - labels are nice to have but not critical
+    }
 
     // Step 4: Create Smokeball lead (if enabled)
     let smokeballLead = null;

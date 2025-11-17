@@ -154,11 +154,12 @@ router.post('/leads/:leadId/send-to-client', async (req, res) => {
     // TODO: Send OTP invitation
     console.log('[Agent Routes] 📧 Would send invitation to:', seller.data.properties.email);
 
-    // Update deal to active stage
+    // Update deal to active stage and clear draft flag
     await hubspotClient.patch(`/crm/v3/objects/deals/${leadId}`, {
       properties: {
         dealstage: '1923713518', // Move from draft to active
-        client_portal_sent_at: new Date().toISOString()
+        client_portal_sent_at: new Date().toISOString(),
+        is_draft: null // Clear draft flag - deal is now active
       }
     });
 
