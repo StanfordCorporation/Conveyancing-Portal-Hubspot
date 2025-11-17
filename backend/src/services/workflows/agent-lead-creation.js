@@ -162,6 +162,7 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
       pipeline: HUBSPOT.PIPELINES.FORM_2S, // Form 2s pipeline only
       property_address: leadData.property.address,
       number_of_owners: (additionalSellerIds.length + 1).toString(),
+      lead_source: 'Agent_Portal', // Track where this lead came from
       is_draft: leadData.isDraft ? 'Yes' : null, // Use is_draft property (Yes or null)
       agent_title_search: leadData.agentTitleSearch || null,
       agent_title_search_file: leadData.agentTitleSearchFile || null,

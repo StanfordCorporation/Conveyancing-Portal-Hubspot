@@ -191,6 +191,7 @@ export const processClientDisclosure = async (formData) => {
       property_address: formData.property.address,
       transaction_type: 'sale', // Disclosure form is always for selling property
       number_of_owners: (additionalSellerIds.length + 1).toString(),
+      lead_source: 'Disclosure_Page', // Track where this lead came from
       ...initializeDisclosureFields()
     };
 
