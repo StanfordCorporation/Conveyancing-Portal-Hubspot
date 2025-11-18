@@ -261,4 +261,52 @@ router.get('/test', requireSmokeballEnabled, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/smokeball/deals/:dealId/sync
+ * Complete Smokeball sync workflow - creates lead, contacts, updates addresses, converts to matter
+ * Called from HubSpot custom workflow actions or custom buttons
+ * 
+ * URL: POST /api/smokeball/deals/{dealId}/sync
+ * 
+ * This endpoint performs all Smokeball operations in sequence:
+ * 1. Create lead in Smokeball (if not exists)
+ * 2. Create/update contacts in Smokeball
+ * 3. Update property address in Smokeball matter layout
+ * 4. Update residential address in contacts
+ * 5. Convert lead to matter
+ * 
+ * Example HubSpot workflow action:
+ * POST https://your-api-domain.com/api/smokeball/deals/{{deal.id}}/sync
+ */
+router.post('/deals/:dealId/sync', 
+  requireSmokeballEnabled,
+  async (req, res) => {
+    try {
+      const { dealId } = req.params;
+      
+      console.log(`[Smokeball Manual Sync] 🔄 Complete sync workflow triggered for deal ${dealId}`);
+      
+      // Import the complete sync workflow
+      const { syncDealToSmokeball } = await import('../services/workflows/smokeball-complete-sync.js');
+      
+      // Execute complete workflow
+      const result = await syncDealToSmokeball(dealId);
+      
+      res.json({
+        success: true,
+        message: 'Smokeball sync completed successfully',
+        result
+      });
+      
+    } catch (error) {
+      console.error('[Smokeball Manual Sync] ❌ Error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: 'Smokeball sync failed - check logs for details'
+      });
+    }
+  }
+);
+
 export default router;
