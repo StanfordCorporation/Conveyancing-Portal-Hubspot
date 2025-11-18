@@ -107,9 +107,7 @@ app.post('/api/agencies/search-agent', agenciesRoutes.searchAgent);
 /**
  * Workflow Routes
  */
-app.post('/api/workflows/agent-client-creation', workflowsRoutes.agentClientCreation);
 app.post('/api/workflows/client-disclosure', workflowsRoutes.clientDisclosure);
-app.post('/api/workflows/property-intake', workflowsRoutes.propertyIntake);
 
 /**
  * Property Questionnaire Routes (HubSpot v3 API Pattern)
@@ -214,9 +212,7 @@ app.get('/', (req, res) => {
         searchAgent: 'POST /api/agencies/search-agent'
       },
       workflows: {
-        clientDisclosure: 'POST /api/workflows/client-disclosure',
-        agentClientCreation: 'POST /api/workflows/agent-client-creation',
-        propertyIntake: 'POST /api/workflows/property-intake'
+        clientDisclosure: 'POST /api/workflows/client-disclosure'
       },
       propertyQuestionnaire: {
         description: 'Property intake questionnaire (HubSpot v3 API pattern)',

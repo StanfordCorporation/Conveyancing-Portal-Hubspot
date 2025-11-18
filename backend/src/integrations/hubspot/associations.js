@@ -175,7 +175,7 @@ export const getDealContacts = async (dealId) => {
 
     const batchResponse = await hubspotClient.post('/crm/v3/objects/contacts/batch/read', {
       inputs: contactIds.map(id => ({ id: String(id) })),
-      properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type', 'address']
+      properties: ['firstname', 'lastname', 'middle_name', 'email', 'phone', 'contact_type', 'address']
     });
 
     const contactDetails = batchResponse.data.results || [];

@@ -105,7 +105,7 @@ export const getContact = async (contactId, properties = null) => {
     params.properties = properties.join(',');
   } else {
     // Default properties
-    params.properties = ['firstname','lastname','email','phone','address','contact_type','smokeball_contact_id'].join(',');
+    params.properties = ['firstname','lastname','middle_name','email','phone','address','contact_type','smokeball_contact_id'].join(',');
   }
 
   const response = await hubspotClient.get(`/crm/v3/objects/contacts/${contactId}`, {

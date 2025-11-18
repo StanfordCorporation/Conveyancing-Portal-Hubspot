@@ -418,6 +418,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
               id: primarySellerContact.id,
               firstname: primarySellerContact.properties.firstname || '',
               lastname: primarySellerContact.properties.lastname || '',
+              middle_name: primarySellerContact.properties.middle_name || '',
               email: primarySellerContact.properties.email || '',
               phone: primarySellerContact.properties.phone || '',
               address: primarySellerContact.properties.address || ''
@@ -442,6 +443,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
           primarySeller: {
             id: primarySeller?.id || null,
             fullName: `${primarySeller?.firstname || ''} ${primarySeller?.lastname || ''}`.trim() || 'N/A',
+            middleName: primarySeller?.middle_name || '',
             email: primarySeller?.email || 'N/A',
             phone: primarySeller?.phone || 'N/A',
             residentialAddress: primarySeller?.address || 'N/A'
@@ -451,6 +453,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
             fullName: additionalSellers.length > 0
               ? `${additionalSellers[0].firstname} ${additionalSellers[0].lastname}`.trim()
               : 'N/A',
+            middleName: additionalSellers.length > 0 ? (additionalSellers[0].middle_name || '') : '',
             email: additionalSellers.length > 0 ? additionalSellers[0].email : 'N/A',
             phone: additionalSellers.length > 0 ? additionalSellers[0].phone : 'N/A'
           },
@@ -686,6 +689,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
           id: contact.id,
           firstname: props.firstname || '',
           lastname: props.lastname || '',
+          middle_name: props.middle_name || '',
           email: props.email || '',
           phone: props.phone || '',
           address: props.address || ''
@@ -876,6 +880,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             id: primarySellerContact.id,
             firstname: primarySellerContact.properties.firstname || '',
             lastname: primarySellerContact.properties.lastname || '',
+            middle_name: primarySellerContact.properties.middle_name || '',
             email: primarySellerContact.properties.email || '',
             phone: primarySellerContact.properties.phone || '',
             address: primarySellerContact.properties.address || ''
@@ -941,12 +946,14 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
       // Seller Information
       primarySeller: {
         fullName: `${associations.primary_seller?.firstname || ''} ${associations.primary_seller?.lastname || ''}`.trim() || 'N/A',
+        middleName: associations.primary_seller?.middle_name || '',
         email: associations.primary_seller?.email || 'N/A',
         phone: associations.primary_seller?.phone || 'N/A',
         residentialAddress: associations.primary_seller?.address || 'N/A'
       },
       additionalSeller: {
         fullName: `${associations.additional_seller?.firstname || ''} ${associations.additional_seller?.lastname || ''}`.trim() || 'N/A',
+        middleName: associations.additional_seller?.middle_name || '',
         email: associations.additional_seller?.email || 'N/A',
         phone: associations.additional_seller?.phone || 'N/A'
       },
@@ -1135,7 +1142,7 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
 router.patch('/contact/:contactId', authenticateJWT, async (req, res) => {
   try {
     const { contactId } = req.params;
-    const { firstname, lastname, email, phone, address } = req.body;
+    const { firstname, lastname, email, phone, address, middle_name } = req.body;
 
     // Verify user has permission to update this contact
     // User can update themselves or additional sellers on their deals
@@ -1172,6 +1179,7 @@ router.patch('/contact/:contactId', authenticateJWT, async (req, res) => {
     if (email !== undefined) updates.email = email;
     if (phone !== undefined) updates.phone = phone;
     if (address !== undefined) updates.address = address;
+    if (middle_name !== undefined) updates.middle_name = middle_name;
 
     await contactsIntegration.updateContact(contactId, updates);
 
@@ -1466,6 +1474,18 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
 
         // Add search properties to update payload
         Object.assign(updatePayload, searchProperties);
+
+        // Build searches_quote_sms property with quote amount and required searches
+        const requiredSearches = quote.breakdown
+          .filter(search => search.included)
+          .map(search => search.name);
+        
+        const quoteAmount = quote.grandTotal.toFixed(2);
+        const searchesQuoteSms = `Quote Amount : $${quoteAmount}\n\nRequired Searches :\n\n${requiredSearches.map(search => `- ${search}`).join('\n')}`;
+        
+        updatePayload.searches_quote_sms = searchesQuoteSms;
+        
+        console.log(`[Deal Stage] 📱 searches_quote_sms property set:`, searchesQuoteSms);
 
         console.log(`[Deal Stage] ✅ Property search fields determined based on quote`);
 

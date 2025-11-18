@@ -105,12 +105,20 @@ export default function PropertyInformation({ dealId, initialData }) {
 
   // Handle information reviewed - progress to next step
   const handleInformationReviewed = async () => {
-    // Validate Client Residential Address is filled in
+    // Validate Client Residential Address is filled in (REQUIRED - blocks if missing)
     const residentialAddress = propertyData.primarySeller?.residentialAddress;
     if (!residentialAddress || residentialAddress.trim() === '' || residentialAddress === 'N/A') {
       alert('⚠️ Client Residential Address is required.\n\nPlease click "Edit" to add the client\'s residential address before proceeding.');
       console.log('[PropertyInfo] ⚠️ Validation failed: Client Residential Address is missing');
       return; // Stop execution
+    }
+
+    // Prompt about Middle Name (OPTIONAL - reminder only, does not block)
+    const middleName = propertyData.primarySeller?.middleName || propertyData.primarySeller?.middlename;
+    if (!middleName || middleName.trim() === '' || middleName === 'N/A') {
+      alert('ℹ️ Please also check if your middle name is put in.\n\nYou can click "Edit" to add it, or continue without it.');
+      console.log('[PropertyInfo] ℹ️ Middle Name reminder shown (optional field)');
+      // Continue execution - don't block
     }
 
     try {
@@ -149,6 +157,7 @@ export default function PropertyInformation({ dealId, initialData }) {
         id: propertyData.primarySeller?.id,
         firstname: propertyData.primarySeller?.fullName?.split(' ')[0] || '',
         lastname: propertyData.primarySeller?.fullName?.split(' ').slice(1).join(' ') || '',
+        middlename: propertyData.primarySeller?.middleName || propertyData.primarySeller?.middlename || '',
         email: propertyData.primarySeller?.email || '',
         phone: propertyData.primarySeller?.phone || '',
         address: propertyData.primarySeller?.residentialAddress || ''
@@ -157,6 +166,7 @@ export default function PropertyInformation({ dealId, initialData }) {
         id: propertyData.additionalSeller?.id,
         firstname: propertyData.additionalSeller?.fullName?.split(' ')[0] || '',
         lastname: propertyData.additionalSeller?.fullName?.split(' ').slice(1).join(' ') || '',
+        middlename: propertyData.additionalSeller?.middleName || propertyData.additionalSeller?.middlename || '',
         email: propertyData.additionalSeller?.email || '',
         phone: propertyData.additionalSeller?.phone || ''
       } : null,
@@ -182,6 +192,7 @@ export default function PropertyInformation({ dealId, initialData }) {
         await api.patch(`/client/contact/${editedData.primarySeller.id}`, {
           firstname: editedData.primarySeller.firstname,
           lastname: editedData.primarySeller.lastname,
+          middle_name: editedData.primarySeller.middlename || '',
           email: editedData.primarySeller.email,
           phone: editedData.primarySeller.phone,
           address: editedData.primarySeller.address
@@ -194,6 +205,7 @@ export default function PropertyInformation({ dealId, initialData }) {
         await api.patch(`/client/contact/${editedData.additionalSeller.id}`, {
           firstname: editedData.additionalSeller.firstname,
           lastname: editedData.additionalSeller.lastname,
+          middle_name: editedData.additionalSeller.middlename || '',
           email: editedData.additionalSeller.email,
           phone: editedData.additionalSeller.phone
         });

@@ -38,6 +38,19 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
               )}
             </div>
             <div className="info-row">
+              <label className="field-label">Middle Name</label>
+              {editMode ? (
+                <input
+                  type="text"
+                  className="field-input"
+                  value={primarySeller?.middlename || ''}
+                  onChange={(e) => onChange('primarySeller', 'middlename', e.target.value)}
+                />
+              ) : (
+                <p className="field-value">{primarySeller?.middleName || primarySeller?.middlename || 'N/A'}</p>
+              )}
+            </div>
+            <div className="info-row">
               <label className="field-label">Email Address</label>
               {editMode ? (
                 <input
@@ -95,6 +108,19 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   />
                 ) : (
                   <p className="field-value">{additionalSeller?.fullName?.split(' ').slice(1).join(' ') || additionalSeller?.lastname || 'N/A'}</p>
+                )}
+              </div>
+              <div className="info-row">
+                <label className="field-label">Middle Name</label>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="field-input"
+                    value={additionalSeller?.middlename || ''}
+                    onChange={(e) => onChange('additionalSeller', 'middlename', e.target.value)}
+                  />
+                ) : (
+                  <p className="field-value">{additionalSeller?.middleName || additionalSeller?.middlename || 'N/A'}</p>
                 )}
               </div>
               <div className="info-row">

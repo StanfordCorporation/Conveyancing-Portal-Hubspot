@@ -184,6 +184,10 @@ export const processClientDisclosure = async (formData) => {
     // ========================================
     console.log('[Client Disclosure] ⏳ STEP 6: Creating deal...');
 
+    // Extract primary seller information from contact (deal-level properties)
+    const primarySellerFullName = `${primarySeller.properties?.firstname || ''} ${primarySeller.properties?.lastname || ''}`.trim();
+    const primarySellerPhone = primarySeller.properties?.phone || null;
+
     const dealData = {
       dealname: `${formData.property.address} - ${formData.seller.firstname} ${formData.seller.lastname}`,
       dealstage: '1923713518', // First stage ID from HubSpot pipeline
@@ -192,6 +196,9 @@ export const processClientDisclosure = async (formData) => {
       transaction_type: 'sale', // Disclosure form is always for selling property
       number_of_owners: (additionalSellerIds.length + 1).toString(),
       lead_source: 'Disclosure_Page', // Track where this lead came from
+      // Deal-level primary seller properties
+      primary_seller_full_name: primarySellerFullName,
+      primary_seller_phone: primarySellerPhone,
       ...initializeDisclosureFields()
     };
 

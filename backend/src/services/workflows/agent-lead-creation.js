@@ -156,6 +156,10 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
       console.log(`[Agent Lead Creation] Transformed ${Object.keys(transformedQuestionnaireData).length} questionnaire fields`);
     }
 
+    // Extract primary seller information from contact (deal-level properties)
+    const primarySellerFullName = `${primarySeller.properties?.firstname || ''} ${primarySeller.properties?.lastname || ''}`.trim();
+    const primarySellerPhone = primarySeller.properties?.phone || null;
+
     const dealData = {
       dealname: `${leadData.property.address} - ${primarySellerNames.firstname} ${primarySellerNames.lastname}`,
       dealstage: '1923713518', // Stage 1: Client Disclosure
@@ -166,6 +170,9 @@ export const processAgentLeadCreation = async (agentId, leadData) => {
       is_draft: leadData.isDraft ? 'Yes' : null, // Use is_draft property (Yes or null)
       agent_title_search: leadData.agentTitleSearch || null,
       agent_title_search_file: leadData.agentTitleSearchFile || null,
+      // Deal-level primary seller properties
+      primary_seller_full_name: primarySellerFullName,
+      primary_seller_phone: primarySellerPhone,
       // Add transformed questionnaire data
       ...transformedQuestionnaireData
     };

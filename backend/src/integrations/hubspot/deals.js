@@ -44,6 +44,10 @@ export const createDeal = async (dealData, associations = []) => {
       agent_title_search: dealData.agent_title_search || null,
       agent_title_search_file: dealData.agent_title_search_file || null,
 
+      // Primary seller information (deal-level properties)
+      primary_seller_full_name: dealData.primary_seller_full_name || '',
+      primary_seller_phone: dealData.primary_seller_phone || null,
+
       // Section 1: Title Details & Encumbrances
       body_corporate: dealData.body_corporate || '',
       registered_encumbrances: dealData.registered_encumbrances || '',
