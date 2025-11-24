@@ -19,7 +19,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * @param {object} envelopeStatusFromHubSpot - Envelope status from HubSpot (updated by webhooks)
  * @param {function} onComplete - Callback when signing is complete
  */
-export default function SigningStatus({ dealId, contactEmail, sellers, envelopeStatusFromHubSpot, onComplete }) {
+export default function SigningStatus({ dealId, contactEmail, sellers, envelopeStatusFromHubSpot, onComplete, readOnly = false }) {
   const [loading, setLoading] = useState(true);
   const [envelopeId, setEnvelopeId] = useState(null);
   const [signingStatus, setSigningStatus] = useState(null);
@@ -382,8 +382,14 @@ export default function SigningStatus({ dealId, contactEmail, sellers, envelopeS
     );
   }
 
-  // If no envelope exists yet, show "Start Signing" button
-  if (!envelopeId && !signingStatus) {
+  // If no envelope exists yet (no status from HubSpot), show "Start Signing" button
+  // This handles the case when docusign_csa_json is null (no envelope created yet)
+  const hasNoEnvelopeStatus = !envelopeStatusFromHubSpot || 
+                               !envelopeStatusFromHubSpot.envelope_status || 
+                               envelopeStatusFromHubSpot.envelope_status === null ||
+                               envelopeStatusFromHubSpot.envelope_status === undefined;
+  
+  if (hasNoEnvelopeStatus && !signingStatus && !envelopeId) {
     return (
       <div className="signing-status-container">
         <div className="status-message status-ready">
@@ -400,7 +406,41 @@ export default function SigningStatus({ dealId, contactEmail, sellers, envelopeS
     );
   }
 
+  // If we have an envelopeId but no signingStatus yet, show loading
+  if (envelopeId && !signingStatus) {
+    return (
+      <div className="signing-status-container">
+        <div className="status-loading">
+          <div className="spinner"></div>
+          <p>Preparing signing session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no signingStatus and no envelopeId, but we have envelope status from HubSpot,
+  // something went wrong - show error or fallback to start signing
+  if (!signingStatus && !envelopeId && !hasNoEnvelopeStatus) {
+    console.warn('[SigningStatus] ⚠️ Have envelope status but no signingStatus or envelopeId');
+    return (
+      <div className="signing-status-container">
+        <div className="status-message status-ready">
+          <div className="status-icon">📝</div>
+          <div className="status-content">
+            <h2>Ready to Sign</h2>
+            <p>Click below to start the signing process for this property disclosure.</p>
+            <button onClick={checkSigningStatus} className="btn-primary start-signing-btn">
+              Start Signing Process
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Final fallback - if no signingStatus at all, return null
   if (!signingStatus) {
+    console.warn('[SigningStatus] ⚠️ No signingStatus available - returning null');
     return null;
   }
 
