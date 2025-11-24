@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * Payment Instructions Component
  * Displays payment information and Stripe payment form
  */
-export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete, isActive }) {
+export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteAmount, propertyAddress, onComplete, isActive, readOnly = false }) {
   const [paymentMethod, setPaymentMethod] = useState(null); // 'Stripe' or 'Bank Transfer'
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
@@ -215,19 +215,6 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
           onSuccess={handlePaymentSuccess}
           onCancel={handleCancelPayment}
         />
-
-        {/* Test Cards Information (only show in development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="test-cards-info">
-            <h4>🧪 Test Cards (Development Mode)</h4>
-            <ul>
-              <li><strong>Success:</strong> 4242 4242 4242 4242</li>
-              <li><strong>Requires Authentication:</strong> 4000 0025 0000 3155</li>
-              <li><strong>Declined:</strong> 4000 0000 0000 9995</li>
-              <li>Use any future expiry date and any 3-digit CVC</li>
-            </ul>
-          </div>
-        )}
       </div>
     );
   }

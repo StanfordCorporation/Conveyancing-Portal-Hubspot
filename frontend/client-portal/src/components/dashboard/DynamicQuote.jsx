@@ -18,7 +18,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
  * - onSubmit: Callback to submit questionnaire
  * - submitting: Boolean indicating if submission is in progress
  */
-export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submitting = false }) {
+export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submitting = false, readOnly = false }) {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -222,15 +222,22 @@ export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submi
         </div>
       </details>
 
+      {/* Phase 3.5: Read-only notice */}
+      {readOnly && (
+        <div className="read-only-notice">
+          <p>This section is read-only. Payment has been completed.</p>
+        </div>
+      )}
+
       {/* Navigation and Action Buttons */}
       <div className="quote-actions">
         {onBack && (
-          <button onClick={onBack} className="btn-secondary">
+          <button onClick={onBack} className="btn-secondary" disabled={readOnly}>
             ← Back to Questionnaire
           </button>
         )}
 
-        <button onClick={fetchQuote} className="btn-secondary refresh-btn">
+        <button onClick={fetchQuote} className="btn-secondary refresh-btn" disabled={readOnly}>
           Recalculate Quote
         </button>
 
@@ -238,7 +245,7 @@ export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submi
           <button
             onClick={onSubmit}
             className="btn-primary submit-btn"
-            disabled={submitting}
+            disabled={submitting || readOnly}
           >
             {submitting ? 'Submitting...' : 'Submit Questionnaire ✓'}
           </button>
@@ -247,6 +254,7 @@ export default function DynamicQuote({ dealId, onUpdate, onBack, onSubmit, submi
         {!onSubmit && (
           <button
             onClick={handleAcceptQuote}
+            disabled={accepting || readOnly}
             className="btn-primary accept-quote-btn"
             disabled={accepting}
           >

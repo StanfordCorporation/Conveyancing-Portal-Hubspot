@@ -19,7 +19,8 @@ const AddressAutocomplete = ({
   placeholder = 'Enter address',
   className = '',
   id,
-  disabled = false
+  disabled = false,
+  ...restProps // Accept any other props including data attributes
 }) => {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -127,6 +128,7 @@ const AddressAutocomplete = ({
       className={className}
       disabled={disabled}
       autoComplete="off"
+      {...restProps} // Spread any additional props (including data attributes)
     />
   );
 };

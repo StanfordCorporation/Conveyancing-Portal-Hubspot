@@ -7,6 +7,7 @@ import { AgentSelectionModal } from './AgentSelectionModal';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
 import AddressAutocomplete from '../../../../src/components/common/AddressAutocomplete';
+import { normalizePhoneToInternational, normalizePhoneForComparison } from '../../utils/phone';
 
 export default function DisclosureForm() {
   const navigate = useNavigate();
@@ -29,6 +30,13 @@ export default function DisclosureForm() {
   const [error, setError] = useState('');
   const [showAgencySearch, setShowAgencySearch] = useState(false);
   const [showAgentSelection, setShowAgentSelection] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({
+    primarySeller: {
+      email: '',
+      mobile: ''
+    },
+    additionalSellers: []
+  });
 
   const steps = [
     { number: 1, name: 'Property Information' },
@@ -92,15 +100,163 @@ export default function DisclosureForm() {
         email: ''
       }));
       setAdditionalSellers([...additionalSellers, ...newSellers]);
+      
+      // Update validation errors array
+      setValidationErrors({
+        ...validationErrors,
+        additionalSellers: [
+          ...validationErrors.additionalSellers,
+          ...newSellers.map(() => ({ email: '', mobile: '' }))
+        ]
+      });
     } else if (targetLength < currentLength) {
       setAdditionalSellers(additionalSellers.slice(0, targetLength));
+      
+      // Update validation errors array
+      setValidationErrors({
+        ...validationErrors,
+        additionalSellers: validationErrors.additionalSellers.slice(0, targetLength)
+      });
     }
+    
+    // Re-validate after change
+    setTimeout(() => {
+      const { errors } = validateSellerUniqueness();
+      setValidationErrors(errors);
+    }, 100);
+  };
+
+  // Normalize email for comparison
+  const normalizeEmailForComparison = (email) => {
+    if (!email) return '';
+    return email.toLowerCase().trim();
+  };
+
+  // Check for duplicate emails across sellers
+  const hasDuplicateEmails = (primarySeller, additionalSellers) => {
+    const primaryEmail = normalizeEmailForComparison(primarySeller.email);
+    if (!primaryEmail) return false;
+    
+    return additionalSellers.some(seller => 
+      normalizeEmailForComparison(seller.email) === primaryEmail
+    );
+  };
+
+  // Check for duplicate phones across sellers
+  const hasDuplicatePhones = (primarySeller, additionalSellers) => {
+    const primaryPhone = normalizePhoneForComparison(primarySeller.mobile);
+    if (!primaryPhone) return false;
+    
+    return additionalSellers.some(seller => {
+      const sellerPhone = normalizePhoneForComparison(seller.mobile);
+      return sellerPhone && sellerPhone === primaryPhone;
+    });
+  };
+
+  // Check for duplicates within additional sellers
+  const hasDuplicateWithinAdditional = (additionalSellers) => {
+    const emails = new Map();
+    const phones = new Map();
+    
+    for (let i = 0; i < additionalSellers.length; i++) {
+      const seller = additionalSellers[i];
+      const email = normalizeEmailForComparison(seller.email);
+      const phone = normalizePhoneForComparison(seller.mobile);
+      
+      if (email && emails.has(email)) {
+        return { type: 'email', duplicate: true, indices: [emails.get(email), i] };
+      }
+      if (phone && phones.has(phone)) {
+        return { type: 'phone', duplicate: true, indices: [phones.get(phone), i] };
+      }
+      
+      if (email) emails.set(email, i);
+      if (phone) phones.set(phone, i);
+    }
+    
+    return { duplicate: false };
+  };
+
+  // Validate seller uniqueness
+  const validateSellerUniqueness = () => {
+    const errors = {
+      primarySeller: { email: '', mobile: '' },
+      additionalSellers: additionalSellers.map(() => ({ email: '', mobile: '' }))
+    };
+    
+    let hasErrors = false;
+    
+    // Check primary vs additional sellers - Email
+    if (hasDuplicateEmails(primarySeller, additionalSellers)) {
+      errors.primarySeller.email = 'Email must be different from additional sellers';
+      hasErrors = true;
+      
+      // Mark matching additional sellers
+      const primaryEmail = normalizeEmailForComparison(primarySeller.email);
+      additionalSellers.forEach((seller, index) => {
+        if (normalizeEmailForComparison(seller.email) === primaryEmail) {
+          errors.additionalSellers[index].email = 'Email must be different from primary seller';
+        }
+      });
+    }
+    
+    // Check primary vs additional sellers - Phone
+    if (hasDuplicatePhones(primarySeller, additionalSellers)) {
+      errors.primarySeller.mobile = 'Phone number must be different from additional sellers';
+      hasErrors = true;
+      
+      // Mark matching additional sellers
+      const primaryPhone = normalizePhoneForComparison(primarySeller.mobile);
+      additionalSellers.forEach((seller, index) => {
+        if (normalizePhoneForComparison(seller.mobile) === primaryPhone) {
+          errors.additionalSellers[index].mobile = 'Phone number must be different from primary seller';
+        }
+      });
+    }
+    
+    // Check duplicates within additional sellers
+    const duplicateCheck = hasDuplicateWithinAdditional(additionalSellers);
+    if (duplicateCheck.duplicate) {
+      const type = duplicateCheck.type;
+      const seen = new Map();
+      
+      additionalSellers.forEach((seller, index) => {
+        const value = type === 'email' 
+          ? normalizeEmailForComparison(seller.email)
+          : normalizePhoneForComparison(seller.mobile);
+        
+        if (value && seen.has(value)) {
+          const field = type === 'email' ? 'email' : 'mobile';
+          const message = `${type === 'email' ? 'Email' : 'Phone number'} must be unique`;
+          errors.additionalSellers[index][field] = message;
+          errors.additionalSellers[seen.get(value)][field] = message;
+          hasErrors = true;
+        } else if (value) {
+          seen.set(value, index);
+        }
+      });
+    }
+    
+    return { errors, hasErrors };
   };
 
   const updateAdditionalSeller = (index, field, value) => {
     const updated = [...additionalSellers];
-    updated[index] = { ...updated[index], [field]: value };
+    
+    // If updating mobile field, normalize it
+    if (field === 'mobile') {
+      updated[index] = { ...updated[index], [field]: normalizePhoneToInternational(value) || value };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    
     setAdditionalSellers(updated);
+    
+    // Trigger validation
+    setTimeout(() => {
+      const { errors } = validateSellerUniqueness();
+      setValidationErrors(errors);
+    }, 300);
   };
 
   // Validation for each step
@@ -109,6 +265,7 @@ export default function DisclosureForm() {
       case 1:
         return propertyAddress.trim() !== '' && numOwners !== '';
       case 2:
+        // Check required fields
         if (!primarySeller.fullName || !primarySeller.mobile || !primarySeller.email) {
           return false;
         }
@@ -117,7 +274,10 @@ export default function DisclosureForm() {
             return false;
           }
         }
-        return true;
+        
+        // Check uniqueness
+        const { hasErrors } = validateSellerUniqueness();
+        return !hasErrors;
       case 3:
         return selectedAgency !== null;
       default:
@@ -142,8 +302,17 @@ export default function DisclosureForm() {
   };
 
   const handleSubmit = async () => {
+    // Validate step 3
     if (!isStepValid(3)) {
       setError('Please complete all required fields.');
+      return;
+    }
+    
+    // Double-check uniqueness before submit
+    const { errors, hasErrors } = validateSellerUniqueness();
+    if (hasErrors) {
+      setValidationErrors(errors);
+      setError('Please ensure all sellers have unique email addresses and phone numbers.');
       return;
     }
 
@@ -160,14 +329,13 @@ export default function DisclosureForm() {
       };
 
       const primarySellerNames = splitName(primarySeller.fullName);
-      const cleanPhoneNumber = (phone) => phone ? phone.replace(/\s/g, '') : '';
 
       const formData = {
         seller: {
           email: primarySeller.email,
           firstname: primarySellerNames.firstname,
           lastname: primarySellerNames.lastname,
-          phone: cleanPhoneNumber(primarySeller.mobile)
+          phone: normalizePhoneToInternational(primarySeller.mobile)
         },
         additionalSellers: additionalSellers.map(seller => {
           const names = splitName(seller.fullName);
@@ -175,7 +343,7 @@ export default function DisclosureForm() {
             email: seller.email,
             firstname: names.firstname,
             lastname: names.lastname,
-            phone: cleanPhoneNumber(seller.mobile)
+            phone: normalizePhoneToInternational(seller.mobile)
           };
         }),
         agency: {
@@ -186,7 +354,7 @@ export default function DisclosureForm() {
           email: selectedAgency?.agentEmail || '',
           firstname: selectedAgency?.agentFirstName || 'Agent',
           lastname: selectedAgency?.agentLastName || 'Default',
-          phone: cleanPhoneNumber(selectedAgency?.agentPhone || '')
+          phone: normalizePhoneToInternational(selectedAgency?.agentPhone || '')
         },
         property: {
           address: propertyAddress
@@ -412,10 +580,39 @@ export default function DisclosureForm() {
                         id="primaryMobile"
                         type="tel"
                         value={primarySeller.mobile}
-                        onChange={(e) => setPrimarySeller({ ...primarySeller, mobile: e.target.value })}
-                        placeholder="0412 345 678"
-                        className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          // Allow user to type freely, but format when complete
+                          const formatted = normalizePhoneToInternational(inputValue) || inputValue;
+                          setPrimarySeller({ ...primarySeller, mobile: formatted });
+                          
+                          // Trigger validation after formatting
+                          setTimeout(() => {
+                            const { errors } = validateSellerUniqueness();
+                            setValidationErrors(errors);
+                          }, 300);
+                        }}
+                        onBlur={(e) => {
+                          // Format on blur to ensure consistent format
+                          const formatted = normalizePhoneToInternational(e.target.value);
+                          if (formatted) {
+                            setPrimarySeller({ ...primarySeller, mobile: formatted });
+                            setTimeout(() => {
+                              const { errors } = validateSellerUniqueness();
+                              setValidationErrors(errors);
+                            }, 100);
+                          }
+                        }}
+                        placeholder="0412 345 678 or +61412345678"
+                        className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring outline-none transition-all ${
+                          validationErrors.primarySeller.mobile 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                            : 'border-input focus:border-primary'
+                        }`}
                       />
+                      {validationErrors.primarySeller.mobile && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.primarySeller.mobile}</p>
+                      )}
                     </div>
 
                     <div>
@@ -426,10 +623,24 @@ export default function DisclosureForm() {
                         id="primaryEmail"
                         type="email"
                         value={primarySeller.email}
-                        onChange={(e) => setPrimarySeller({ ...primarySeller, email: e.target.value })}
+                        onChange={(e) => {
+                          setPrimarySeller({ ...primarySeller, email: e.target.value });
+                          // Trigger validation
+                          setTimeout(() => {
+                            const { errors } = validateSellerUniqueness();
+                            setValidationErrors(errors);
+                          }, 300);
+                        }}
                         placeholder="john@example.com"
-                        className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                        className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring outline-none transition-all ${
+                          validationErrors.primarySeller.email 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                            : 'border-input focus:border-primary'
+                        }`}
                       />
+                      {validationErrors.primarySeller.email && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.primarySeller.email}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -467,10 +678,27 @@ export default function DisclosureForm() {
                           id={`additionalMobile${index}`}
                           type="tel"
                           value={seller.mobile}
-                          onChange={(e) => updateAdditionalSeller(index, 'mobile', e.target.value)}
-                          placeholder="0412 345 678"
-                          className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            const formatted = normalizePhoneToInternational(inputValue) || inputValue;
+                            updateAdditionalSeller(index, 'mobile', formatted);
+                          }}
+                          onBlur={(e) => {
+                            const formatted = normalizePhoneToInternational(e.target.value);
+                            if (formatted) {
+                              updateAdditionalSeller(index, 'mobile', formatted);
+                            }
+                          }}
+                          placeholder="0412 345 678 or +61412345678"
+                          className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring outline-none transition-all ${
+                            validationErrors.additionalSellers[index]?.mobile 
+                              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                              : 'border-input focus:border-primary'
+                          }`}
                         />
+                        {validationErrors.additionalSellers[index]?.mobile && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.additionalSellers[index].mobile}</p>
+                        )}
                       </div>
 
                       <div>
@@ -483,8 +711,15 @@ export default function DisclosureForm() {
                           value={seller.email}
                           onChange={(e) => updateAdditionalSeller(index, 'email', e.target.value)}
                           placeholder="jane@example.com"
-                          className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                          className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring outline-none transition-all ${
+                            validationErrors.additionalSellers[index]?.email 
+                              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                              : 'border-input focus:border-primary'
+                          }`}
                         />
+                        {validationErrors.additionalSellers[index]?.email && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.additionalSellers[index].email}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -592,7 +827,7 @@ export default function DisclosureForm() {
                 )}
                 {currentStep === 2 && (
                   <p className="text-sm text-slate-500">
-                    💡 Each seller must have a valid email and mobile number.
+                    💡 Each seller must have a valid email and mobile number. All emails and phone numbers must be unique.
                   </p>
                 )}
                 {currentStep === 3 && (

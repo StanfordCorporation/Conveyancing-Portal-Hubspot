@@ -667,6 +667,59 @@ body {
   box-shadow: none;
 }
 
+/* Read-Only Stage (after payment) - Clean, minimalist style */
+.stage-item.stage-read-only {
+  background: transparent;
+  border-left-color: var(--gray-300);
+  color: var(--gray-500);
+  opacity: 1; /* Reset opacity to handle specific child elements */
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+/* Remove the "View Only" badge */
+.stage-item.stage-read-only::after {
+  content: none;
+}
+
+.stage-item.stage-read-only:hover {
+  background: var(--gray-50);
+  color: var(--gray-700);
+  border-left-color: var(--gray-400);
+  transform: translateX(4px);
+}
+
+/* Add a subtle eye icon on hover using pseudo-element for the stage number container */
+.stage-item.stage-read-only:hover .stage-number::after {
+  content: '';
+  /* We can't easily replace the number with an icon via CSS content if the number is in the DOM.
+     We will handle the icon replacement in JSX for the "settled" state.
+     Here we handle the "Click to View" hint. */
+}
+
+/* Adjust stage number box for read-only state */
+.stage-item.stage-read-only .stage-number {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  border: 1px solid var(--gray-200);
+}
+
+.stage-item.stage-read-only:hover .stage-number {
+  background: white;
+  color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+/* Adjust stage content for read-only state */
+.stage-item.stage-read-only .stage-content h4 {
+  font-weight: 500;
+}
+
+.stage-item.stage-read-only .stage-content p {
+  opacity: 0.7;
+}
+
 .stage-number {
   display: flex;
   align-items: center;
@@ -1525,4 +1578,103 @@ body {
   .search-bar input {
     width: 220px;
   }
+}
+
+/* Payment Completed Banner */
+.payment-completed-banner {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.banner-icon {
+  font-size: 24px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.banner-text strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.banner-text span {
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.banner-link {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+  transition: all 0.2s;
+  font-size: inherit;
+  margin-left: 4px;
+}
+
+.banner-link:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Read-Only Badge */
+.read-only-badge {
+  display: inline-block;
+  background: #94A3B8;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 12px;
+}
+
+.read-only-notice {
+  background: #F1F5F9;
+  border-left: 4px solid #94A3B8;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.read-only-notice p {
+  margin: 0;
+  font-weight: 500;
 }

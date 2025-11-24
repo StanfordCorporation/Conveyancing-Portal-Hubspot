@@ -82,6 +82,7 @@ export default function PropertyDetails({
               value={clientResidentialAddress || ''}
               onChange={onChangeResidentialAddress}
               placeholder="Enter residential address"
+              data-tour-target="residential-address"
             />
           ) : (
             <p className="field-value">{clientResidentialAddress || 'N/A'}</p>

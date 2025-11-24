@@ -1,0 +1,110 @@
+/* Custom styling for Primary Seller Information Review Tour */
+
+.shepherd-theme-primary-seller {
+  max-width: 320px;
+}
+
+/* Progress indicator styling */
+.shepherd-theme-primary-seller .shepherd-progress-container {
+  margin-bottom: 12px;
+}
+
+.shepherd-theme-primary-seller .shepherd-progress-bar-container {
+  width: 100%;
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.shepherd-theme-primary-seller .shepherd-progress-bar {
+  height: 100%;
+  background: #0E6DFF;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.shepherd-theme-primary-seller .shepherd-progress-text {
+  font-size: 11px;
+  color: #6B7280;
+  text-align: center;
+  font-weight: 500;
+}
+
+.shepherd-theme-primary-seller .shepherd-step-content {
+  margin-top: 0;
+}
+
+.shepherd-theme-primary-seller .shepherd-content {
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.shepherd-theme-primary-seller .shepherd-content p {
+  margin: 0px;
+}
+
+.shepherd-theme-primary-seller .shepherd-header {
+  margin-top: -10px;
+  padding: 0;
+  border-bottom: none;
+}
+
+.shepherd-theme-primary-seller .shepherd-footer {
+  padding: 0;
+  margin-top: 12px;
+  border-top: none;
+}
+
+.shepherd-theme-primary-seller .shepherd-button {
+  background: #0E6DFF;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 8px;
+  transition: background 0.2s;
+}
+
+.shepherd-theme-primary-seller .shepherd-button:hover {
+  background: #0D5FE6;
+}
+
+.shepherd-theme-primary-seller .shepherd-button.shepherd-button-secondary {
+  background: #6B7280;
+}
+
+.shepherd-theme-primary-seller .shepherd-button.shepherd-button-secondary:hover {
+  background: #4B5563;
+}
+
+.shepherd-theme-primary-seller .shepherd-cancel-icon {
+  color: #6B7280;
+  font-size: 20px;
+}
+
+.shepherd-theme-primary-seller .shepherd-cancel-icon:hover {
+  color: #374151;
+}
+
+/* Highlight active field during tour */
+.shepherd-element[data-shepherd-step] {
+  z-index: 10000;
+}
+
+/* Ensure fields are clickable during tour */
+.shepherd-element[data-shepherd-step] .field-input {
+  pointer-events: auto;
+}
+
+/* Style for highlighted field */
+.shepherd-element-attached-bottom .shepherd-element,
+.shepherd-element-attached-top .shepherd-element {
+  box-shadow: 0 4px 12px rgba(14, 109, 255, 0.2);
+}
+

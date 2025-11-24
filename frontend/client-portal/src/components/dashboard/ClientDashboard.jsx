@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Lock, Eye } from 'lucide-react';
 import api from '../../services/api.js';
 import { getStepFromStage, getStageFromStep } from '../../constants/dealStages.js';
 import PropertyInformation from './PropertyInformation.jsx';
@@ -49,6 +49,7 @@ export default function ClientDashboard() {
   const [error, setError] = useState(null);
   const [envelopeStatus, setEnvelopeStatus] = useState({}); // { dealId: { status, signers, etc } }
   const [quoteAmounts, setQuoteAmounts] = useState({}); // { dealId: amount }
+  const [paymentStatusByDeal, setPaymentStatusByDeal] = useState({}); // { dealId: paymentStatus } - Phase 2.1
 
   // Handle signing completion query parameters
   useEffect(() => {
@@ -151,6 +152,7 @@ export default function ClientDashboard() {
           const questionnaireDataLookup = {};
           const propertyDetailsLookup = {};
           const filesLookup = {};
+          const paymentStatusLookup = {}; // Phase 2.2
 
           response.data.deals.forEach((deal) => {
             if (deal.questionnaire) {
@@ -166,11 +168,18 @@ export default function ClientDashboard() {
               const fileCount = Object.values(deal.files).reduce((sum, files) => sum + files.length, 0);
               console.log(`[Dashboard] 📎 Stored ${fileCount} file(s) for deal ${deal.id}`);
             }
+            // Phase 2.2: Store payment status
+            if (deal.paymentStatus) {
+              paymentStatusLookup[deal.id] = deal.paymentStatus;
+              console.log(`[Dashboard] 💳 Stored payment status for deal ${deal.id}: ${deal.paymentStatus}`);
+            }
           });
 
           setQuestionnaireDataByDeal(questionnaireDataLookup);
           setPropertyDetailsByDeal(propertyDetailsLookup);
           setFilesByDeal(filesLookup);
+          setPaymentStatusByDeal(paymentStatusLookup); // Phase 2.2
+          setPaymentStatusByDeal(paymentStatusLookup); // Phase 2.2
 
           // Initialize stages for each property from HubSpot dealstage
           const initialStages = {};
@@ -238,26 +247,48 @@ export default function ClientDashboard() {
     // Reset to the appropriate section based on property's current stage
     const currentStage = propertyStages[property.id] || 1;
     const hasSigned = envelopeStatus[property.id]?.status === 'signed';
+    const paymentStatus = paymentStatusByDeal[property.id];
     
     const sectionMap = {
       1: 'information',
       2: 'questionnaire',
       3: 'quote',
       4: 'signature',
-      5: 'payment'
+      5: 'payment',
+      6: 'tracking'  // Add step 6 mapping
     };
+    
+    // If payment is paid or stage is 6, go to tracking
+    if (paymentStatus === 'Paid' || currentStage === 6) {
+      setActiveSection('tracking');
+      console.log(`[Dashboard] 📍 Property stage: ${currentStage}, Section: tracking, Payment: ${paymentStatus}`);
+      return;
+    }
     
     // If signed, go to payment, otherwise go to property's current stage
     const targetSection = hasSigned ? 'payment' : sectionMap[currentStage];
-    setActiveSection(targetSection);
     
-    console.log(`[Dashboard] 📍 Property stage: ${currentStage}, Section: ${targetSection}, Signed: ${hasSigned}`);
+    // Fallback to tracking if targetSection is undefined (shouldn't happen, but safety check)
+    if (!targetSection) {
+      console.warn(`[Dashboard] ⚠️ No section mapping for stage ${currentStage}, defaulting to tracking`);
+      setActiveSection('tracking');
+    } else {
+      setActiveSection(targetSection);
+    }
+    
+    console.log(`[Dashboard] 📍 Property stage: ${currentStage}, Section: ${targetSection || 'tracking'}, Signed: ${hasSigned}`);
   };
 
   // Determine if a stage is accessible based on dependencies
   const isStageAccessible = (stageNumber, currentPropertyId) => {
     const currentStage = propertyStages[currentPropertyId] || 1;
     const hasSigned = envelopeStatus[currentPropertyId]?.status === 'signed';
+    const paymentStatus = paymentStatusByDeal[currentPropertyId]; // Phase 2.3
+
+    // Phase 2.3: If payment is paid, only allow Stage 6
+    if (paymentStatus === 'Paid') {
+      return stageNumber === 6; // Only Stage 6 is accessible after payment
+    }
 
     // If document is signed, lock all stages before Stage 5
     if (hasSigned && stageNumber < 5) {
@@ -276,10 +307,19 @@ export default function ClientDashboard() {
     return stageNumber <= currentStage;
   };
 
-  // Get stage status (completed, current, locked)
+  // Get stage status (completed, current, locked, read-only)
   const getStageStatus = (stageNumber, currentPropertyId) => {
     const currentStage = propertyStages[currentPropertyId] || 1;
     const hasSigned = envelopeStatus[currentPropertyId]?.status === 'signed';
+    const paymentStatus = paymentStatusByDeal[currentPropertyId]; // Phase 2.4
+    
+    // Phase 2.4: After payment, stages 1-5 are read-only
+    if (paymentStatus === 'Paid') {
+      if (stageNumber === 6) {
+        return 'current'; // Stage 6 is active
+      }
+      return 'read-only'; // Stages 1-5 are read-only (viewable but not editable)
+    }
     
     // After signing, mark stages 1-4 as completed and locked
     if (hasSigned && stageNumber < 5) {
@@ -293,6 +333,41 @@ export default function ClientDashboard() {
 
   // Handle stage click
   const handleStageClick = async (stageNumber, currentPropertyId) => {
+    const paymentStatus = paymentStatusByDeal[currentPropertyId]; // Phase 2.5
+
+    // Phase 2.5: After payment, only allow viewing Stage 6 or read-only viewing of stages 1-5
+    if (paymentStatus === 'Paid') {
+      if (stageNumber === 6) {
+        // Allow navigation to Stage 6
+        setPropertyStages(prev => ({
+          ...prev,
+          [currentPropertyId]: 6
+        }));
+        setActiveSection('tracking');
+        setIsMobileMenuOpen(false);
+        console.log(`[Dashboard] ✅ Navigated to Stage 6 (Status Tracking) - payment completed`);
+        return;
+      } else {
+        // Allow viewing stages 1-5 but show read-only (no API calls)
+        setPropertyStages(prev => ({
+          ...prev,
+          [currentPropertyId]: stageNumber
+        }));
+        const sectionMap = {
+          1: 'information',
+          2: 'questionnaire',
+          3: 'quote',
+          4: 'signature',
+          5: 'payment',
+          6: 'tracking'
+        };
+        setActiveSection(sectionMap[stageNumber]);
+        setIsMobileMenuOpen(false);
+        console.log(`[Dashboard] 👁️ Viewing Stage ${stageNumber} in read-only mode - payment completed`);
+        return; // Don't make API calls for read-only stages
+      }
+    }
+
     if (!isStageAccessible(stageNumber, currentPropertyId)) {
       console.log(`[Dashboard] 🔒 Stage ${stageNumber} is locked`);
       alert('Please complete the previous steps before accessing this stage.');
@@ -320,7 +395,17 @@ export default function ClientDashboard() {
         }));
       } catch (error) {
         console.error('[Dashboard] ❌ Error updating deal stage:', error);
-        alert('Failed to update progress. Please try again.');
+        // Phase 2.5: Handle payment completed error from backend
+        if (error.response?.status === 403 && error.response?.data?.paymentCompleted) {
+          alert('Payment has been completed. Stages 1-5 are now read-only. Please use Status Tracking (Stage 6) to view progress.');
+          // Update payment status in local state
+          setPaymentStatusByDeal(prev => ({
+            ...prev,
+            [currentPropertyId]: 'Paid'
+          }));
+        } else {
+          alert('Failed to update progress. Please try again.');
+        }
         return;
       }
     } else {
@@ -548,13 +633,19 @@ export default function ClientDashboard() {
                       <button
                         className={`stage-item stage-${getStageStatus(1, prop.id)} ${!isStageAccessible(1, prop.id) ? 'stage-locked' : ''}`}
                         onClick={() => handleStageClick(1, prop.id)}
+                        title={getStageStatus(1, prop.id) === 'read-only' ? "Click to view (Read-Only)" : ""}
                       >
-                        <div className="stage-number">1</div>
+                        <div className="stage-number">
+                          {getStageStatus(1, prop.id) === 'read-only' ? <Lock size={14} /> : '1'}
+                        </div>
                         <div className="stage-content">
                           <h4>Review Property Information</h4>
                           <p>Prefilled by us</p>
                         </div>
                         <div className="stage-indicator">
+                          {getStageStatus(1, prop.id) === 'read-only' && (
+                            <Eye size={16} className="text-gray-400" />
+                          )}
                           {getStageStatus(1, prop.id) === 'completed' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -577,13 +668,19 @@ export default function ClientDashboard() {
                       <button
                         className={`stage-item stage-${getStageStatus(2, prop.id)} ${!isStageAccessible(2, prop.id) ? 'stage-locked' : ''}`}
                         onClick={() => handleStageClick(2, prop.id)}
+                        title={getStageStatus(2, prop.id) === 'read-only' ? "Click to view (Read-Only)" : ""}
                       >
-                        <div className="stage-number">2</div>
+                        <div className="stage-number">
+                          {getStageStatus(2, prop.id) === 'read-only' ? <Lock size={14} /> : '2'}
+                        </div>
                         <div className="stage-content">
                           <h4>Fill in Property Details</h4>
                           <p>Answer questionnaire</p>
                         </div>
                         <div className="stage-indicator">
+                          {getStageStatus(2, prop.id) === 'read-only' && (
+                            <Eye size={16} className="text-gray-400" />
+                          )}
                           {getStageStatus(2, prop.id) === 'completed' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -606,13 +703,19 @@ export default function ClientDashboard() {
                       <button
                         className={`stage-item stage-${getStageStatus(3, prop.id)} ${!isStageAccessible(3, prop.id) ? 'stage-locked' : ''}`}
                         onClick={() => handleStageClick(3, prop.id)}
+                        title={getStageStatus(3, prop.id) === 'read-only' ? "Click to view (Read-Only)" : ""}
                       >
-                        <div className="stage-number">3</div>
+                        <div className="stage-number">
+                          {getStageStatus(3, prop.id) === 'read-only' ? <Lock size={14} /> : '3'}
+                        </div>
                         <div className="stage-content">
                           <h4>Review Your Quote</h4>
                           <p>Review fees and charges</p>
                         </div>
                         <div className="stage-indicator">
+                          {getStageStatus(3, prop.id) === 'read-only' && (
+                            <Eye size={16} className="text-gray-400" />
+                          )}
                           {getStageStatus(3, prop.id) === 'completed' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -635,13 +738,19 @@ export default function ClientDashboard() {
                       <button
                         className={`stage-item stage-${getStageStatus(4, prop.id)} ${!isStageAccessible(4, prop.id) ? 'stage-locked' : ''}`}
                         onClick={() => handleStageClick(4, prop.id)}
+                        title={getStageStatus(4, prop.id) === 'read-only' ? "Click to view (Read-Only)" : ""}
                       >
-                        <div className="stage-number">4</div>
+                        <div className="stage-number">
+                          {getStageStatus(4, prop.id) === 'read-only' ? <Lock size={14} /> : '4'}
+                        </div>
                         <div className="stage-content">
                           <h4>Awaiting Signature</h4>
                           <p>Sign documents</p>
                         </div>
                         <div className="stage-indicator">
+                          {getStageStatus(4, prop.id) === 'read-only' && (
+                            <Eye size={16} className="text-gray-400" />
+                          )}
                           {getStageStatus(4, prop.id) === 'completed' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -664,13 +773,19 @@ export default function ClientDashboard() {
                       <button
                         className={`stage-item stage-${getStageStatus(5, prop.id)} ${!isStageAccessible(5, prop.id) ? 'stage-locked' : ''}`}
                         onClick={() => handleStageClick(5, prop.id)}
+                        title={getStageStatus(5, prop.id) === 'read-only' ? "Click to view (Read-Only)" : ""}
                       >
-                        <div className="stage-number">5</div>
+                        <div className="stage-number">
+                          {getStageStatus(5, prop.id) === 'read-only' ? <Lock size={14} /> : '5'}
+                        </div>
                         <div className="stage-content">
                           <h4>Payment Instructions</h4>
                           <p>Complete payment</p>
                         </div>
                         <div className="stage-indicator">
+                          {getStageStatus(5, prop.id) === 'read-only' && (
+                            <Eye size={16} className="text-gray-400" />
+                          )}
                           {getStageStatus(5, prop.id) === 'completed' && (
                             <svg fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -727,17 +842,34 @@ export default function ClientDashboard() {
       </aside>
 
       <main className="main-content">
+        {/* Phase 3.2: Payment Completed Banner */}
+        {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && activeSection !== 'tracking' && (
+          <div className="payment-completed-banner">
+            <div className="banner-content">
+              <div className="banner-icon">✓</div>
+              <div className="banner-text">
+                <strong>Payment Completed!</strong>
+                <span>Stages 1-5 are now read-only. View your progress in <button onClick={() => handleStageClick(6, currentProperty.id)} className="banner-link">Status Tracking (Stage 6)</button>.</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSection === 'information' && (
           <section id="information" className="content-section active">
             <div className="content-header">
               <h1 className="content-title">Property Information</h1>
               <p className="content-subtitle">Comprehensive property and seller details</p>
+              {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && (
+                <span className="read-only-badge">Read-Only</span>
+              )}
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
                 <PropertyInformation
                   dealId={currentProperty.id}
                   initialData={propertyDetailsByDeal[currentProperty.id]}
+                  readOnly={paymentStatusByDeal[currentProperty.id] === 'Paid'}
                 />
               ) : (
                 <div className="empty-state">
@@ -753,6 +885,9 @@ export default function ClientDashboard() {
             <div className="content-header">
               <h1 className="content-title">Property Questionnaire</h1>
               <p className="content-subtitle">Answer comprehensive disclosure questions about your property</p>
+              {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && (
+                <span className="read-only-badge">Read-Only</span>
+              )}
             </div>
 
             <div className="content-card">
@@ -766,6 +901,7 @@ export default function ClientDashboard() {
                     handleStageClick(3, currentProperty.id);
                   }}
                   onDataUpdate={handleQuestionnaireDataUpdate}
+                  readOnly={paymentStatusByDeal[currentProperty.id] === 'Paid'}
                 />
               ) : (
                 <div className="empty-state">
@@ -781,6 +917,9 @@ export default function ClientDashboard() {
             <div className="content-header">
               <h1 className="content-title">Your Property Search Quote</h1>
               <p className="content-subtitle">Review the calculated search costs based on your questionnaire answers</p>
+              {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && (
+                <span className="read-only-badge">Read-Only</span>
+              )}
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
@@ -796,6 +935,7 @@ export default function ClientDashboard() {
                     }));
                     console.log(`[Dashboard] 💰 Quote amount stored: $${quote.grandTotal}`);
                   }}
+                  readOnly={paymentStatusByDeal[currentProperty.id] === 'Paid'}
                 />
               ) : (
                 <div className="empty-state">
@@ -811,6 +951,9 @@ export default function ClientDashboard() {
             <div className="content-header">
               <h1 className="content-title">Sign Your Documents</h1>
               <p className="content-subtitle">Review and electronically sign your property disclosure forms</p>
+              {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && (
+                <span className="read-only-badge">Read-Only</span>
+              )}
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
@@ -841,6 +984,7 @@ export default function ClientDashboard() {
                     
                     console.log('[Dashboard] ✅ Redirected to Step 5 (Payment)');
                   }}
+                  readOnly={paymentStatusByDeal[currentProperty.id] === 'Paid'}
                 />
               ) : (
                 <div className="empty-state">
@@ -856,6 +1000,9 @@ export default function ClientDashboard() {
             <div className="content-header">
               <h1 className="content-title">Payment Instructions</h1>
               <p className="content-subtitle">Complete your conveyancing search payment</p>
+              {currentProperty && paymentStatusByDeal[currentProperty.id] === 'Paid' && (
+                <span className="read-only-badge">Read-Only</span>
+              )}
             </div>
             <div className="content-card">
               {currentProperty && currentProperty.id ? (
@@ -884,6 +1031,7 @@ export default function ClientDashboard() {
                     
                     console.log('[Dashboard] 🎯 Progressed to Step 6 (Status Tracking)');
                   }}
+                  readOnly={paymentStatusByDeal[currentProperty.id] === 'Paid'}
                 />
               ) : (
                 <div className="empty-state">

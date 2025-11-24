@@ -358,6 +358,30 @@ export default function SigningStatus({ dealId, contactEmail, sellers, envelopeS
     );
   }
 
+  // Phase 3.5: Show read-only notice if payment is completed
+  if (readOnly) {
+    return (
+      <div className="signing-status-container">
+        <div className="read-only-notice">
+          <p>This section is read-only. Payment has been completed.</p>
+        </div>
+        {signingStatus && signingStatus.status === 'completed' ? (
+          <div className="status-message status-complete">
+            <div className="status-icon">✓</div>
+            <div className="status-content">
+              <h2>Documents Already Signed</h2>
+              <p>All documents have been signed and processed.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="status-message">
+            <p>Signing information is available in read-only mode.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // If no envelope exists yet, show "Start Signing" button
   if (!envelopeId && !signingStatus) {
     return (

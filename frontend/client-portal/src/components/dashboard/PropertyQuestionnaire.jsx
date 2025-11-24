@@ -12,7 +12,7 @@ import './property-questionnaire.css';
  * - Single source of truth for all questionnaire configuration
  */
 
-export default function PropertyQuestionnaire({ dealId, initialData = {}, initialFiles = {}, onSubmitSuccess, onDataUpdate }) {
+export default function PropertyQuestionnaire({ dealId, initialData = {}, initialFiles = {}, onSubmitSuccess, onDataUpdate, readOnly = false }) {
   // Fetch questionnaire schema from backend (with caching)
   const { schema, loading: schemaLoading, error: schemaError } = useQuestionnaireSchema();
 
@@ -720,7 +720,7 @@ export default function PropertyQuestionnaire({ dealId, initialData = {}, initia
           <button
             className="btn-secondary"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || readOnly}
           >
             {saving ? 'Saving...' : 'Save Progress'}
           </button>
@@ -740,7 +740,7 @@ export default function PropertyQuestionnaire({ dealId, initialData = {}, initia
             <button
               className="btn-primary"
               onClick={handleSubmit}
-              disabled={saving}
+              disabled={saving || readOnly}
             >
               {saving ? 'Submitting...' : 'Submit Questionnaire'}
             </button>
@@ -796,12 +796,20 @@ export default function PropertyQuestionnaire({ dealId, initialData = {}, initia
         </div>
       </div>
 
+      {/* Phase 3.5: Read-only notice */}
+      {readOnly && (
+        <div className="read-only-notice">
+          <p>This section is read-only. Payment has been completed.</p>
+        </div>
+      )}
+
       <div className="questionnaire-tabs">
         {[1, 2, 3, 4, 5].map(sectionNum => (
           <button
             key={sectionNum}
             className={`questionnaire-tab ${activeSection === sectionNum ? 'active' : ''}`}
             onClick={() => setActiveSection(sectionNum)}
+            disabled={readOnly}
           >
             <span className="tab-number">{sectionNum}</span>
             <span className="tab-title">{sectionConfig[sectionNum]?.title?.split(' ')[0] || `S${sectionNum}`}</span>

@@ -19,6 +19,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   className="field-input"
                   value={primarySeller?.firstname || ''}
                   onChange={(e) => onChange('primarySeller', 'firstname', e.target.value)}
+                  data-tour-target="first-name"
                 />
               ) : (
                 <p className="field-value">{primarySeller?.fullName?.split(' ')[0] || primarySeller?.firstname || 'N/A'}</p>
@@ -32,6 +33,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   className="field-input"
                   value={primarySeller?.lastname || ''}
                   onChange={(e) => onChange('primarySeller', 'lastname', e.target.value)}
+                  data-tour-target="last-name"
                 />
               ) : (
                 <p className="field-value">{primarySeller?.fullName?.split(' ').slice(1).join(' ') || primarySeller?.lastname || 'N/A'}</p>
@@ -45,6 +47,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   className="field-input"
                   value={primarySeller?.middlename || ''}
                   onChange={(e) => onChange('primarySeller', 'middlename', e.target.value)}
+                  data-tour-target="middle-name"
                 />
               ) : (
                 <p className="field-value">{primarySeller?.middleName || primarySeller?.middlename || 'N/A'}</p>
@@ -58,6 +61,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   className="field-input"
                   value={primarySeller?.email || ''}
                   onChange={(e) => onChange('primarySeller', 'email', e.target.value)}
+                  data-tour-target="email"
                 />
               ) : (
                 <p className="field-value">{primarySeller?.email || 'N/A'}</p>
@@ -71,6 +75,7 @@ export default function SellerInformation({ primarySeller, additionalSeller, has
                   className="field-input"
                   value={primarySeller?.phone || ''}
                   onChange={(e) => onChange('primarySeller', 'phone', e.target.value)}
+                  data-tour-target="mobile"
                 />
               ) : (
                 <p className="field-value">{primarySeller?.phone || 'N/A'}</p>
