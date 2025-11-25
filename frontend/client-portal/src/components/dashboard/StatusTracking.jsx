@@ -8,6 +8,11 @@ export default function StatusTracking({ deal }) {
   const stageDescription = getClientNextStep(deal.status); // Returns full description now
   const currentStageIndex = POST_WORKFLOW_STAGES.indexOf(deal.status);
 
+  // Check if payment is pending (awaiting confirmation)
+  // Stage 1904359897 = "Searches Funds Requested" (before payment confirmed)
+  const isAwaitingPaymentConfirmation =
+    deal.status === '1904359897' && deal.paymentStatus === 'Pending';
+
   // Timeline stages for visual display
   const timelineStages = [
     { id: '1904359900', label: 'Funds Provided', icon: CheckCircle },
@@ -46,7 +51,22 @@ export default function StatusTracking({ deal }) {
           <Clock size={24} />
           <h4>Next Steps</h4>
         </div>
-        <p className="next-step-text">{stageDescription}</p>
+        {isAwaitingPaymentConfirmation ? (
+          <div className="payment-pending-message">
+            <p className="next-step-text">
+              ⏳ <strong>Awaiting Payment Confirmation</strong>
+            </p>
+            <p className="next-step-text">
+              We are awaiting confirmation that your funds have reached us.
+              We'll order your searches once payment is confirmed.
+            </p>
+            <p className="next-step-text" style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+              If you've already transferred the funds, please allow 1-2 business days for processing.
+            </p>
+          </div>
+        ) : (
+          <p className="next-step-text">{stageDescription}</p>
+        )}
       </div>
 
       {/* Progress Timeline */}
@@ -100,12 +120,25 @@ export default function StatusTracking({ deal }) {
           </svg>
         </div>
         <div className="info-message-content">
-          <h5>We're on it!</h5>
-          <p>
-            Our conveyancing team is working on your property transaction. 
-            We'll notify you via email when the next action is required from you.
-            If you have any questions, feel free to contact us.
-          </p>
+          {isAwaitingPaymentConfirmation ? (
+            <>
+              <h5>Payment Confirmation in Progress</h5>
+              <p>
+                We're waiting to confirm receipt of your bank transfer payment.
+                Once confirmed, we'll immediately begin ordering your property searches.
+                You'll receive an email notification when your payment is confirmed and searches have been initiated.
+              </p>
+            </>
+          ) : (
+            <>
+              <h5>We're on it!</h5>
+              <p>
+                Our conveyancing team is working on your property transaction.
+                We'll notify you via email when the next action is required from you.
+                If you have any questions, feel free to contact us.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
