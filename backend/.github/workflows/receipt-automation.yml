@@ -1,0 +1,106 @@
+name: Smokeball Receipt Automation
+
+# Trigger this workflow via repository_dispatch webhook
+# Vercel backend will call this when payment_status changes to "Paid"
+on:
+  repository_dispatch:
+    types: [receipt-automation]
+
+jobs:
+  create-receipt:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Install Playwright browsers with system dependencies
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium --with-deps
+
+      # Step 5: Extract webhook payload data
+      - name: Extract payload data
+        id: payload
+        run: |
+          echo "deal_id=${{ github.event.client_payload.deal_id }}" >> $GITHUB_OUTPUT
+          echo "matter_id=${{ github.event.client_payload.matter_id }}" >> $GITHUB_OUTPUT
+          echo "amount=${{ github.event.client_payload.amount }}" >> $GITHUB_OUTPUT
+          echo "lastname=${{ github.event.client_payload.lastname }}" >> $GITHUB_OUTPUT
+          echo "firstname=${{ github.event.client_payload.firstname }}" >> $GITHUB_OUTPUT
+          echo "date=${{ github.event.client_payload.date }}" >> $GITHUB_OUTPUT
+          echo "test_mode=${{ github.event.client_payload.test_mode }}" >> $GITHUB_OUTPUT
+
+      # Step 6: Run receipt automation
+      - name: Run Smokeball Receipt Automation
+        env:
+          SMOKEBALL_USERNAME: ${{ secrets.SMOKEBALL_USERNAME }}
+          SMOKEBALL_PASSWORD: ${{ secrets.SMOKEBALL_PASSWORD }}
+          SMOKEBALL_TOTP_SECRET: ${{ secrets.SMOKEBALL_TOTP_SECRET }}
+        run: |
+          node -e "
+          import('./smokeball-receipt-automation.js').then(async (module) => {
+            const automation = new module.default(${{ steps.payload.outputs.test_mode }});
+
+            const receiptData = {
+              amount: ${{ steps.payload.outputs.amount }},
+              date: '${{ steps.payload.outputs.date }}',
+              lastname: '${{ steps.payload.outputs.lastname }}',
+              firstname: '${{ steps.payload.outputs.firstname }}',
+              reason: 'On account of search fees'
+            };
+
+            try {
+              console.log('🚀 Starting receipt automation...');
+              console.log('Matter ID: ${{ steps.payload.outputs.matter_id }}');
+              console.log('Amount: \$' + receiptData.amount);
+              console.log('Contact: ' + receiptData.lastname + ', ' + receiptData.firstname);
+
+              const result = await automation.run('${{ steps.payload.outputs.matter_id }}', receiptData);
+
+              if (result.success) {
+                console.log('✅ Receipt automation completed successfully');
+                process.exit(0);
+              } else {
+                console.error('❌ Receipt automation failed:', result.error);
+                process.exit(1);
+              }
+            } catch (error) {
+              console.error('❌ Automation error:', error.message);
+              process.exit(1);
+            }
+          });
+          "
+
+      # Step 7: Upload screenshots on failure
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-automation-screenshots
+          path: screenshots/
+          retention-days: 7
+
+      # Step 8: Report result back to backend (optional)
+      # Uncomment if you want to send status back to Vercel
+      # - name: Report result to backend
+      #   if: always()
+      #   run: |
+      #     curl -X POST https://your-backend.vercel.app/api/receipt-automation/result \
+      #       -H "Content-Type: application/json" \
+      #       -d '{
+      #         "deal_id": "${{ steps.payload.outputs.deal_id }}",
+      #         "success": "${{ job.status == 'success' }}",
+      #         "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #       }'

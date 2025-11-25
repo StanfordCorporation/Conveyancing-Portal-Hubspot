@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "build": "echo 'No build step required for serverless functions'",
+    "build": "npx playwright install chromium-headless-shell",
+    "postinstall": "npx playwright install chromium-headless-shell",
     "deploy": "vercel --prod",
     "lint": "eslint ."
   },
@@ -32,7 +33,9 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^7.0.9",
+    "playwright": "^1.56.1",
     "redis": "^5.9.0",
+    "speakeasy": "^2.0.0",
     "stripe": "^19.2.0",
     "winston": "^3.11.0"
   },

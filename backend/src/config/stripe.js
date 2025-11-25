@@ -8,6 +8,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Debug: Log environment variable loading
+console.log('[Stripe Config] 🔍 Environment check:');
+console.log(`[Stripe Config]   - STRIPE_SECRET_KEY: ${process.env.STRIPE_SECRET_KEY ? 'SET (' + process.env.STRIPE_SECRET_KEY.substring(0, 10) + '...)' : 'NOT SET'}`);
+console.log(`[Stripe Config]   - STRIPE_PUBLISHABLE_KEY: ${process.env.STRIPE_PUBLISHABLE_KEY ? 'SET (' + process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 10) + '...)' : 'NOT SET'}`);
+console.log(`[Stripe Config]   - STRIPE_WEBHOOK_SECRET: ${process.env.STRIPE_WEBHOOK_SECRET ? 'SET (' + process.env.STRIPE_WEBHOOK_SECRET.substring(0, 10) + '...)' : 'NOT SET'}`);
+
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('[Stripe] ⚠️ STRIPE_SECRET_KEY not found in environment variables');
 }
@@ -27,9 +33,15 @@ export const STRIPE_CONFIG = {
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   currency: 'aud', // Australian Dollar
 
+  // Debug: Log webhook secret status (first 10 chars only for security)
+  _debug: {
+    webhookSecretSet: !!process.env.STRIPE_WEBHOOK_SECRET,
+    webhookSecretPrefix: process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 10) : 'NOT SET',
+  },
+
   // Payments enabled/disabled flag
   // Set to false to temporarily disable all Stripe payments
-  paymentsEnabled: false, // TODO: Set to true to re-enable payments
+  paymentsEnabled: true, // ✅ Payments enabled
 
   // Fee surcharging configuration
   feeConfig: {
@@ -39,7 +51,7 @@ export const STRIPE_CONFIG = {
     useDynamicDetection: false,
 
     // Default card type when useDynamicDetection is false
-    // Options: 'domestic' (1.75%) or 'international' (2.9%)
+    // Options: 'domestic' (1.7%) or 'international' (3.5%)
     // Recommendation: 'domestic' since most AU customers use AU cards
     defaultCardType: 'domestic',
   },

@@ -206,6 +206,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       'agent_title_search', // Did agent complete title search?
       'agent_title_search_file', // Agent's title search file ID
       'docusign_csa_json', // DocuSign webhook data (contains envelope_status and recipient_status)
+      'payment_status', // Payment status (Paid, Pending, Failed, etc.)
       ...questionnaireProperties
     ];
 
@@ -224,6 +225,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
       console.log(`[Dashboard Complete]    - dealstage: ${deals[0].properties.dealstage || 'NOT SET'}`);
       console.log(`[Dashboard Complete]    - pipeline: ${deals[0].properties.pipeline || 'NOT SET'}`);
       console.log(`[Dashboard Complete]    - is_draft: ${deals[0].properties.is_draft || 'NOT SET'}`);
+      console.log(`[Dashboard Complete]    - payment_status: ${deals[0].properties.payment_status || 'NOT SET'}`);
     }
 
     // Filter out draft deals and non-Form 2s pipeline deals BEFORE transforming
@@ -305,6 +307,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
             id: contact.id,
             firstname: props.firstname || '',
             lastname: props.lastname || '',
+            middle_name: props.middle_name || '',
             email: props.email || '',
             phone: props.phone || '',
             address: props.address || ''
@@ -439,6 +442,14 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         }
 
         // Build property details (will be populated with property address below)
+        // Log middle_name before mapping
+        console.log(`[Client Dashboard] 📝 Mapping primarySeller middle_name:`, {
+          contactId: primarySeller?.id,
+          middle_name: primarySeller?.middle_name,
+          type: typeof primarySeller?.middle_name,
+          isEmpty: !primarySeller?.middle_name || primarySeller?.middle_name === ''
+        });
+
         propertyDetails = {
           primarySeller: {
             id: primarySeller?.id || null,
@@ -558,6 +569,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         title: extractTitle(propertyAddress || dealName || 'Untitled'),
         subtitle: extractSubtitle(propertyAddress),
         status: dealstage,
+        paymentStatus: deal.properties.payment_status || 'Pending', // Payment status for read-only mode
         questionsAnswered: Object.keys(questionnaireData).length,
         totalQuestions: Object.keys(propertyMapping).length,
         progressPercentage: Math.round((Object.keys(questionnaireData).length / Object.keys(propertyMapping).length) * 100),
@@ -685,6 +697,14 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
 
         if (!props.firstname || !props.lastname) continue;
 
+        // Log middle_name value from HubSpot
+        console.log(`[Client Dashboard] 🔍 Contact ${contact.id} - middle_name from HubSpot:`, {
+          rawValue: props.middle_name,
+          type: typeof props.middle_name,
+          isEmpty: !props.middle_name || props.middle_name === '',
+          allProps: Object.keys(props)
+        });
+
         const contactData = {
           id: contact.id,
           firstname: props.firstname || '',
@@ -799,6 +819,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             id: contact.id,
             firstname: props.firstname || '',
             lastname: props.lastname || '',
+            middle_name: props.middle_name || '',
             email: props.email || '',
             phone: props.phone || '',
             address: props.address || ''
@@ -843,6 +864,7 @@ router.get('/property/:dealId', authenticateJWT, async (req, res) => {
             id: primarySellerContact.id,
             firstname: primarySellerContact.properties.firstname || '',
             lastname: primarySellerContact.properties.lastname || '',
+            middle_name: primarySellerContact.properties.middle_name || '',
             email: primarySellerContact.properties.email || '',
             phone: primarySellerContact.properties.phone || '',
             address: primarySellerContact.properties.address || ''
@@ -1124,6 +1146,78 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
       }
     });
 
+    // ==================================================================
+    // CALCULATE QUOTE AND POPULATE searches_quote_sms
+    // ==================================================================
+    try {
+      console.log(`[Questionnaire] 📊 Calculating quote for searches_quote_sms...`);
+
+      // Normalize formData for quote calculation (calculator expects lowercase)
+      const propertyData = {};
+      Object.entries(formData).forEach(([fieldName, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          const normalizedValue = typeof value === 'string' ? value.toLowerCase() : value;
+          propertyData[fieldName] = normalizedValue;
+        }
+      });
+
+      // Get client data (for title_search_done exclusion from contact)
+      const clientData = {};
+      try {
+        // Fetch deal to get contact ID
+        const deal = await dealsIntegration.getDeal(dealId, [
+          'hs_contact_id',
+          'contact_id',
+          'agent_title_search'
+        ]);
+        
+        const contactId = deal.properties.hs_contact_id || deal.properties.contact_id;
+        
+        if (contactId) {
+          try {
+            const contact = await contactsIntegration.getContact(contactId);
+            if (contact && contact.properties.title_search_done) {
+              const value = contact.properties.title_search_done;
+              clientData.title_search_done = typeof value === 'string' ? value.toLowerCase() : value;
+            }
+          } catch (err) {
+            console.warn('[Questionnaire] Could not fetch contact data:', err.message);
+          }
+        }
+
+        // Get deal-specific data (for agent_title_search exclusion from deal)
+        const dealData = {};
+        if (deal.properties.agent_title_search) {
+          dealData.agent_title_search = deal.properties.agent_title_search; // Keep original case
+        }
+
+        // Calculate quote
+        const quote = calculateQuote(propertyData, clientData, dealData);
+
+        console.log(`[Questionnaire] 📋 Quote calculated: $${quote.grandTotal}`);
+
+        // Build searches_quote_sms property with quote amount and required searches
+        const requiredSearches = quote.breakdown
+          .filter(search => search.included)
+          .map(search => search.name);
+        
+        const quoteAmount = quote.grandTotal.toFixed(2);
+        const searchesQuoteSms = `Quote Amount : $${quoteAmount}\n\nRequired Searches :\n\n${requiredSearches.map(search => `- ${search}`).join('\n')}`;
+        
+        properties.searches_quote_sms = searchesQuoteSms;
+        
+        console.log(`[Questionnaire] 📱 searches_quote_sms property set:`, searchesQuoteSms);
+
+      } catch (quoteError) {
+        console.error(`[Questionnaire] ⚠️ Error calculating quote:`, quoteError.message);
+        // Don't fail the questionnaire submission if quote calculation fails
+        // searches_quote_sms will be set later at quote acceptance (fallback)
+      }
+    } catch (error) {
+      console.error(`[Questionnaire] ⚠️ Error in quote calculation block:`, error.message);
+      // Continue with submission even if quote calculation fails
+    }
+
     await dealsIntegration.updateDeal(dealId, properties);
 
     console.log(`[Questionnaire] ✅ Questionnaire submitted successfully`);
@@ -1357,6 +1451,30 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
     console.log(`[Deal Stage] stage: ${stage}`);
     console.log(`[Deal Stage] ========================================`);
 
+    // Check if payment is already completed - prevent stage changes after payment
+    try {
+      const deal = await dealsIntegration.getDeal(dealId, ['payment_status', 'dealstage']);
+      const paymentStatus = deal.properties.payment_status;
+      
+      if (paymentStatus === 'Paid') {
+        console.log(`[Deal Stage] 🔒 Payment already completed - stage changes blocked for deal ${dealId}`);
+        console.log(`[Deal Stage]    Current stage: ${deal.properties.dealstage}`);
+        console.log(`[Deal Stage]    Requested step: ${stepNumber}`);
+        return res.status(403).json({
+          error: 'Stage changes not allowed',
+          message: 'Payment has been completed. Stages 1-5 are now read-only. Please use Status Tracking (Stage 6) to view progress.',
+          paymentCompleted: true,
+          currentStage: deal.properties.dealstage
+        });
+      }
+      
+      console.log(`[Deal Stage] ✅ Payment status check passed: ${paymentStatus || 'Pending'}`);
+    } catch (paymentCheckError) {
+      console.error(`[Deal Stage] ⚠️ Error checking payment status:`, paymentCheckError.message);
+      // Continue with stage update if payment check fails (don't block on error)
+      // This ensures backward compatibility if payment_status field doesn't exist
+    }
+
     // Validate stage ID
     const validStages = {
       1: '1923713518',
@@ -1472,20 +1590,35 @@ router.patch('/property/:dealId/stage', authenticateJWT, async (req, res) => {
           }
         });
 
+        // Set compulsory search status properties (always set to "Not Ordered")
+        const compulsorySearchStatuses = [
+          'byda_status',
+          'zoning_status',
+          'tree_order_status',
+          'pool_safety_certificate_status'
+        ];
+
+        compulsorySearchStatuses.forEach(statusProperty => {
+          searchProperties[statusProperty] = "Not Ordered";
+          console.log(`[Deal Stage]   ✓ Compulsory search status: ${statusProperty} = Not Ordered`);
+        });
+
+        // Set conditional search status properties based on questionnaire answers
+        // If body_corporate is "yes", set body_corporate_status to "Not Ordered"
+        if (propertyData.body_corporate === "yes") {
+          searchProperties['body_corporate_status'] = "Not Ordered";
+          console.log(`[Deal Stage]   ✓ Conditional search status: body_corporate_status = Not Ordered (body_corporate = yes)`);
+        }
+
         // Add search properties to update payload
         Object.assign(updatePayload, searchProperties);
 
-        // Build searches_quote_sms property with quote amount and required searches
-        const requiredSearches = quote.breakdown
-          .filter(search => search.included)
-          .map(search => search.name);
-        
-        const quoteAmount = quote.grandTotal.toFixed(2);
-        const searchesQuoteSms = `Quote Amount : $${quoteAmount}\n\nRequired Searches :\n\n${requiredSearches.map(search => `- ${search}`).join('\n')}`;
-        
-        updatePayload.searches_quote_sms = searchesQuoteSms;
-        
-        console.log(`[Deal Stage] 📱 searches_quote_sms property set:`, searchesQuoteSms);
+        // NOTE: searches_quote_sms is already set at questionnaire submission
+        // We keep quote calculation here to determine search properties (title_search, etc.)
+        // but don't update searches_quote_sms to avoid overwriting the original quote
+        // If quote changed due to agent_title_search or title_search_done updates,
+        // searches_quote_sms will reflect the original quote from submission
+        // The search properties above will still be correct based on current data
 
         console.log(`[Deal Stage] ✅ Property search fields determined based on quote`);
 

@@ -10,6 +10,7 @@ import * as stripePayments from '../integrations/stripe/payments.js';
 import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import { STRIPE_CONFIG } from '../config/stripe.js';
 import { calculateAmountWithFees, getFeeBreakdown } from '../utils/stripe-fees.js';
+import { handlePaymentSuccess } from './webhook.js';
 
 const router = express.Router();
 
@@ -182,7 +183,7 @@ router.post('/cancel/:paymentIntentId', authenticateJWT, async (req, res) => {
  * Flow:
  * 1. Payment is authorized (not captured) on frontend
  * 2. This endpoint detects card country
- * 3. Adjusts amount based on domestic (1.75%) or international (2.9%) rates
+ * 3. Adjusts amount based on domestic (1.7%) or international (3.5%) rates
  * 4. Captures the payment with correct amount
  */
 router.post('/adjust-and-capture/:paymentIntentId', authenticateJWT, async (req, res) => {
@@ -237,6 +238,58 @@ router.post('/adjust-and-capture/:paymentIntentId', authenticateJWT, async (req,
   } catch (error) {
     console.error(`[Payment] ❌ Error adjusting and capturing payment:`, error.message);
     res.status(500).json({ error: 'Failed to adjust and capture payment' });
+  }
+});
+
+/**
+ * POST /api/payment/manual-update/:paymentIntentId
+ * Manually update HubSpot deal for a payment that succeeded but webhook failed
+ * Use this as a recovery mechanism when webhooks fail
+ */
+router.post('/manual-update/:paymentIntentId', authenticateJWT, async (req, res) => {
+  try {
+    const { paymentIntentId } = req.params;
+
+    console.log(`[Payment Manual Update] 🔄 Manually updating HubSpot for payment: ${paymentIntentId}`);
+
+    // Get payment intent from Stripe
+    const paymentIntent = await stripePayments.getPaymentIntent(paymentIntentId);
+
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ 
+        error: 'Payment not succeeded', 
+        status: paymentIntent.status 
+      });
+    }
+
+    const dealId = paymentIntent.metadata?.deal_id;
+
+    if (!dealId) {
+      return res.status(400).json({ 
+        error: 'No deal_id found in payment metadata' 
+      });
+    }
+
+    console.log(`[Payment Manual Update] 📋 Found deal ID: ${dealId}`);
+
+    // Use the same handler as webhook
+    await handlePaymentSuccess(paymentIntent);
+
+    console.log(`[Payment Manual Update] ✅ Successfully updated HubSpot deal ${dealId}`);
+
+    res.json({
+      success: true,
+      message: 'HubSpot deal updated successfully',
+      dealId,
+      paymentIntentId,
+      amount: (paymentIntent.amount / 100).toFixed(2),
+    });
+  } catch (error) {
+    console.error(`[Payment Manual Update] ❌ Error:`, error.message);
+    res.status(500).json({ 
+      error: 'Failed to update HubSpot deal',
+      details: error.message 
+    });
   }
 });
 

@@ -1,6 +1,10 @@
 /**
  * Smokeball Bank Account Operations
  * Handle trust account transactions and receipting
+ * 
+ * NOTE: Trust account transaction creation via API is not supported by Smokeball.
+ * The createTransaction, receiptPayment, and receiptStripePayment functions have been removed.
+ * Use Python Playwright automation instead via smokeball-receipt-automation.js
  */
 
 import * as client from './client.js';
@@ -108,137 +112,6 @@ export async function getBankAccountForMatter(matterId) {
   }
 }
 
-/**
- * Create a transaction in a bank account
- *
- * @param {string} bankAccountId - Bank account UUID
- * @param {Object} transactionData - Transaction details
- * @param {string} transactionData.matterId - Matter UUID
- * @param {string} transactionData.type - Transaction type (Bank Transfer, Deposit, Withdrawal, Transfer)
- * @param {number} transactionData.amount - Amount in dollars (e.g., 102.65)
- * @param {string} transactionData.reference - Reference/description (optional)
- * @param {string} transactionData.reason - Reason for transaction (optional)
- * @param {string} transactionData.description - Additional description (optional)
- * @param {string} transactionData.note - Transaction notes (optional)
- * @param {string} transactionData.payorId - Contact UUID of payor (optional)
- * @param {string} transactionData.effectiveDate - Transaction effective date ISO string (optional, defaults to now)
- * @returns {Promise<Object>} Created transaction with { id: UUID, ... }
- */
-export async function createTransaction(bankAccountId, transactionData) {
-  try {
-    console.log('[Smokeball Bank] 💰 Creating transaction:');
-    console.log(`  Type: ${transactionData.type}`);
-    console.log(`  Amount: $${transactionData.amount.toFixed(2)}`);
-    console.log(`  Matter: ${transactionData.matterId}`);
-
-    // Build payload with all required and optional fields per Smokeball API documentation
-    const payload = {
-      matterId: transactionData.matterId,
-      type: transactionData.type || 'Bank Transfer',
-      amount: transactionData.amount,
-      effectiveDate: transactionData.effectiveDate || new Date().toISOString(),
-    };
-
-    // Add optional fields if provided
-    if (transactionData.payorId) {
-      payload.payorId = transactionData.payorId;
-    }
-
-    if (transactionData.reference) {
-      payload.reference = transactionData.reference;
-    }
-
-    if (transactionData.reason) {
-      payload.reason = transactionData.reason;
-    }
-
-    if (transactionData.description) {
-      payload.description = transactionData.description;
-    }
-
-    if (transactionData.note) {
-      payload.note = transactionData.note;
-    }
-
-    console.log('[Smokeball Bank] 📝 Transaction payload:', JSON.stringify(payload, null, 2));
-
-    const response = await client.post(
-      SMOKEBALL_API.endpoints.transactions(bankAccountId),
-      payload
-    );
-
-    console.log('[Smokeball Bank] ✅ Transaction created successfully');
-    console.log(`[Smokeball Bank] 🆔 Transaction ID: ${response.id}`);
-
-    return response;
-
-  } catch (error) {
-    console.error('[Smokeball Bank] ❌ Error creating transaction:', error.message);
-    throw error;
-  }
-}
-
-/**
- * Receipt payment to trust account
- * Creates a Deposit transaction for a matter
- *
- * @param {string} matterId - Matter UUID (can be smokeball_lead_uid - Smokeball handles both)
- * @param {number} amount - Amount in dollars
- * @param {string} reference - Payment reference/description
- * @param {string} payorId - Contact UUID of person paying (optional)
- * @param {string} transactionType - Transaction type ('Credit Card' or 'Bank Transfer')
- * @returns {Promise<Object>} Transaction details with ID
- */
-export async function receiptPayment(matterId, amount, reference = 'Search Fees', payorId = null, transactionType = 'Bank Transfer') {
-  try {
-    console.log('[Smokeball Bank] 💳 Receipting payment to trust account');
-    console.log(`[Smokeball Bank]    Matter ID: ${matterId}`);
-    console.log(`[Smokeball Bank]    Amount: $${amount.toFixed(2)}`);
-    console.log(`[Smokeball Bank]    Payor ID: ${payorId || 'Not provided'}`);
-
-    // Get bank account for this specific matter (avoids 403 errors)
-    const accountId = await getBankAccountForMatter(matterId);
-
-    // Create deposit transaction with all required fields per Smokeball API documentation
-    const transaction = await createTransaction(accountId, {
-      matterId,
-      type: transactionType, // Use transaction type parameter
-      amount,
-      reference: '',
-      reason: 'Client contribution towards payment for searches',
-      description: '',
-      note: 'Payment for searches',
-      effectiveDate: new Date().toISOString(),
-      payorId,
-    });
-
-    console.log('[Smokeball Bank] ✅ Payment receipted successfully');
-
-    return transaction;
-
-  } catch (error) {
-    console.error('[Smokeball Bank] ❌ Error receipting payment:', error.message);
-    throw error;
-  }
-}
-
-/**
- * Receipt Stripe payment to trust account
- * Convenience wrapper for Stripe webhook integration
- *
- * @param {Object} stripePaymentIntent - Stripe payment intent object
- * @param {string} matterId - Matter UUID (from metadata)
- * @param {string} payorContactId - Contact UUID of payor (optional)
- * @param {string} transactionType - Transaction type ('Credit Card' or 'Bank Transfer')
- * @returns {Promise<Object>} Transaction details
- */
-export async function receiptStripePayment(stripePaymentIntent, matterId, payorContactId = null, transactionType = 'Credit Card') {
-  const amountInDollars = stripePaymentIntent.amount / 100; // Convert cents to dollars
-
-  const reference = `Stripe Payment - ${stripePaymentIntent.id}`;
-
-  return await receiptPayment(matterId, amountInDollars, reference, payorContactId, transactionType);
-}
 
 /**
  * Get transactions for a matter
@@ -271,8 +144,5 @@ export default {
   getAllBankAccounts,
   getTrustAccountId,
   getBankAccountForMatter,
-  createTransaction,
-  receiptPayment,
-  receiptStripePayment,
   getTransactionsForMatter,
 };

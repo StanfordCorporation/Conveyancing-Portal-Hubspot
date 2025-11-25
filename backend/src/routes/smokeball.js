@@ -309,4 +309,98 @@ router.post('/deals/:dealId/sync',
   }
 );
 
+/**
+ * POST /api/smokeball/receipt/create
+ * Trigger receipt automation via Python Playwright script
+ * 
+ * Body:
+ * {
+ *   "matterId": "ce2582fe-b415-4f95-b9b9-c79c903a4654",
+ *   "amount": 81.70,
+ *   "lastname": "Stanford",
+ *   "firstname": "Logan",
+ *   "reason": "On account of test search fees",
+ *   "date": "21/11/2025",
+ *   "testMode": false  // If true, fills form but doesn't submit
+ * }
+ * 
+ * OR with dealId (fetches deal and contact info automatically):
+ * {
+ *   "dealId": "123456789",
+ *   "amount": 81.70,  // Optional override
+ *   "reason": "On account of search fees",  // Optional override
+ *   "testMode": false
+ * }
+ */
+router.post('/receipt/create', 
+  requireSmokeballEnabled,
+  async (req, res) => {
+    try {
+      const { matterId, dealId, amount, lastname, firstname, reason, date, testMode } = req.body;
+      
+      console.log('[Smokeball Receipt Automation] 🚀 Receipt automation triggered');
+      
+      // Import automation service
+      const { executeReceiptAutomation, executeReceiptAutomationForDeal } = await import('../services/workflows/smokeball-receipt-automation.js');
+      
+      let result;
+      
+      // If dealId is provided, use deal context
+      if (dealId) {
+        console.log(`[Smokeball Receipt Automation] 📋 Using deal context: ${dealId}`);
+        result = await executeReceiptAutomationForDeal(dealId, {
+          amount,
+          reason,
+          date,
+          testMode: testMode || false
+        });
+      } 
+      // Otherwise, use direct parameters
+      else if (matterId) {
+        console.log(`[Smokeball Receipt Automation] 🆔 Using matter ID: ${matterId}`);
+        result = await executeReceiptAutomation({
+          matterId,
+          amount,
+          lastname,
+          firstname,
+          reason,
+          date,
+          testMode: testMode || false
+        });
+      } 
+      else {
+        return res.status(400).json({
+          success: false,
+          error: 'Either matterId or dealId is required',
+          message: 'Please provide either matterId (with lastname/firstname) or dealId'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        result: {
+          exitCode: result.exitCode,
+          testMode: testMode || false,
+          output: result.stdout
+        }
+      });
+      
+    } catch (error) {
+      console.error('[Smokeball Receipt Automation] ❌ Error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: 'Receipt automation failed - check logs for details',
+        troubleshooting: {
+          python: 'Make sure Python is installed and in PATH',
+          playwright: 'Run: playwright install chromium',
+          dependencies: 'Install: pip install -r requirements-automation.txt',
+          script: 'Verify smokeball_receipt_automation.py exists in backend/ directory'
+        }
+      });
+    }
+  }
+);
+
 export default router;

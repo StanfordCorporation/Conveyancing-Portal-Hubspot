@@ -13,6 +13,13 @@ export const requestLogger = (req, res, next) => {
   console.log(`[${timestamp}] ${method} ${path}`);
   console.log(`[Request] IP: ${ip}`);
 
+  // Log webhook requests (but skip body logging - they need raw body)
+  if (path.startsWith('/api/webhook')) {
+    console.log(`[Request] 🔔 WEBHOOK REQUEST RECEIVED: ${method} ${path}`);
+    console.log(`[Request] Webhook endpoint - skipping body logging`);
+    return next();
+  }
+
   // Safely check req.body
   if (method !== 'GET' && req.body && Object.keys(req.body).length > 0) {
     console.log(`[Request Body]:`, JSON.stringify(req.body, null, 2));

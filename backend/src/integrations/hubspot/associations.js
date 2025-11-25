@@ -181,6 +181,18 @@ export const getDealContacts = async (dealId) => {
     const contactDetails = batchResponse.data.results || [];
     console.log(`[HubSpot Associations] ✅ Batch fetch returned properties for ${contactDetails.length} contacts`);
 
+    // Log middle_name property for debugging
+    contactDetails.forEach(contact => {
+      if (contact.properties) {
+        console.log(`[HubSpot Associations] 🔍 Contact ${contact.id} properties:`, {
+          middle_name: contact.properties.middle_name,
+          middleName: contact.properties.middleName,
+          allKeys: Object.keys(contact.properties).filter(k => k.toLowerCase().includes('middle')),
+          hasMiddleName: 'middle_name' in contact.properties
+        });
+      }
+    });
+
     // Step 3: Merge association metadata with contact properties
     return contactAssociations.map(assoc => {
       // Find matching contact details

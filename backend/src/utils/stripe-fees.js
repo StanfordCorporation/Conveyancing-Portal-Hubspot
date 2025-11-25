@@ -7,31 +7,44 @@
 /**
  * Stripe fee structure for Australian businesses
  * Source: https://stripe.com/au/pricing
+ * 
+ * Standard Australian Stripe pricing:
+ * - Percentage fee: 1.7% (0.017) - includes GST in headline rate
+ * - Fixed fee: $0.30 (30 cents)
  */
 export const STRIPE_FEES = {
-  // Domestic Australian cards
+  // Domestic Australian cards (standard pricing)
   DOMESTIC: {
-    percentage: 0.0175, // 1.75%
-    fixed: 0.30, // A$0.30 (in dollars)
+    percentage: 0.017, // 1.7% (standard Australian Stripe rate)
+    fixed: 30, // A$0.30 in cents
   },
   // International cards
   INTERNATIONAL: {
-    percentage: 0.029, // 2.9%
-    fixed: 0.30, // A$0.30 (in dollars)
+    percentage: 0.035, // 3.5%
+    fixed: 30, // A$0.30 in cents
   },
 };
 
 /**
  * Calculate gross charge amount including Stripe fees
- * Formula: gross_amount = (net_amount + fixed_fee) / (1 - percentage_fee)
+ * Formula: G = (N + F) / (1 - R)
+ * Where:
+ *   G = gross amount (total charged to card)
+ *   N = net amount (what you want to receive)
+ *   F = fixed fee
+ *   R = rate (percentage fee)
+ * 
+ * All calculations done in cents to avoid floating point rounding issues
  *
- * @param {number} netAmount - Amount you want to receive in dollars (e.g., 100.00)
- * @param {number} feePercent - Fee percentage as decimal (e.g., 0.0175 for 1.75%)
- * @param {number} fixedFee - Fixed fee in dollars (e.g., 0.30)
- * @returns {number} Gross amount to charge (in dollars)
+ * @param {number} netAmountInCents - Amount you want to receive in cents (e.g., 10000 = $100.00)
+ * @param {number} feePercent - Fee percentage as decimal (e.g., 0.017 for 1.7%)
+ * @param {number} fixedFeeInCents - Fixed fee in cents (e.g., 30 = $0.30)
+ * @returns {number} Gross amount to charge in cents
  */
-function calculateGrossAmount(netAmount, feePercent, fixedFee) {
-  return (netAmount + fixedFee) / (1 - feePercent);
+function calculateGrossAmountInCents(netAmountInCents, feePercent, fixedFeeInCents) {
+  // G = (N + F) / (1 - R), all in cents
+  const grossCents = Math.round((netAmountInCents + fixedFeeInCents) / (1 - feePercent));
+  return grossCents;
 }
 
 /**
@@ -45,24 +58,21 @@ function calculateGrossAmount(netAmount, feePercent, fixedFee) {
  * @example
  * // You want to receive $100.00 after fees
  * const result = calculateAmountWithFees(10000);
- * // result.grossAmountInCents = 10210 (A$102.10)
- * // result.stripeFeeInCents = 210 (A$2.10)
+ * // result.grossAmountInCents = 10204 (A$102.04)
+ * // result.stripeFeeInCents = 204 (A$2.04)
  * // result.netAmountInCents = 10000 (A$100.00)
  */
 export const calculateAmountWithFees = (netAmountInCents, options = {}) => {
   const { useDomestic = true } = options;
   const feeStructure = useDomestic ? STRIPE_FEES.DOMESTIC : STRIPE_FEES.INTERNATIONAL;
 
-  const { percentage: feePercent, fixed: fixedFee } = feeStructure;
+  const { percentage: feePercent, fixed: fixedFeeInCents } = feeStructure;
 
-  // Convert cents to dollars for calculation
-  const netAmount = netAmountInCents / 100;
+  // Calculate gross amount entirely in cents to avoid floating point rounding issues
+  // Formula: G = (N + F) / (1 - R)
+  const grossAmountInCents = calculateGrossAmountInCents(netAmountInCents, feePercent, fixedFeeInCents);
 
-  // Calculate gross amount
-  const grossAmount = calculateGrossAmount(netAmount, feePercent, fixedFee);
-  const grossAmountInCents = Math.round(grossAmount * 100);
-
-  // Calculate actual Stripe fee
+  // Calculate actual Stripe fee (what the client pays in fees)
   const stripeFeeInCents = grossAmountInCents - netAmountInCents;
 
   return {
@@ -70,7 +80,7 @@ export const calculateAmountWithFees = (netAmountInCents, options = {}) => {
     grossAmountInCents: grossAmountInCents,
     stripeFeeInCents: stripeFeeInCents,
     feePercent: feePercent,
-    fixedFee: fixedFee,
+    fixedFee: fixedFeeInCents, // Now in cents
     breakdown: {
       netAmount: `A$${(netAmountInCents / 100).toFixed(2)}`,
       grossAmount: `A$${(grossAmountInCents / 100).toFixed(2)}`,

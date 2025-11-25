@@ -8,7 +8,8 @@ import stripe from '../config/stripe.js';
 import { STRIPE_CONFIG } from '../config/stripe.js';
 import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import { DEAL_STAGES } from '../config/dealStages.js';
-import * as smokeballPaymentWorkflow from '../services/workflows/smokeball-payment-receipting.js';
+import * as receiptAutomation from '../services/workflows/smokeball-receipt-automation.js';
+import * as githubActions from '../services/github-actions-trigger.js';
 
 const router = express.Router();
 
@@ -20,6 +21,29 @@ const router = express.Router();
 router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = STRIPE_CONFIG.webhookSecret;
+
+  // Debug logging
+  console.log(`[Webhook] 🔍 Debug info:`);
+  console.log(`[Webhook]   - Has signature header: ${!!sig}`);
+  console.log(`[Webhook]   - Has webhook secret: ${!!endpointSecret}`);
+  console.log(`[Webhook]   - Webhook secret starts with: ${endpointSecret ? endpointSecret.substring(0, 10) : 'N/A'}`);
+  console.log(`[Webhook]   - Webhook secret length: ${endpointSecret ? endpointSecret.length : 0}`);
+  console.log(`[Webhook]   - Request body type: ${typeof req.body}`);
+  console.log(`[Webhook]   - Request body is Buffer: ${Buffer.isBuffer(req.body)}`);
+  console.log(`[Webhook]   - Request body length: ${req.body ? req.body.length : 0}`);
+  console.log(`[Webhook]   - Content-Type header: ${req.headers['content-type']}`);
+  console.log(`[Webhook]   - Config debug - Secret set: ${STRIPE_CONFIG._debug?.webhookSecretSet}`);
+  console.log(`[Webhook]   - Config debug - Secret prefix: ${STRIPE_CONFIG._debug?.webhookSecretPrefix}`);
+
+  if (!endpointSecret) {
+    console.error(`[Webhook] ❌ STRIPE_WEBHOOK_SECRET is not set in environment variables`);
+    return res.status(500).send(`Webhook Error: Webhook secret not configured`);
+  }
+
+  if (!sig) {
+    console.error(`[Webhook] ❌ No stripe-signature header found`);
+    return res.status(400).send(`Webhook Error: No signature header`);
+  }
 
   let event;
 
@@ -47,6 +71,10 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         await handlePaymentCanceled(event.data.object);
         break;
 
+      case 'payout.paid':
+        await handlePayoutPaid(event.data.object);
+        break;
+
       case 'charge.succeeded':
         console.log(`[Webhook] 💳 Charge succeeded: ${event.data.object.id}`);
         break;
@@ -71,7 +99,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
  * Handle successful payment
  * @param {Object} paymentIntent - Stripe payment intent object
  */
-async function handlePaymentSuccess(paymentIntent) {
+export async function handlePaymentSuccess(paymentIntent) {
   console.log(`[Webhook] 🎉 Payment succeeded!`);
   console.log(`[Webhook] 💳 Payment Intent ID: ${paymentIntent.id}`);
   console.log(`[Webhook] 💰 Amount: $${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`);
@@ -81,10 +109,10 @@ async function handlePaymentSuccess(paymentIntent) {
 
   if (dealId) {
     try {
-      // Update deal: mark as paid, store payment details, and progress to FUNDS_PROVIDED stage
+      // Update deal: mark as pending (will be marked as paid when payout completes)
       await dealsIntegration.updateDeal(dealId, {
         payment_method: 'Stripe',
-        payment_status: 'Paid',
+        payment_status: 'Pending',
         payment_amount: (paymentIntent.amount / 100).toString(),
         payment_date: new Date().toISOString().split('T')[0],
         stripe_payment_intent_id: paymentIntent.id,
@@ -92,20 +120,12 @@ async function handlePaymentSuccess(paymentIntent) {
         dealstage: DEAL_STAGES.FUNDS_PROVIDED.id, // Progress to Step 6
       });
 
-      console.log(`[Webhook] ✅ Deal ${dealId} updated - marked as paid`);
+      console.log(`[Webhook] ✅ Deal ${dealId} updated - marked as pending`);
       console.log(`[Webhook] 🎯 Deal stage progressed to: ${DEAL_STAGES.FUNDS_PROVIDED.label}`);
       console.log(`[Webhook] 💰 Payment: $${(paymentIntent.amount / 100).toFixed(2)} AUD`);
       console.log(`[Webhook] 🔗 Stripe Payment Intent: ${paymentIntent.id}`);
-
-      // Receipt payment to Smokeball trust account
-      try {
-        console.log(`[Webhook] 🏦 Receipting payment to Smokeball trust account...`);
-        const receiptResult = await smokeballPaymentWorkflow.receiptStripePayment(paymentIntent);
-        console.log(`[Webhook] ✅ Payment receipted to Smokeball - Transaction ID: ${receiptResult.transactionId}`);
-      } catch (smokeballError) {
-        console.error(`[Webhook] ⚠️ Error receipting payment to Smokeball:`, smokeballError.message);
-        // Don't throw - payment succeeded even if Smokeball receipting failed
-      }
+      
+      // Note: Receipt automation will be triggered when payout.paid webhook sets payment_status to "Paid"
     } catch (error) {
       console.error(`[Webhook] ⚠️ Error updating HubSpot deal:`, error.message);
       // Don't throw - we still want to acknowledge the webhook
@@ -113,6 +133,103 @@ async function handlePaymentSuccess(paymentIntent) {
   }
 
   // TODO: Send confirmation email to customer
+}
+
+/**
+ * Handle payout.paid event
+ * Updates HubSpot deals when a payout is completed.
+ * Extracts deal_id from charge metadata and updates payment_status to 'Paid'.
+ * 
+ * @param {Object} payout - Stripe payout object
+ */
+async function handlePayoutPaid(payout) {
+  console.log(`[Webhook] 💸 Payout paid!`);
+  console.log(`[Webhook] 🆔 Payout ID: ${payout.id}`);
+  console.log(`[Webhook] 💰 Amount: $${(payout.amount / 100).toFixed(2)} ${payout.currency.toUpperCase()}`);
+  console.log(`[Webhook] 📅 Arrival date: ${payout.arrival_date}`);
+
+  try {
+    // List all balance transactions associated with this payout
+    // Using expand[]=data.source to get charge objects directly
+    const balanceTransactions = await stripe.balanceTransactions.list({
+      payout: payout.id,
+      expand: ['data.source'],
+      limit: 100, // Adjust if you expect more transactions per payout
+    });
+
+    console.log(`[Webhook] 📊 Found ${balanceTransactions.data.length} balance transaction(s) in payout`);
+
+    const dealsToUpdate = [];
+    
+    // Process each transaction to find charges and extract deal_id from metadata
+    for (const transaction of balanceTransactions.data) {
+      // Only process charge transactions (skip payout transactions)
+      if (transaction.type === 'charge' && transaction.source && transaction.source.object === 'charge') {
+        const charge = transaction.source;
+        const dealId = charge.metadata?.deal_id;
+
+        if (dealId) {
+          dealsToUpdate.push({
+            dealId,
+            chargeId: charge.id,
+            paymentIntentId: charge.payment_intent,
+            amount: charge.amount,
+          });
+          console.log(`[Webhook] 💳 Found deal ${dealId} in charge ${charge.id} (Payment Intent: ${charge.payment_intent})`);
+        } else {
+          console.warn(`[Webhook] ⚠️ Charge ${charge.id} has no deal_id in metadata`);
+        }
+      }
+    }
+
+    if (dealsToUpdate.length === 0) {
+      console.log(`[Webhook] ⚠️ No deals found in payout ${payout.id}`);
+      return;
+    }
+
+    console.log(`[Webhook] 🔍 Updating ${dealsToUpdate.length} deal(s)...`);
+
+    // Update deals
+    let updatedCount = 0;
+    for (const { dealId, chargeId, paymentIntentId } of dealsToUpdate) {
+      try {
+        // Update deal to mark payment as paid
+        await dealsIntegration.updateDeal(dealId, {
+          payment_status: 'Paid',
+        });
+
+        console.log(`[Webhook] ✅ Deal ${dealId} updated - payment_status set to 'Paid'`);
+        
+        // Trigger receipt automation (checks feature flag internally)
+        try {
+          console.log(`[Webhook] 🤖 Triggering receipt automation for deal ${dealId}...`);
+          const automationResult = await receiptAutomation.triggerReceiptAutomationForDeal(dealId);
+          
+          if (automationResult.skipped) {
+            console.log(`[Webhook] ⚠️ Receipt automation skipped for deal ${dealId}: ${automationResult.message}`);
+          } else if (automationResult.success) {
+            console.log(`[Webhook] ✅ Receipt automation completed for deal ${dealId}`);
+          } else {
+            console.error(`[Webhook] ⚠️ Receipt automation failed for deal ${dealId}: ${automationResult.message || 'Unknown error'}`);
+          }
+        } catch (automationError) {
+          console.error(`[Webhook] ⚠️ Receipt automation failed for deal ${dealId}:`, automationError.message);
+          // Don't throw - continue processing other deals even if automation fails
+        }
+        
+        updatedCount++;
+      } catch (error) {
+        console.error(`[Webhook] ⚠️ Error updating deal ${dealId} (charge ${chargeId}):`, error.message);
+        // Continue with other deals
+      }
+    }
+
+    console.log(`[Webhook] ✅ Payout ${payout.id} processed: ${updatedCount} of ${dealsToUpdate.length} deal(s) updated`);
+
+  } catch (error) {
+    console.error(`[Webhook] ❌ Error processing payout.paid:`, error.message);
+    throw error;
+  }
 }
 
 /**
@@ -171,6 +288,7 @@ async function handlePaymentCanceled(paymentIntent) {
  * POST /api/webhook/docusign
  * Handle DocuSign webhook events (envelope status updates)
  * Updates HubSpot deal with envelope status and recipient information
+ * Supports multiple form types: Form 2 CSA and Complete Form 2
  */
 router.post('/docusign', express.json(), async (req, res) => {
   try {
@@ -186,10 +304,17 @@ router.post('/docusign', express.json(), async (req, res) => {
     // Extract envelope status
     const envelope_status = payload.data?.envelopeSummary?.status;
 
-    // Extract deal ID from custom fields
-    const customFields = payload.data?.envelopeSummary?.customFields?.textCustomFields || [];
-    const dealIdField = customFields.find((obj) => obj.name === 'hs_deal_id');
+    // Extract deal ID and Form Type from custom fields
+    const textCustomFields = payload.data?.envelopeSummary?.customFields?.textCustomFields || [];
+    const listCustomFields = payload.data?.envelopeSummary?.customFields?.listCustomFields || [];
+    
+    // Find deal ID from textCustomFields (it's a text field)
+    const dealIdField = textCustomFields.find((obj) => obj.name === 'hs_deal_id');
     const dealId = dealIdField?.value;
+    
+    // Find Form Type from listCustomFields (it's a list field, not text field)
+    const formTypeField = listCustomFields.find((obj) => obj.name === 'Form Type');
+    const formTypeValue = formTypeField?.value?.trim(); // Trim whitespace and handle empty strings
 
     // Extract recipient status
     const signers = payload.data?.envelopeSummary?.recipients?.signers || [];
@@ -197,7 +322,8 @@ router.post('/docusign', express.json(), async (req, res) => {
 
     if (!dealId) {
       console.warn(`[DocuSign Webhook] ⚠️ No hs_deal_id found for envelope ${envelopeId}`);
-      console.warn(`[DocuSign Webhook] Custom fields:`, JSON.stringify(customFields));
+      console.warn(`[DocuSign Webhook] Text custom fields:`, JSON.stringify(textCustomFields));
+      console.warn(`[DocuSign Webhook] List custom fields:`, JSON.stringify(listCustomFields));
       console.warn(`[DocuSign Webhook] This envelope was likely not created through our system - skipping`);
       // Return 200 to acknowledge receipt and prevent retries
       // This is expected for envelopes not created through our system
@@ -208,51 +334,93 @@ router.post('/docusign', express.json(), async (req, res) => {
       });
     }
 
+    // Determine which HubSpot property to update based on Form Type
+    let hsFormProperty = "";
+    if (!formTypeField || !formTypeValue) {
+      console.warn(`[DocuSign Webhook] ⚠️ No Form Type found or Form Type value is empty for envelope ${envelopeId}`);
+      console.warn(`[DocuSign Webhook] Text custom fields:`, JSON.stringify(textCustomFields));
+      console.warn(`[DocuSign Webhook] List custom fields:`, JSON.stringify(listCustomFields));
+      // Default to docusign_csa_json for backward compatibility
+      hsFormProperty = "docusign_csa_json";
+      console.log(`[DocuSign Webhook] ℹ️ Defaulting to docusign_csa_json (no Form Type specified)`);
+    } else {
+      // Map Form Type to HubSpot property
+      switch(formTypeValue) {
+        case "Form 2 CSA":
+          hsFormProperty = "docusign_csa_json";
+          break;
+        case "Complete Form 2":
+          hsFormProperty = "docusign_form_2_json";
+          break;
+        case "Other":
+        case "other":
+          console.log(`[DocuSign Webhook] ℹ️ Form Type is "${formTypeValue}" - skipping processing`);
+          return res.status(200).json({
+            success: true,
+            message: `Webhook received but Form Type is "${formTypeValue}" - not processed`,
+            envelopeId
+          });
+        default:
+          console.warn(`[DocuSign Webhook] ⚠️ Unknown Form Type "${formTypeValue}" for envelope ${envelopeId}`);
+          // Default to docusign_csa_json for unknown types
+          hsFormProperty = "docusign_csa_json";
+          console.log(`[DocuSign Webhook] ℹ️ Defaulting to docusign_csa_json for unknown Form Type`);
+      }
+    }
+
     console.log(`[DocuSign Webhook] 📋 Deal ID: ${dealId}`);
+    console.log(`[DocuSign Webhook] 📝 Form Type: ${formTypeValue || 'Not specified'}`);
+    console.log(`[DocuSign Webhook] 🏷️ HubSpot Property: ${hsFormProperty}`);
     console.log(`[DocuSign Webhook] ✍️ Envelope Status: ${envelope_status}`);
     console.log(`[DocuSign Webhook] 👥 Recipients:`, recipient_status);
 
-    // Store ONLY docusign_csa_json (single source of truth)
-    // Frontend will parse this to extract envelope_status and recipient_status
-    const hubspotUpdateData = {
-      docusign_csa_json: JSON.stringify(payload.data),
+    // Build HubSpot update data with dynamic property name
+    let hubspotUpdateData = {
+      [hsFormProperty]: JSON.stringify(payload.data),
     };
-    console.log('[DocuSign Webhook] 📤 Storing full webhook payload in docusign_csa_json');
+
+    // Handle deal stage progression based on form type
+    if (hsFormProperty === "docusign_form_2_json" && envelope_status === "completed") {
+      // Complete Form 2: When envelope is completed, mark deal as won
+      hubspotUpdateData.dealstage = "closedwon";
+      console.log(`[DocuSign Webhook] 🎉 Complete Form 2 envelope completed - marking deal as won`);
+    } else if (hsFormProperty === "docusign_csa_json") {
+      // Form 2 CSA: Progress deal when FIRST signer (routing order 1) completes
+      // This allows the business to request funds while waiting for additional signatures
+      const firstSigner = signers.find(signer => signer.routingOrder === '1' || signer.routingOrder === 1);
+      
+      if (firstSigner && firstSigner.status === 'completed') {
+        hubspotUpdateData.dealstage = DEAL_STAGES.FUNDS_REQUESTED.id; // Stage 5
+        console.log(`[DocuSign Webhook] 🎉 First signer completed - progressing deal to Funds Requested`);
+        console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email})`);
+        
+        // Check if additional signers exist
+        const additionalSigners = signers.filter(s => s.routingOrder !== '1' && s.routingOrder !== 1);
+        if (additionalSigners.length > 0) {
+          console.log(`[DocuSign Webhook] ⏳ ${additionalSigners.length} additional signer(s) still pending:`);
+          additionalSigners.forEach(signer => {
+            console.log(`[DocuSign Webhook]    - ${signer.name} (${signer.email}) - Status: ${signer.status}`);
+          });
+        }
+      } else if (firstSigner) {
+        console.log(`[DocuSign Webhook] ⏳ First signer has not completed yet - Status: ${firstSigner.status}`);
+      }
+    }
+
+    console.log(`[DocuSign Webhook] 📤 Storing full webhook payload in ${hsFormProperty} property`);
 
     // Update HubSpot deal
     const updateResult = await dealsIntegration.updateDeal(dealId, hubspotUpdateData);
 
     console.log(`[DocuSign Webhook] ✅ Deal ${dealId} updated with DocuSign webhook data`);
-
-    // Progress deal when FIRST signer (routing order 1) completes
-    // This allows the business to request funds while waiting for additional signatures
-    const firstSigner = signers.find(signer => signer.routingOrder === '1' || signer.routingOrder === 1);
-    
-    if (firstSigner && firstSigner.status === 'completed') {
-      console.log(`[DocuSign Webhook] 🎉 First signer completed - progressing deal to Funds Requested`);
-      console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email})`);
-      
-      // Check if additional signers exist
-      const additionalSigners = signers.filter(s => s.routingOrder !== '1' && s.routingOrder !== 1);
-      if (additionalSigners.length > 0) {
-        console.log(`[DocuSign Webhook] ⏳ ${additionalSigners.length} additional signer(s) still pending:`);
-        additionalSigners.forEach(signer => {
-          console.log(`[DocuSign Webhook]    - ${signer.name} (${signer.email}) - Status: ${signer.status}`);
-        });
-      }
-      
-      await dealsIntegration.updateDeal(dealId, {
-        dealstage: DEAL_STAGES.FUNDS_REQUESTED.id, // Stage 5
-      });
-      console.log(`[DocuSign Webhook] 🎯 Deal stage progressed to: ${DEAL_STAGES.FUNDS_REQUESTED.label}`);
-    } else if (firstSigner) {
-      console.log(`[DocuSign Webhook] ⏳ First signer has not completed yet - Status: ${firstSigner.status}`);
-    }
+    console.log(`[DocuSign Webhook] 📊 HubSpot deal update result:`, updateResult);
 
     res.json({
       success: true,
       message: 'Envelope status updated successfully',
       dealId,
+      formType: formTypeValue || 'Not specified',
+      hubspotProperty: hsFormProperty,
       envelope_status,
       recipient_status
     });
@@ -429,16 +597,14 @@ router.post('/hubspot', express.json(), async (req, res) => {
         // Only process bank transfers (Stripe payments are handled by Stripe webhook)
         if (deal.properties.payment_method === 'Bank Transfer') {
           console.log('[HubSpot Webhook] 🏦 Processing bank transfer confirmation...');
-          
+
           try {
             // Receipt to Smokeball with Bank Transfer type
             await handleBankTransferConfirmation(deal);
-            
-            // Update deal stage to FUNDS_PROVIDED
-            await dealsIntegration.updateDeal(dealId, {
-              dealstage: DEAL_STAGES.FUNDS_PROVIDED.id
-            });
-            
+
+            // Note: HubSpot automation handles deal stage progression when payment_status changes to "Paid"
+            // We only trigger receipt automation here
+
             console.log(`[HubSpot Webhook] ✅ Bank transfer processed successfully for deal ${dealId}`);
           } catch (error) {
             console.error(`[HubSpot Webhook] ❌ Error processing bank transfer:`, error.message);
@@ -459,38 +625,94 @@ router.post('/hubspot', express.json(), async (req, res) => {
 
 /**
  * Handle bank transfer confirmation
- * Creates Smokeball receipt with Bank Transfer type
+ * Creates Smokeball receipt via GitHub Actions or direct automation
  * @param {Object} deal - HubSpot deal object
  */
 async function handleBankTransferConfirmation(deal) {
-  const matterId = deal.properties.matter_uid || deal.properties.smokeball_lead_uid;
-  const amount = parseFloat(deal.properties.payment_amount);
-  
-  if (!matterId) {
-    throw new Error('No matter_uid or smokeball_lead_uid found in deal');
-  }
-  
-  if (isNaN(amount) || amount <= 0) {
-    throw new Error(`Invalid payment amount: ${deal.properties.payment_amount}`);
-  }
-  
-  console.log(`[HubSpot Webhook] 💰 Receipting bank transfer to Smokeball`);
-  console.log(`[HubSpot Webhook]    Matter ID: ${matterId}`);
-  console.log(`[HubSpot Webhook]    Amount: $${amount.toFixed(2)}`);
-  
-  // Create payment intent-like object for workflow
-  const paymentData = {
-    id: `bank_transfer_${deal.id}`,
-    amount: Math.round(amount * 100), // Convert to cents
-    metadata: {
-      deal_id: deal.id
+  console.log(`[HubSpot Webhook] 💰 Triggering receipt automation for bank transfer`);
+  console.log(`[HubSpot Webhook]    Deal ID: ${deal.id}`);
+
+  // Check if GitHub Actions is configured
+  const useGitHubActions = githubActions.isGitHubActionsConfigured();
+
+  if (useGitHubActions) {
+    console.log(`[HubSpot Webhook] 🚀 Using GitHub Actions for receipt automation`);
+
+    try {
+      // Extract receipt data from deal
+      const { properties } = deal;
+
+      // Get matter ID
+      const matterId = properties.matter_uid || properties.smokeball_lead_uid;
+      if (!matterId) {
+        throw new Error('No matter ID (matter_uid or smokeball_lead_uid) found in deal');
+      }
+
+      // Get contact info from associations
+      const associationsIntegration = await import('../integrations/hubspot/associations.js');
+      const dealContacts = await associationsIntegration.getDealContacts(deal.id);
+
+      // Find primary seller
+      let primarySeller = null;
+      for (const contact of dealContacts) {
+        const associationTypes = contact.associationTypes || [];
+        const isPrimary = associationTypes.some(t => t.typeId === 1 || t.typeId === '1');
+        if (isPrimary && contact.properties.firstname && contact.properties.lastname) {
+          primarySeller = contact.properties;
+          break;
+        }
+      }
+
+      if (!primarySeller && dealContacts.length > 0) {
+        primarySeller = dealContacts[0].properties;
+      }
+
+      if (!primarySeller) {
+        throw new Error('No primary seller found for deal');
+      }
+
+      // Format date
+      const now = new Date();
+      const date = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+      // Trigger GitHub Action
+      const result = await githubActions.triggerReceiptAutomation({
+        deal_id: deal.id,
+        matter_id: matterId,
+        amount: parseFloat(properties.payment_amount) || 0,
+        lastname: primarySeller.lastname || 'Unknown',
+        firstname: primarySeller.firstname || 'Unknown',
+        date: date,
+        test_mode: process.env.RECEIPT_AUTOMATION_TEST_MODE === 'true'
+      });
+
+      if (result.success) {
+        console.log(`[HubSpot Webhook] ✅ GitHub Action triggered successfully`);
+        console.log(`[HubSpot Webhook] 📊 Check status: ${result.actions_url}`);
+      }
+    } catch (error) {
+      console.error(`[HubSpot Webhook] ❌ GitHub Actions trigger failed:`, error.message);
+      throw error;
     }
-  };
-  
-  // Receipt to Smokeball with Bank Transfer type
-  await smokeballPaymentWorkflow.receiptStripePayment(paymentData, matterId, null, 'Bank Transfer');
-  
-  console.log(`[HubSpot Webhook] ✅ Bank transfer receipted to Smokeball`);
+  } else {
+    console.log(`[HubSpot Webhook] 🔧 Using direct automation (GitHub Actions not configured)`);
+
+    // Fall back to direct automation
+    try {
+      const automationResult = await receiptAutomation.triggerReceiptAutomationForDeal(deal.id);
+
+      if (automationResult.skipped) {
+        console.log(`[HubSpot Webhook] ⚠️ Receipt automation skipped: ${automationResult.message}`);
+      } else if (automationResult.success) {
+        console.log(`[HubSpot Webhook] ✅ Bank transfer receipt automation completed`);
+      } else {
+        console.error(`[HubSpot Webhook] ⚠️ Receipt automation failed: ${automationResult.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error(`[HubSpot Webhook] ❌ Receipt automation error:`, error.message);
+      throw error;
+    }
+  }
 }
 
 export default router;
