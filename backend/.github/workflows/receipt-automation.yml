@@ -5,6 +5,30 @@ name: Smokeball Receipt Automation
 on:
   repository_dispatch:
     types: [receipt-automation]
+  workflow_dispatch:
+    inputs:
+      deal_id:
+        description: 'HubSpot Deal ID'
+        required: true
+      matter_id:
+        description: 'Smokeball Matter ID'
+        required: true
+      amount:
+        description: 'Payment amount'
+        required: true
+      lastname:
+        description: 'Contact lastname'
+        required: true
+      firstname:
+        description: 'Contact firstname'
+        required: true
+      date:
+        description: 'Date deposited (DD/MM/YYYY HH:MM:SS)'
+        required: true
+      test_mode:
+        description: 'Test mode (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   create-receipt:
@@ -34,13 +58,24 @@ jobs:
       - name: Extract payload data
         id: payload
         run: |
-          echo "deal_id=${{ github.event.client_payload.deal_id }}" >> $GITHUB_OUTPUT
-          echo "matter_id=${{ github.event.client_payload.matter_id }}" >> $GITHUB_OUTPUT
-          echo "amount=${{ github.event.client_payload.amount }}" >> $GITHUB_OUTPUT
-          echo "lastname=${{ github.event.client_payload.lastname }}" >> $GITHUB_OUTPUT
-          echo "firstname=${{ github.event.client_payload.firstname }}" >> $GITHUB_OUTPUT
-          echo "date=${{ github.event.client_payload.date }}" >> $GITHUB_OUTPUT
-          echo "test_mode=${{ github.event.client_payload.test_mode }}" >> $GITHUB_OUTPUT
+          # Handle both workflow_dispatch (manual) and repository_dispatch (webhook)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "deal_id=${{ github.event.inputs.deal_id }}" >> $GITHUB_OUTPUT
+            echo "matter_id=${{ github.event.inputs.matter_id }}" >> $GITHUB_OUTPUT
+            echo "amount=${{ github.event.inputs.amount }}" >> $GITHUB_OUTPUT
+            echo "lastname=${{ github.event.inputs.lastname }}" >> $GITHUB_OUTPUT
+            echo "firstname=${{ github.event.inputs.firstname }}" >> $GITHUB_OUTPUT
+            echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+            echo "test_mode=${{ github.event.inputs.test_mode }}" >> $GITHUB_OUTPUT
+          else
+            echo "deal_id=${{ github.event.client_payload.deal_id }}" >> $GITHUB_OUTPUT
+            echo "matter_id=${{ github.event.client_payload.matter_id }}" >> $GITHUB_OUTPUT
+            echo "amount=${{ github.event.client_payload.amount }}" >> $GITHUB_OUTPUT
+            echo "lastname=${{ github.event.client_payload.lastname }}" >> $GITHUB_OUTPUT
+            echo "firstname=${{ github.event.client_payload.firstname }}" >> $GITHUB_OUTPUT
+            echo "date=${{ github.event.client_payload.date }}" >> $GITHUB_OUTPUT
+            echo "test_mode=${{ github.event.client_payload.test_mode }}" >> $GITHUB_OUTPUT
+          fi
 
       # Step 6: Run receipt automation
       - name: Run Smokeball Receipt Automation
