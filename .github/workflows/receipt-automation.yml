@@ -24,10 +24,12 @@ jobs:
 
       # Step 3: Install dependencies
       - name: Install dependencies
+        working-directory: ./backend
         run: npm ci
 
       # Step 4: Install Playwright browsers with system dependencies
       - name: Install Playwright Browsers
+        working-directory: ./backend
         run: npx playwright install chromium --with-deps
 
       # Step 5: Extract webhook payload data
@@ -44,6 +46,7 @@ jobs:
 
       # Step 6: Run receipt automation
       - name: Run Smokeball Receipt Automation
+        working-directory: ./backend
         env:
           SMOKEBALL_USERNAME: ${{ secrets.SMOKEBALL_USERNAME }}
           SMOKEBALL_PASSWORD: ${{ secrets.SMOKEBALL_PASSWORD }}
@@ -89,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: receipt-automation-screenshots
-          path: screenshots/
+          path: backend/screenshots/
           retention-days: 7
 
       # Step 8: Report result back to backend (optional)
