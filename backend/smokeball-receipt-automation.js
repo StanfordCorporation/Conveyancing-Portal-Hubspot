@@ -77,27 +77,37 @@ class SmokeBallReceiptAutomation {
 
     async initialize() {
         console.log('🚀 Initializing browser...');
-        this.browser = await chromium.launch({ 
+        this.browser = await chromium.launch({
             headless: true, // Always headless for production/Vercel compatibility
             slowMo: 300, // Slow down for better reliability
             timeout: 60000,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage'
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled', // Hide automation
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             ]
         });
-        
+
         this.page = await this.browser.newPage();
         this.page.setDefaultTimeout(30000);
         this.page.setDefaultNavigationTimeout(45000);
-        
+
         await this.page.setViewportSize({ width: 1920, height: 1080 });
-        
+
+        // Override navigator.webdriver to avoid detection
+        await this.page.addInitScript(() => {
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+        });
+
         await this.page.setExtraHTTPHeaders({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         });
-        
+
         console.log('✅ Browser initialized');
     }
 
