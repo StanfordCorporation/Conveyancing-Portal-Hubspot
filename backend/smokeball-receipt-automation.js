@@ -220,8 +220,24 @@ class SmokeBallReceiptAutomation {
                     // Wait for navigation to complete after 2FA verification
                     console.log('⏳ Waiting for dashboard to load (this can take up to 2 minutes on slow systems)...');
 
+                    // Wait for URL to change away from login page (wait for dashboard or any non-login page)
                     try {
-                        await this.page.waitForLoadState('networkidle', { timeout: 120000 }); // 2 minutes for slow systems
+                        // Wait for URL to change - should navigate away from /login
+                        await this.page.waitForFunction(
+                            () => {
+                                const url = window.location.href;
+                                return !url.includes('/login') && !url.includes('/#/login');
+                            },
+                            { timeout: 120000 }
+                        );
+                        console.log('✅ Navigated away from login page');
+                    } catch (error) {
+                        console.log('⚠️ Timeout waiting for navigation, checking current state...');
+                    }
+
+                    // Wait for network to be idle
+                    try {
+                        await this.page.waitForLoadState('networkidle', { timeout: 60000 });
                         console.log('✅ Network idle achieved');
                     } catch (error) {
                         console.log('⚠️ Network idle timeout, checking if page loaded anyway...');
@@ -229,14 +245,27 @@ class SmokeBallReceiptAutomation {
 
                     await this.page.waitForTimeout(5000); // Give dashboard time to render
 
-                    // Verify we're no longer on the 2FA page
+                    // Verify we're no longer on the login or 2FA page
                     const currentUrlAfter2FA = this.page.url();
                     console.log(`📍 Current URL after 2FA: ${currentUrlAfter2FA}`);
+
+                    // Check if still on login page (would indicate failure)
+                    if (currentUrlAfter2FA.includes('/login') || currentUrlAfter2FA.includes('/#/login')) {
+                        // Check if there's an error message
+                        const errorMessage = await this.page.locator('text=/error|invalid|incorrect/i').first().textContent().catch(() => null);
+                        throw new Error(`Still on login page after 2FA verification. ${errorMessage ? `Error: ${errorMessage}` : '2FA code may be incorrect or expired.'}`);
+                    }
 
                     // Check if still on 2FA page (would indicate failure)
                     const is2FAPage = await this.page.locator('input[placeholder="Two-Factor Code"], textbox[name="Two-Factor Code"]').count() > 0;
                     if (is2FAPage) {
                         throw new Error('Still on 2FA page after verification - code may be incorrect');
+                    }
+
+                    // Verify we can see dashboard elements (not just login elements)
+                    const hasLoginButton = await this.page.getByRole('button', { name: /log in/i }).count() > 0;
+                    if (hasLoginButton && currentUrlAfter2FA.includes('login')) {
+                        throw new Error('Login page still visible after 2FA - authentication may have failed');
                     }
 
                     console.log('✅ 2FA verification successful - dashboard loaded');
@@ -246,11 +275,29 @@ class SmokeBallReceiptAutomation {
                 }
             }
             
-            console.log('✅ Successfully logged in');
+            // Final verification: Ensure we're actually logged in and not on login page
+            const finalUrl = this.page.url();
+            console.log(`📍 Final URL after login: ${finalUrl}`);
             
-            // Verify dashboard is loaded
-            const dashboardUrl = this.page.url();
-            console.log(`📍 Dashboard URL: ${dashboardUrl}`);
+            // Check if still on login page
+            if (finalUrl.includes('/login') || finalUrl.includes('/#/login')) {
+                const hasLoginButton = await this.page.getByRole('button', { name: /log in/i }).count() > 0;
+                if (hasLoginButton) {
+                    await this.takeScreenshot('login-still-on-login-page');
+                    throw new Error('Still on login page after authentication - login may have failed');
+                }
+            }
+            
+            // Wait for dashboard elements to appear (matters list, navigation, etc.)
+            try {
+                // Wait for any dashboard-like element (matters, navigation, etc.)
+                await this.page.waitForSelector('button, [role="button"], table, nav', { timeout: 10000 });
+                console.log('✅ Dashboard elements detected');
+            } catch (error) {
+                console.log('⚠️ Could not detect dashboard elements, but continuing...');
+            }
+            
+            console.log('✅ Successfully logged in');
             
             // Wait a moment to ensure dashboard is fully loaded
             await this.page.waitForTimeout(2000);
@@ -313,6 +360,127 @@ class SmokeBallReceiptAutomation {
         }
         
         // Screenshot removed - only taking final form-filled screenshot on success
+    }
+
+    async waitForMatterPreFill() {
+        console.log('⏳ Waiting for matter and contact to be pre-filled from URL context...');
+        console.log('   This may take up to 30 seconds for Smokeball to load all context from URL...');
+        
+        const maxWaitTime = 30000; // 30 seconds max wait
+        const pollInterval = 500; // Check every 500ms
+        const maxAttempts = Math.floor(maxWaitTime / pollInterval);
+        
+        let matterPreFilled = false;
+        let contactPreFilled = false;
+        let matterValue = '';
+        let contactValue = '';
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                // Use page.evaluate to find pre-filled values in the dialog
+                // This is more reliable than trying to read from combobox inputs
+                const preFillStatus = await this.page.evaluate(() => {
+                    const result = { matterValue: '', contactValue: '', dialogVisible: false };
+                    
+                    // Check if dialog is visible
+                    const dialog = document.querySelector('dialog[class*="active"], [role="dialog"]');
+                    if (!dialog) return result;
+                    result.dialogVisible = true;
+                    
+                    // Find matter value - look for element with matter number pattern (e.g., "25-2099")
+                    const allElements = dialog.querySelectorAll('*');
+                    for (const el of allElements) {
+                        const text = (el.innerText || el.textContent || '').trim();
+                        // Matter number pattern: starts with digits-digits
+                        if (/^\d+-\d+/.test(text) && text.length < 100 && !text.includes('\n')) {
+                            result.matterValue = text;
+                            break;
+                        }
+                    }
+                    
+                    // Find contact value - look for name pattern near "Received From" label
+                    // The contact name is displayed as "Lastname, Firstname" format
+                    for (const el of allElements) {
+                        const text = (el.innerText || el.textContent || '').trim();
+                        // Look for name pattern: "Word, Word" (lastname, firstname format)
+                        // Also check it's not a label or placeholder
+                        if (text && 
+                            text.length > 5 && 
+                            text.length < 60 &&
+                            text.includes(', ') && // Has comma (name format)
+                            !text.includes('Received From') &&
+                            !text.toLowerCase().includes('select') &&
+                            !text.includes('\n') &&
+                            !text.includes(':') &&
+                            !text.includes('$') &&
+                            /^[A-Z][a-z]+/.test(text)) { // Starts with capital followed by lowercase (name)
+                            result.contactValue = text;
+                            break;
+                        }
+                    }
+                    
+                    return result;
+                });
+                
+                if (!preFillStatus.dialogVisible) {
+                    await this.page.waitForTimeout(pollInterval);
+                    continue;
+                }
+                
+                // Check matter pre-fill
+                if (!matterPreFilled && preFillStatus.matterValue) {
+                    const matterNumberPattern = /^\d+-\d+/;
+                    if (matterNumberPattern.test(preFillStatus.matterValue)) {
+                        console.log(`✅ Matter pre-filled: ${preFillStatus.matterValue}`);
+                        matterPreFilled = true;
+                        matterValue = preFillStatus.matterValue;
+                    }
+                }
+                
+                // Check contact pre-fill
+                if (!contactPreFilled && preFillStatus.contactValue) {
+                    // Contact name should have at least first and last name
+                    if (preFillStatus.contactValue.includes(',') || preFillStatus.contactValue.includes(' ')) {
+                        console.log(`✅ Contact pre-filled: ${preFillStatus.contactValue}`);
+                        contactPreFilled = true;
+                        contactValue = preFillStatus.contactValue;
+                    }
+                }
+                
+                // If both matter and contact are pre-filled, we're done
+                if (matterPreFilled && contactPreFilled) {
+                    console.log('✅ Both matter and contact pre-filled from URL context');
+                    // Wait a bit more to ensure everything is stable
+                    await this.page.waitForTimeout(1000);
+                    return { matter: matterPreFilled, contact: contactPreFilled, matterValue, contactValue };
+                }
+                
+                // Log progress every 5 seconds
+                if (attempt % 10 === 0 && attempt > 0) {
+                    const elapsedSeconds = Math.floor(attempt * pollInterval / 1000);
+                    console.log(`   ⏳ Still waiting... (${elapsedSeconds}s elapsed)`);
+                    console.log(`   ${matterPreFilled ? '✅' : '⏳'} Matter: ${matterPreFilled ? 'Pre-filled' : 'Waiting...'}`);
+                    console.log(`   ${contactPreFilled ? '✅' : '⏳'} Contact: ${contactPreFilled ? 'Pre-filled' : 'Waiting...'}`);
+                }
+                
+            } catch (error) {
+                // Continue polling
+            }
+            
+            // Wait before next attempt
+            await this.page.waitForTimeout(pollInterval);
+        }
+        
+        // Report what was pre-filled
+        if (matterPreFilled && !contactPreFilled) {
+            console.log('⚠️ Matter pre-filled but contact not pre-filled after timeout, continuing anyway...');
+        } else if (!matterPreFilled && contactPreFilled) {
+            console.log('⚠️ Contact pre-filled but matter not pre-filled after timeout, continuing anyway...');
+        } else if (!matterPreFilled && !contactPreFilled) {
+            console.log('⚠️ Neither matter nor contact pre-filled after timeout, continuing anyway...');
+        }
+        
+        return { matter: matterPreFilled, contact: contactPreFilled, matterValue, contactValue };
     }
 
     async fillReceiptForm(receiptData) {
@@ -447,6 +615,13 @@ class SmokeBallReceiptAutomation {
             throw new Error('Could not find "Deposit Funds" button after trying all strategies');
         }
         
+        // Wait for dialog to fully open and load context
+        console.log('⏳ Waiting for Deposit Funds dialog to fully load...');
+        await this.page.waitForTimeout(3000); // Give dialog time to open and start loading context
+        
+        // Wait for matter and contact to be pre-filled from URL context before proceeding
+        const preFillResult = await this.waitForMatterPreFill();
+        
         // Fill Date Deposited - Use label to find the input
         console.log(`📅 Filling date: ${receiptData.date}`);
         console.log(`   Expected value: ${receiptData.date}`);
@@ -476,62 +651,75 @@ class SmokeBallReceiptAutomation {
             }
         }
         
-        // Fill Received From (firstname lastname format)
+        // Fill Received From (firstname lastname format) - only if not already pre-filled
         const contactName = `${receiptData.firstname} ${receiptData.lastname}`;
-        console.log(`👤 Filling Received From: ${contactName}`);
-        console.log(`   Expected value: ${contactName} (format: Firstname Lastname)`);
-        try {
-            // Find by label text "Received From"
-            const receivedFromLabel = this.page.getByText('Received From', { exact: false }).first();
-            // Get the combobox/input near the label
-            const receivedFromInput = receivedFromLabel.locator('..').locator('combobox, input[type="text"]').first();
-            
-            // Click to focus/open dropdown
-            await receivedFromInput.click();
-            await this.page.waitForTimeout(1000);
-            
-            // Clear existing text if any
-            await receivedFromInput.clear();
-            await this.page.waitForTimeout(500);
-            
-            // Type the name in format "Firstname Lastname"
-            await receivedFromInput.fill(contactName);
-            await this.page.waitForTimeout(2000); // Wait for dropdown to filter
-            
-            // Try to select from dropdown if it appears
+        
+        if (preFillResult.contact) {
+            console.log(`👤 Received From already pre-filled from URL context - skipping manual fill`);
+            console.log(`   Contact was automatically populated`);
+        } else {
+            console.log(`👤 Filling Received From: ${contactName}`);
+            console.log(`   Expected value: ${contactName} (format: Firstname Lastname)`);
             try {
-                const contactOption = this.page.getByText(contactName, { exact: false }).first();
-                if (await contactOption.isVisible({ timeout: 2000 })) {
-                    await contactOption.click();
-                    await this.page.waitForTimeout(500);
-                    const actualContactValue = await receivedFromInput.inputValue();
-                    console.log(`   Actual value: ${actualContactValue}`);
-                    console.log(`✅ Selected contact from dropdown: ${contactName}`);
+                // Find by label text "Received From"
+                const receivedFromLabel = this.page.getByText('Received From', { exact: false }).first();
+                // Get the combobox/input near the label
+                const receivedFromInput = receivedFromLabel.locator('..').locator('combobox, input[type="text"]').first();
+                
+                // Check if it's already filled
+                const currentValue = await receivedFromInput.inputValue();
+                if (currentValue && currentValue.trim() !== '' && !currentValue.toLowerCase().includes('select')) {
+                    console.log(`   Already filled: ${currentValue}`);
+                    console.log(`✅ Received From already populated`);
                 } else {
-                    // Try pressing Enter to select
-                    await receivedFromInput.press('Enter');
-                    await this.page.waitForTimeout(500);
-                    const actualContactValue = await receivedFromInput.inputValue();
-                    console.log(`   Actual value: ${actualContactValue}`);
-                    console.log(`✅ Entered contact name: ${contactName}`);
-                }
-            } catch {
-                // If selection fails, just leave the typed text
-                console.log(`⚠️ Could not select from dropdown, leaving typed text: ${contactName}`);
-            }
-        } catch (error) {
-            console.log(`⚠️ Could not fill Received From field: ${error.message}`);
-            // Try alternative: find combobox directly
-            try {
-                const comboboxes = await this.page.locator('combobox').all();
-                if (comboboxes.length > 0) {
-                    await comboboxes[0].click();
-                    await comboboxes[0].fill(contactName);
+                    // Click to focus/open dropdown
+                    await receivedFromInput.click();
                     await this.page.waitForTimeout(1000);
-                    console.log('✅ Received From filled (alternative selector)');
+                    
+                    // Clear existing text if any
+                    await receivedFromInput.clear();
+                    await this.page.waitForTimeout(500);
+                    
+                    // Type the name in format "Firstname Lastname"
+                    await receivedFromInput.fill(contactName);
+                    await this.page.waitForTimeout(2000); // Wait for dropdown to filter
+                    
+                    // Try to select from dropdown if it appears
+                    try {
+                        const contactOption = this.page.getByText(contactName, { exact: false }).first();
+                        if (await contactOption.isVisible({ timeout: 2000 })) {
+                            await contactOption.click();
+                            await this.page.waitForTimeout(500);
+                            const actualContactValue = await receivedFromInput.inputValue();
+                            console.log(`   Actual value: ${actualContactValue}`);
+                            console.log(`✅ Selected contact from dropdown: ${contactName}`);
+                        } else {
+                            // Try pressing Enter to select
+                            await receivedFromInput.press('Enter');
+                            await this.page.waitForTimeout(500);
+                            const actualContactValue = await receivedFromInput.inputValue();
+                            console.log(`   Actual value: ${actualContactValue}`);
+                            console.log(`✅ Entered contact name: ${contactName}`);
+                        }
+                    } catch {
+                        // If selection fails, just leave the typed text
+                        console.log(`⚠️ Could not select from dropdown, leaving typed text: ${contactName}`);
+                    }
                 }
-            } catch (error2) {
-                console.log(`❌ Failed to fill Received From: ${error2.message}`);
+            } catch (error) {
+                console.log(`⚠️ Could not fill Received From field: ${error.message}`);
+                // Try alternative: find combobox directly
+                try {
+                    const comboboxes = await this.page.locator('combobox').all();
+                    if (comboboxes.length > 0) {
+                        await comboboxes[0].click();
+                        await comboboxes[0].fill(contactName);
+                        await this.page.waitForTimeout(1000);
+                        console.log('✅ Received From filled (alternative selector)');
+                    }
+                } catch (error2) {
+                    console.log(`❌ Failed to fill Received From: ${error2.message}`);
+                }
             }
         }
         
