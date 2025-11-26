@@ -98,12 +98,38 @@ jobs:
           });
           "
 
-      # Step 8: Upload screenshots on failure
-      - name: Upload screenshots
+      # Step 8: Find and upload final form-filled screenshot on success
+      - name: Find form-filled screenshot
+        if: success()
+        id: find-screenshot
+        run: |
+          echo "🔍 Looking for form-filled screenshot..."
+          SCREENSHOT=$(find backend/screenshots -name "receipt-form-filled-*.png" -type f | head -n 1)
+          if [ -n "$SCREENSHOT" ] && [ -f "$SCREENSHOT" ]; then
+            echo "✅ Found screenshot: $SCREENSHOT"
+            echo "screenshot_path=$SCREENSHOT" >> $GITHUB_OUTPUT
+            echo "screenshot_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No form-filled screenshot found in backend/screenshots/"
+            ls -la backend/screenshots/ || echo "Screenshots directory does not exist"
+            echo "screenshot_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 9: Upload final form-filled screenshot on success
+      - name: Upload form-filled screenshot
+        if: success() && steps.find-screenshot.outputs.screenshot_exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-form-filled-screenshot
+          path: ${{ steps.find-screenshot.outputs.screenshot_path }}
+          retention-days: 7
+
+      # Step 9: Upload all screenshots on failure (for debugging)
+      - name: Upload screenshots (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: receipt-automation-screenshots
+          name: receipt-automation-screenshots-debug
           path: backend/screenshots/
           retention-days: 7
 
