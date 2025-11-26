@@ -26,12 +26,20 @@ jobs:
         working-directory: ./backend
         run: npm install
 
-      # Step 4: Install Playwright browsers with system dependencies
-      - name: Install Playwright Browsers
-        working-directory: ./backend
-        run: npx playwright install chromium --with-deps
+      # Step 4: Install Google Chrome
+      - name: Install Google Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
 
-      # Step 5: Extract webhook payload data
+      # Step 5: Install Playwright (for Chrome driver)
+      - name: Install Playwright
+        working-directory: ./backend
+        run: npx playwright install chrome
+
+      # Step 6: Extract webhook payload data
       - name: Extract payload data
         id: payload
         run: |
@@ -43,7 +51,7 @@ jobs:
           echo "date=${{ github.event.client_payload.date }}" >> $GITHUB_OUTPUT
           echo "test_mode=${{ github.event.client_payload.test_mode }}" >> $GITHUB_OUTPUT
 
-      # Step 6: Run receipt automation
+      # Step 7: Run receipt automation
       - name: Run Smokeball Receipt Automation
         working-directory: ./backend
         env:
@@ -85,7 +93,7 @@ jobs:
           });
           "
 
-      # Step 7: Upload screenshots on failure
+      # Step 8: Upload screenshots on failure
       - name: Upload screenshots
         if: failure()
         uses: actions/upload-artifact@v4
@@ -94,7 +102,7 @@ jobs:
           path: backend/screenshots/
           retention-days: 7
 
-      # Step 8: Report result back to backend (optional)
+      # Step 9: Report result back to backend (optional)
       # Uncomment if you want to send status back to Vercel
       # - name: Report result to backend
       #   if: always()

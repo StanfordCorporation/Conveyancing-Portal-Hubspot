@@ -78,6 +78,7 @@ class SmokeBallReceiptAutomation {
     async initialize() {
         console.log('🚀 Initializing browser...');
         this.browser = await chromium.launch({
+            channel: 'chrome', // Use actual Google Chrome instead of Chromium
             headless: true, // Always headless for production/Vercel compatibility
             slowMo: 300, // Slow down for better reliability
             timeout: 60000,
@@ -86,8 +87,7 @@ class SmokeBallReceiptAutomation {
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled', // Hide automation
-                '--disable-features=IsolateOrigins,site-per-process',
-                '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                '--disable-features=IsolateOrigins,site-per-process'
             ]
         });
 
