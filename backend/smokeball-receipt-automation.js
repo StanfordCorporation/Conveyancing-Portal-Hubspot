@@ -45,7 +45,7 @@ class SmokeBallReceiptAutomation {
         this.credentials = {
             username: process.env.SMOKEBALL_USERNAME || 'pmanocha@stanford.au',
             password: process.env.SMOKEBALL_PASSWORD || 'LegalxManocha25!',
-            twoFactorSecret: process.env.SMOKEBALL_2FA_SECRET
+            twoFactorSecret: process.env.SMOKEBALL_TOTP_SECRET
         };
         this.screenshotsDir = join(__dirname, 'screenshots');
         try {
