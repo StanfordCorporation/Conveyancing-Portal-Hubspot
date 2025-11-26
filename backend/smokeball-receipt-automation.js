@@ -133,7 +133,7 @@ class SmokeBallReceiptAutomation {
         
         try {
             await this.page.goto('https://app.smokeball.com.au', { waitUntil: 'networkidle' });
-            await this.takeScreenshot('login-page');
+            // Screenshot removed - only taking final form-filled screenshot on success
             
             // Wait for email input - try multiple selector strategies
             let emailInput;
@@ -254,7 +254,7 @@ class SmokeBallReceiptAutomation {
             
             // Wait a moment to ensure dashboard is fully loaded
             await this.page.waitForTimeout(2000);
-            await this.takeScreenshot('dashboard-loaded');
+            // Screenshot removed - only taking final form-filled screenshot on success
         } catch (error) {
             await this.takeScreenshot('login-error');
             throw new Error(`Login failed: ${error.message}`);
@@ -312,14 +312,14 @@ class SmokeBallReceiptAutomation {
             console.log(`⚠️ Could not verify page content: ${error.message}`);
         }
         
-        await this.takeScreenshot('transactions-page-loaded');
+        // Screenshot removed - only taking final form-filled screenshot on success
     }
 
     async fillReceiptForm(receiptData) {
         console.log('💰 Filling receipt form...');
         console.log(`📋 Receipt details:`, receiptData);
         
-        await this.takeScreenshot('before-fill-form');
+        // Screenshot removed - only taking final form-filled screenshot on success
         
         // Click "Deposit Funds" button - try multiple selector strategies
         console.log('🔘 Clicking "Deposit Funds" button...');
@@ -332,7 +332,7 @@ class SmokeBallReceiptAutomation {
                 console.log('🔘 Found "Create New" button, clicking to open menu...');
                 await createNewButton.click();
                 await this.page.waitForTimeout(2000); // Wait for menu to open
-                await this.takeScreenshot('create-new-menu-opened');
+                // Screenshot removed - only taking final form-filled screenshot on success
                 
                 // Now look for "Deposit Funds" in the opened menu
                 try {
@@ -341,7 +341,7 @@ class SmokeBallReceiptAutomation {
                         console.log('✅ Found "Deposit Funds" in menu');
                         await depositButton.click();
                         await this.page.waitForTimeout(2000);
-                        await this.takeScreenshot('deposit-dialog-opened');
+                        // Screenshot removed - only taking final form-filled screenshot on success
                         depositClicked = true;
                     }
                 } catch {
@@ -354,7 +354,7 @@ class SmokeBallReceiptAutomation {
                                 console.log(`✅ Found deposit option: "${text}"`);
                                 await item.click();
                                 await this.page.waitForTimeout(2000);
-                                await this.takeScreenshot('deposit-dialog-opened');
+                                // Screenshot removed - only taking final form-filled screenshot on success
                                 depositClicked = true;
                                 break;
                             }
@@ -376,7 +376,7 @@ class SmokeBallReceiptAutomation {
                     console.log('✅ Found button with exact name match');
                     await depositButton.click();
                     await this.page.waitForTimeout(2000);
-                    await this.takeScreenshot('deposit-dialog-opened');
+                    // Screenshot removed - only taking final form-filled screenshot on success
                     depositClicked = true;
                 }
             } catch (error) {
@@ -392,7 +392,7 @@ class SmokeBallReceiptAutomation {
                     console.log('✅ Found button with case-insensitive match');
                     await depositButton.click();
                     await this.page.waitForTimeout(2000);
-                    await this.takeScreenshot('deposit-dialog-opened');
+                    // Screenshot removed - only taking final form-filled screenshot on success
                     depositClicked = true;
                 }
             } catch (error) {
@@ -408,7 +408,7 @@ class SmokeBallReceiptAutomation {
                     console.log('✅ Found button containing "Deposit" text');
                     await depositButton.click();
                     await this.page.waitForTimeout(2000);
-                    await this.takeScreenshot('deposit-dialog-opened');
+                    // Screenshot removed - only taking final form-filled screenshot on success
                     depositClicked = true;
                 }
             } catch (error) {
@@ -429,7 +429,7 @@ class SmokeBallReceiptAutomation {
                             console.log(`✅ Found deposit button at index ${i + 1}: "${text}"`);
                             await buttons[i].click();
                             await this.page.waitForTimeout(2000);
-                            await this.takeScreenshot('deposit-dialog-opened');
+                            // Screenshot removed - only taking final form-filled screenshot on success
                             depositClicked = true;
                             break;
                         }
