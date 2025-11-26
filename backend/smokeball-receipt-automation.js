@@ -218,9 +218,16 @@ class SmokeBallReceiptAutomation {
                     }
 
                     // Wait for navigation to complete after 2FA verification
-                    console.log('⏳ Waiting for dashboard to load...');
-                    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
-                    await this.page.waitForTimeout(3000); // Give dashboard time to render
+                    console.log('⏳ Waiting for dashboard to load (this can take up to 2 minutes on slow systems)...');
+
+                    try {
+                        await this.page.waitForLoadState('networkidle', { timeout: 120000 }); // 2 minutes for slow systems
+                        console.log('✅ Network idle achieved');
+                    } catch (error) {
+                        console.log('⚠️ Network idle timeout, checking if page loaded anyway...');
+                    }
+
+                    await this.page.waitForTimeout(5000); // Give dashboard time to render
 
                     // Verify we're no longer on the 2FA page
                     const currentUrlAfter2FA = this.page.url();
@@ -232,7 +239,7 @@ class SmokeBallReceiptAutomation {
                         throw new Error('Still on 2FA page after verification - code may be incorrect');
                     }
 
-                    console.log('✅ 2FA verification successful');
+                    console.log('✅ 2FA verification successful - dashboard loaded');
                 } catch (error) {
                     await this.takeScreenshot('2fa-error');
                     throw new Error(`2FA failed: ${error.message}`);
