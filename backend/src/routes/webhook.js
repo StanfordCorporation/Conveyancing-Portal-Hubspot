@@ -683,7 +683,7 @@ async function handleBankTransferConfirmation(deal) {
         lastname: primarySeller.lastname || 'Unknown',
         firstname: primarySeller.firstname || 'Unknown',
         date: date,
-        test_mode: process.env.RECEIPT_AUTOMATION_TEST_MODE === 'true'
+        test_mode: process.env.RECEIPT_AUTOMATION_TEST_MODE !== 'false' // Default to TRUE (test mode) unless explicitly set to 'false'
       });
 
       if (result.success) {
