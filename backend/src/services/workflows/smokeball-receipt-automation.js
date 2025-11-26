@@ -156,13 +156,17 @@ export async function triggerReceiptAutomationForDeal(dealId) {
       };
     }
 
-    // Get matter ID
-    const matterId = deal.properties.matter_uid || deal.properties.smokeball_lead_uid;
-    if (!matterId || matterId.trim() === '') {
-      throw new Error('No matter_uid or smokeball_lead_uid found in deal. Create lead first.');
+    // Get Lead UID - MUST use smokeball_lead_uid from HubSpot (NOT matter_uid from Smokeball)
+    // matter_uid is the Smokeball matter number (e.g., "25-2126") which is NOT what we need
+    // We need the Lead_UID UUID to visit the correct URL that pre-fills form fields
+    const leadUid = deal.properties.smokeball_lead_uid;
+    if (!leadUid || leadUid.trim() === '') {
+      throw new Error('smokeball_lead_uid is required but not found in deal. Create lead first.');
     }
     
-    console.log(`[Receipt Automation] 📋 Extracted Matter ID: ${matterId}`);
+    console.log(`[Receipt Automation] 📋 Using Lead UID from HubSpot: ${leadUid}`);
+    console.log(`[Receipt Automation]    smokeball_lead_uid: ${leadUid}`);
+    console.log(`[Receipt Automation]    matter_uid: ${deal.properties.matter_uid || 'NOT SET'} (NOT USED - we need Lead_UID, not Matter Number)`);
 
     // Determine payment type and extract amount
     const paymentMethod = deal.properties.payment_method;
@@ -248,7 +252,7 @@ export async function triggerReceiptAutomationForDeal(dealId) {
     // This ensures we can verify form filling without creating receipts
     console.log(`[Receipt Automation] 🧪 Running in TEST MODE - form will be filled but NOT submitted`);
     const result = await executeReceiptAutomation({
-      matterId,
+      matterId: leadUid, // Using Lead_UID, not matter_uid
       amount,
       lastname,
       firstname,
@@ -273,7 +277,7 @@ export async function triggerReceiptAutomationForDeal(dealId) {
       success: true,
       ...result,
       dealId,
-      matterId,
+      leadUid,
       amount
     };
 
@@ -320,12 +324,16 @@ export async function executeReceiptAutomationForDeal(dealId, options = {}) {
       'smokeball_lead_uid'
     ]);
 
-    const matterId = deal.properties.matter_uid || deal.properties.smokeball_lead_uid;
-    if (!matterId || matterId.trim() === '') {
-      throw new Error('No matter_uid or smokeball_lead_uid found in deal. Create lead first.');
+    // Get Lead UID - MUST use smokeball_lead_uid from HubSpot (NOT matter_uid from Smokeball)
+    // matter_uid is the Smokeball matter number (e.g., "25-2126") which is NOT what we need
+    const leadUid = deal.properties.smokeball_lead_uid;
+    if (!leadUid || leadUid.trim() === '') {
+      throw new Error('smokeball_lead_uid is required but not found in deal. Create lead first.');
     }
     
-    console.log(`[Receipt Automation] 📋 Extracted Matter ID: ${matterId}`);
+    console.log(`[Receipt Automation] 📋 Using Lead UID from HubSpot: ${leadUid}`);
+    console.log(`[Receipt Automation]    smokeball_lead_uid: ${leadUid}`);
+    console.log(`[Receipt Automation]    matter_uid: ${deal.properties.matter_uid || 'NOT SET'} (NOT USED - we need Lead_UID, not Matter Number)`);
 
     // Extract amount based on payment method
     let amount;
@@ -387,7 +395,7 @@ export async function executeReceiptAutomationForDeal(dealId, options = {}) {
     console.log(`[Receipt Automation] 📅 Using current date & time: ${formattedDate}`);
 
     return await executeReceiptAutomation({
-      matterId,
+      matterId: leadUid, // Using Lead_UID, not matter_uid
       amount,
       lastname,
       firstname,

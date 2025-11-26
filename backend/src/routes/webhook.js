@@ -642,17 +642,18 @@ async function handleBankTransferConfirmation(deal) {
       // Extract receipt data from deal
       const { properties } = deal;
 
-      // Get Lead UID (prioritize smokeball_lead_uid over matter_uid)
+      // Get Lead UID - MUST use smokeball_lead_uid from HubSpot (NOT matter_uid from Smokeball)
       // We use Lead_UID specifically because visiting the correct URL with Lead_UID
       // pre-fills Date, Account, and Received From fields - only Reason and Amount need to be filled
-      const leadUid = properties.smokeball_lead_uid || properties.matter_uid;
+      // matter_uid is the Smokeball matter number (e.g., "25-2126") which is NOT what we need
+      const leadUid = properties.smokeball_lead_uid;
       if (!leadUid || leadUid.trim() === '') {
-        throw new Error('No Lead UID (smokeball_lead_uid or matter_uid) found in deal');
+        throw new Error('smokeball_lead_uid is required but not found in deal. Create lead first.');
       }
 
-      console.log(`[HubSpot Webhook] 🔍 Using Lead UID: ${leadUid}`);
-      console.log(`[HubSpot Webhook]    smokeball_lead_uid: ${properties.smokeball_lead_uid || 'NOT SET'}`);
-      console.log(`[HubSpot Webhook]    matter_uid: ${properties.matter_uid || 'NOT SET'}`);
+      console.log(`[HubSpot Webhook] 🔍 Using Lead UID from HubSpot: ${leadUid}`);
+      console.log(`[HubSpot Webhook]    smokeball_lead_uid: ${leadUid}`);
+      console.log(`[HubSpot Webhook]    matter_uid: ${properties.matter_uid || 'NOT SET'} (NOT USED - we need Lead_UID, not Matter Number)`);
 
       // Construct the URL that will be visited
       const accountId = '34154dcb-8a76-4f8c-9281-a9b80e3cca16';
