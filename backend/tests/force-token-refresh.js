@@ -4,8 +4,8 @@
  */
 
 import dotenv from 'dotenv';
-import * as tokenStorage from './src/services/storage/token-storage.js';
-import * as auth from './src/integrations/smokeball/auth.js';
+import * as tokenStorage from '../src/services/storage/token-storage.js';
+import * as auth from '../src/integrations/smokeball/auth.js';
 
 dotenv.config();
 

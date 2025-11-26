@@ -642,11 +642,22 @@ async function handleBankTransferConfirmation(deal) {
       // Extract receipt data from deal
       const { properties } = deal;
 
-      // Get matter ID
-      const matterId = properties.matter_uid || properties.smokeball_lead_uid;
-      if (!matterId) {
-        throw new Error('No matter ID (matter_uid or smokeball_lead_uid) found in deal');
+      // Get Lead UID (prioritize smokeball_lead_uid over matter_uid)
+      // We use Lead_UID specifically because visiting the correct URL with Lead_UID
+      // pre-fills Date, Account, and Received From fields - only Reason and Amount need to be filled
+      const leadUid = properties.smokeball_lead_uid || properties.matter_uid;
+      if (!leadUid || leadUid.trim() === '') {
+        throw new Error('No Lead UID (smokeball_lead_uid or matter_uid) found in deal');
       }
+
+      console.log(`[HubSpot Webhook] 🔍 Using Lead UID: ${leadUid}`);
+      console.log(`[HubSpot Webhook]    smokeball_lead_uid: ${properties.smokeball_lead_uid || 'NOT SET'}`);
+      console.log(`[HubSpot Webhook]    matter_uid: ${properties.matter_uid || 'NOT SET'}`);
+
+      // Construct the URL that will be visited
+      const accountId = '34154dcb-8a76-4f8c-9281-a9b80e3cca16';
+      const transactionsUrl = `https://app.smokeball.com.au/#/billing/view-matter/${leadUid}/transactions/trust/${accountId}~2FTrust`;
+      console.log(`[HubSpot Webhook] 🔗 URL to visit: ${transactionsUrl}`);
 
       // Get contact info from associations
       const associationsIntegration = await import('../integrations/hubspot/associations.js');
@@ -678,7 +689,7 @@ async function handleBankTransferConfirmation(deal) {
       // Trigger GitHub Action
       const result = await githubActions.triggerReceiptAutomation({
         deal_id: deal.id,
-        matter_id: matterId,
+        matter_id: leadUid, // Using Lead_UID (smokeball_lead_uid) instead of matter_uid
         amount: parseFloat(properties.payment_amount) || 0,
         lastname: primarySeller.lastname || 'Unknown',
         firstname: primarySeller.firstname || 'Unknown',

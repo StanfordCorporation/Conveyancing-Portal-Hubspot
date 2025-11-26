@@ -247,6 +247,14 @@ class SmokeBallReceiptAutomation {
             }
             
             console.log('✅ Successfully logged in');
+            
+            // Verify dashboard is loaded
+            const currentUrl = this.page.url();
+            console.log(`📍 Dashboard URL: ${currentUrl}`);
+            
+            // Wait a moment to ensure dashboard is fully loaded
+            await this.page.waitForTimeout(2000);
+            await this.takeScreenshot('dashboard-loaded');
         } catch (error) {
             await this.takeScreenshot('login-error');
             throw new Error(`Login failed: ${error.message}`);
@@ -255,12 +263,12 @@ class SmokeBallReceiptAutomation {
 
     async navigateToMatterTransactions(matterId, accountId) {
         console.log(`📋 Navigating to matter transactions...`);
-        console.log(`   Matter ID: ${matterId}`);
+        console.log(`   Lead UID: ${matterId}`);
         console.log(`   Account ID: ${accountId}`);
         
-        // Validate matterId is not empty
+        // Validate matterId (Lead_UID) is not empty
         if (!matterId || matterId.trim() === '') {
-            throw new Error('matterId is required and cannot be empty');
+            throw new Error('Lead_UID is required and cannot be empty');
         }
         
         // Validate accountId is not empty
@@ -270,7 +278,17 @@ class SmokeBallReceiptAutomation {
         
         const transactionsUrl = `https://app.smokeball.com.au/#/billing/view-matter/${matterId}/transactions/trust/${accountId}~2FTrust`;
         
-        console.log(`🔗 Navigating to: ${transactionsUrl}`);
+        console.log(`🔗 ==========================================`);
+        console.log(`🔗 URL TO VISIT (with Lead_UID):`);
+        console.log(`🔗 ${transactionsUrl}`);
+        console.log(`🔗 ==========================================`);
+        console.log(`🔗 Note: Visiting this URL with correct Lead_UID will pre-fill:`);
+        console.log(`🔗   - Date`);
+        console.log(`🔗   - Account`);
+        console.log(`🔗   - Received From`);
+        console.log(`🔗 Only Reason and Amount need to be filled manually`);
+        console.log(`🔗 ==========================================`);
+        
         await this.page.goto(transactionsUrl);
         
         // Wait for page to fully load - try multiple strategies
@@ -761,16 +779,35 @@ class SmokeBallReceiptAutomation {
     }
 
     async run(matterId, receiptData) {
-        // Validate matterId before proceeding
+        // Validate matterId (Lead_UID) before proceeding
         if (!matterId || typeof matterId !== 'string' || matterId.trim() === '') {
-            throw new Error(`Invalid matterId: "${matterId}". Matter ID is required and cannot be empty.`);
+            throw new Error(`Invalid Lead_UID: "${matterId}". Lead_UID is required and cannot be empty.`);
         }
+        
+        console.log(`\n🚀 Starting receipt automation with Lead_UID: ${matterId.trim()}`);
+        console.log(`💰 Amount: $${receiptData.amount}`);
         
         try {
             await this.initialize();
             await this.login();
             
+            // Log the URL that will be visited after dashboard loads
             const accountId = '34154dcb-8a76-4f8c-9281-a9b80e3cca16'; // Trust account ID
+            const transactionsUrl = `https://app.smokeball.com.au/#/billing/view-matter/${matterId.trim()}/transactions/trust/${accountId}~2FTrust`;
+            
+            console.log(`\n🔗 ==========================================`);
+            console.log(`🔗 URL TO VISIT (after dashboard loaded):`);
+            console.log(`🔗 ${transactionsUrl}`);
+            console.log(`🔗 ==========================================`);
+            console.log(`🔗 Lead_UID: ${matterId.trim()}`);
+            console.log(`🔗 Account ID: ${accountId}`);
+            console.log(`🔗 Note: Visiting this URL with correct Lead_UID will pre-fill:`);
+            console.log(`🔗   - Date`);
+            console.log(`🔗   - Account`);
+            console.log(`🔗   - Received From`);
+            console.log(`🔗 Only Reason and Amount need to be filled manually`);
+            console.log(`🔗 ==========================================\n`);
+            
             await this.navigateToMatterTransactions(matterId.trim(), accountId);
             await this.fillReceiptForm(receiptData);
             

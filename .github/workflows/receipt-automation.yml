@@ -73,9 +73,14 @@ jobs:
 
             try {
               console.log('🚀 Starting receipt automation...');
-              console.log('Matter ID: ${{ steps.payload.outputs.matter_id }}');
+              console.log('Lead UID: ${{ steps.payload.outputs.matter_id }}');
               console.log('Amount: \$' + receiptData.amount);
               console.log('Contact: ' + receiptData.lastname + ', ' + receiptData.firstname);
+              
+              // Log the URL that will be visited
+              const accountId = '34154dcb-8a76-4f8c-9281-a9b80e3cca16';
+              const transactionsUrl = 'https://app.smokeball.com.au/#/billing/view-matter/' + '${{ steps.payload.outputs.matter_id }}' + '/transactions/trust/' + accountId + '~2FTrust';
+              console.log('🔗 URL to visit: ' + transactionsUrl);
 
               const result = await automation.run('${{ steps.payload.outputs.matter_id }}', receiptData);
 
