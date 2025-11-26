@@ -249,8 +249,8 @@ class SmokeBallReceiptAutomation {
             console.log('✅ Successfully logged in');
             
             // Verify dashboard is loaded
-            const currentUrl = this.page.url();
-            console.log(`📍 Dashboard URL: ${currentUrl}`);
+            const dashboardUrl = this.page.url();
+            console.log(`📍 Dashboard URL: ${dashboardUrl}`);
             
             // Wait a moment to ensure dashboard is fully loaded
             await this.page.waitForTimeout(2000);
