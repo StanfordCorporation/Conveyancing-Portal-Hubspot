@@ -210,14 +210,28 @@ class SmokeBallReceiptAutomation {
                     
                     await twoFactorInput.fill(totpCode);
                     await this.page.waitForTimeout(1000);
-                    
+
                     try {
                         await this.page.getByRole('button', { name: 'Verify' }).click();
                     } catch {
                         await twoFactorInput.press('Enter');
                     }
-                    
-                    await this.page.waitForURL('**/dashboard', { timeout: 45000 });
+
+                    // Wait for navigation to complete after 2FA verification
+                    console.log('⏳ Waiting for dashboard to load...');
+                    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+                    await this.page.waitForTimeout(3000); // Give dashboard time to render
+
+                    // Verify we're no longer on the 2FA page
+                    const currentUrlAfter2FA = this.page.url();
+                    console.log(`📍 Current URL after 2FA: ${currentUrlAfter2FA}`);
+
+                    // Check if still on 2FA page (would indicate failure)
+                    const is2FAPage = await this.page.locator('input[placeholder="Two-Factor Code"], textbox[name="Two-Factor Code"]').count() > 0;
+                    if (is2FAPage) {
+                        throw new Error('Still on 2FA page after verification - code may be incorrect');
+                    }
+
                     console.log('✅ 2FA verification successful');
                 } catch (error) {
                     await this.takeScreenshot('2fa-error');
