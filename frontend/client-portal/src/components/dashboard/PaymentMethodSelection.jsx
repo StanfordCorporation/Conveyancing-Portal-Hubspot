@@ -51,7 +51,7 @@ export default function PaymentMethodSelection({ amount, onSelectMethod }) {
         <p className="payment-subtitle">Select how you'd like to pay for your conveyancing searches</p>
         <div className="payment-amount-display">
           <span className="amount-label">Amount Due:</span>
-          <span className="amount-value">${amount} AUD</span>
+          <span className="amount-value">${parseFloat(amount).toFixed(2)} AUD</span>
         </div>
       </div>
 

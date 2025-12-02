@@ -23,7 +23,7 @@ export default function BankTransferDetails({ amount, dealId, referenceNumber, o
 Trust Account Payment Details
 ==============================
 
-Amount Due: $${amount} AUD
+Amount Due: $${parseFloat(amount).toFixed(2)} AUD
 
 Bank: National Australia Bank
 BSB: 084 004
@@ -56,7 +56,7 @@ If you have any questions, please don't hesitate to contact us.
       <div className="bank-transfer-header">
         <h2>Trust Account Payment</h2>
         <p className="header-subtitle">
-          To proceed with ordering the searches, please transfer <span className="amount-highlight">${amount}</span> to our trust account using the details below.
+          To proceed with ordering the searches, please transfer <span className="amount-highlight">${parseFloat(amount).toFixed(2)}</span> to our trust account using the details below.
         </p>
       </div>
 

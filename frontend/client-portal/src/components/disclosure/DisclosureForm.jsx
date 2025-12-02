@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, ArrowRight, Send, MapPin, ArrowLeft, Check } from 'lucide-react';
+import { Phone, Mail, ArrowRight, Send, MapPin, ArrowLeft, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../services/api';
 import { AgencySearchModal } from './AgencySearchModal';
 import { AgentSelectionModal } from './AgentSelectionModal';
@@ -37,6 +37,7 @@ export default function DisclosureForm() {
     },
     additionalSellers: []
   });
+  const [showBenefits, setShowBenefits] = useState(false);
 
   const steps = [
     { number: 1, name: 'Property Information' },
@@ -399,71 +400,169 @@ export default function DisclosureForm() {
     }
   };
 
+  const benefits = [
+    "No Hidden Costs",
+    "No Extension Fees",
+    "No Contract Review Fees",
+    "No Solicitor Advisory Fees",
+    "No Disclosure Fees",
+    "One Fixed-Fee charged on Settlement"
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-muted to-background">
+    <div className="min-h-screen lg:h-screen flex flex-col bg-gray-50 lg:overflow-hidden">
       <Header />
 
-      <main className="flex-1 py-12 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden opacity-30">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-        </div>
-
-        {/* Submission Animation Overlay */}
-        {isSubmitting && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-md animate-fade-in"></div>
-            <div className="relative z-10">
-              {submitProgress < 100 ? (
-                <>
-                  <div className="flex items-center justify-center mb-8">
-                    <div className="relative w-32 h-32">
-                      <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-ping-slow"></div>
-                      <div className="absolute inset-2 rounded-full border-4 border-primary/60 animate-pulse-slow"></div>
-                      <div className="absolute inset-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center animate-float">
-                        <Send className="w-12 h-12 text-primary-foreground" style={{ transform: `rotate(${submitProgress * 3.6}deg)` }} />
-                      </div>
+      {/* Submission Animation Overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-md animate-fade-in"></div>
+          <div className="relative z-10">
+            {submitProgress < 100 ? (
+              <>
+                <div className="flex items-center justify-center mb-8">
+                  <div className="relative w-32 h-32">
+                    <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-ping-slow"></div>
+                    <div className="absolute inset-2 rounded-full border-4 border-primary/60 animate-pulse-slow"></div>
+                    <div className="absolute inset-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center animate-float">
+                      <Send className="w-12 h-12 text-primary-foreground" style={{ transform: `rotate(${submitProgress * 3.6}deg)` }} />
                     </div>
                   </div>
-                  <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold text-foreground mb-2">Submitting Your Form</h3>
-                    <p className="text-muted-foreground">Please wait while we process your information...</p>
-                  </div>
-                  <div className="w-96 max-w-full px-4">
-                    <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-300 ease-out"
-                        style={{ width: `${submitProgress}%` }}
-                      >
-                        <div className="absolute inset-0 bg-white/30 animate-shimmer"></div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between mt-2">
-                      <span className="text-sm text-muted-foreground">Processing</span>
-                      <span className="text-sm font-semibold text-primary">{submitProgress}%</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center animate-scale-in">
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-white" viewBox="0 0 52 52">
-                        <path className="check-path" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" d="M14 27l7 7 16-16"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">Submission Successful!</h3>
-                  <p className="text-muted-foreground">Redirecting to login...</p>
                 </div>
-              )}
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-foreground mb-2">Submitting Your Form</h3>
+                  <p className="text-muted-foreground">Please wait while we process your information...</p>
+                </div>
+                <div className="w-96 max-w-full px-4">
+                  <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${submitProgress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/30 animate-shimmer"></div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-sm text-muted-foreground">Processing</span>
+                    <span className="text-sm font-semibold text-primary">{submitProgress}%</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center animate-scale-in">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-white" viewBox="0 0 52 52">
+                      <path className="check-path" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" d="M14 27l7 7 16-16"/>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-2">Submission Successful!</h3>
+                <p className="text-muted-foreground">Redirecting to login...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: Sticky Quote Banner - Only visible on mobile */}
+      <div className="lg:hidden sticky top-16 z-40 bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
+        <div className="px-5 py-3 text-center border-b-2 border-blue-500">
+          <h1 className="text-xl font-extrabold text-white mb-0.5 tracking-tight">Get Your Instant Quote</h1>
+          <p className="text-blue-100 text-sm font-semibold">Ready in hours, not weeks.</p>
+        </div>
+      </div>
+
+      {/* Main 2-Column Grid Layout */}
+      <main className={`flex-1 grid grid-cols-1 lg:grid-cols-[45%_55%] lg:h-[calc(100vh-5rem)] lg:overflow-hidden transition-all duration-500 ${isSubmitting ? 'scale-98 blur-sm' : 'scale-100 blur-0'}`}>
+
+        {/* Left Column: Marketing Sidebar */}
+        <div className="lg:sticky lg:top-0 lg:h-screen overflow-hidden" style={{ backgroundColor: '#273165' }}>
+          {/* Mobile: Always visible marketing content */}
+          <div className="lg:hidden p-6">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-2">Sellers Disclosure Statement</h2>
+              <span className="inline-block px-3 py-1 text-white text-xs font-bold uppercase rounded-full" style={{ backgroundColor: '#0E6DFF' }}>
+                At No Extra Cost
+              </span>
+            </div>
+
+            {/* Body Text */}
+            <p className="text-slate-300 mb-4 text-sm text-left mt-4">
+              <strong className="text-white">One Fixed-Fee</strong> for your entire conveyance.
+            </p>
+
+            {/* Benefits - Always visible */}
+            <div className="space-y-2">
+              {benefits.map((item, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                  </div>
+                  <span className="text-slate-300 text-sm">{item}</span>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        <div className={`max-w-3xl mx-auto transition-all duration-500 relative z-10 ${isSubmitting ? 'scale-98 blur-sm' : 'scale-100 blur-0'}`}>
+          {/* Desktop: Full Marketing Content - Center aligned, larger text */}
+          <div className="hidden lg:flex lg:flex-col lg:h-full lg:justify-start p-12 lg:p-10 text-center overflow-y-auto">
+            {/* Header */}
+            <div className="mb-4">
+              <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight mb-6">Sellers Disclosure Statement</h1>
+              <span className="inline-block px-5 py-2 text-white text-base font-bold uppercase rounded-full shadow-lg" style={{ backgroundColor: '#0E6DFF' }}>
+                At No Extra Cost
+              </span>
+            </div>
+
+            {/* Body Text */}
+            <div className="mt-6 mb-10">
+              <p className="text-2xl text-slate-300 leading-relaxed mb-1">
+                <strong className="text-white font-bold">One Fixed-Fee</strong> for your <strong className="text-white font-bold">entire conveyance</strong>.
+              </p>
+              <p className="text-lg text-slate-400 leading-relaxed">
+                We handle your <strong className="text-slate-200">Disclosure</strong> and <strong className="text-slate-200">defend it until settlement</strong> so you <strong className="text-slate-200">never have to worry</strong>.
+              </p>
+            </div>
+
+            {/* Benefits List (Vertical) - Center aligned */}
+            <div className="mb-16">
+              <p className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-6">What's Included</p>
+              <div className="space-y-5 inline-block text-left">
+                {benefits.map((item, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-7 h-7 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                    </div>
+                    <span className="text-white font-medium text-lg">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Promise - Prominent Callout Card */}
+            <div className="mt-auto pt-6">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 shadow-2xl border-2 border-blue-400 transform hover:scale-105 transition-all duration-300">
+                <div className="text-center">
+                  <p className="text-2xl font-extrabold text-white mb-2 tracking-tight leading-tight">
+                    Get Your Instant Quote
+                  </p>
+                  <p className="text-lg font-bold text-blue-100 mb-1">
+                    Ready in hours, not weeks!
+                  </p>
+                  <p className="text-sm text-blue-200 font-medium">
+                    Answer a few quick questions to get your quote.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Action Area */}
+        <div className="bg-gray-50 p-6 lg:p-16 lg:px-16 xl:px-32 flex flex-col justify-start lg:overflow-y-auto">
           {/* Progress Indicator */}
-          <div className="mb-8">
+          <div className="mb-4 lg:mb-16">
             <div className="flex items-center justify-between mb-4">
               {steps.map((step, index) => (
                 <React.Fragment key={step.number}>
@@ -493,52 +592,73 @@ export default function DisclosureForm() {
             </div>
           </div>
 
-          {/* Header */}
-          <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl p-8 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Property Disclosure</h1>
-              <p className="text-muted-foreground mt-2">Step {currentStep} of {steps.length}: {steps[currentStep - 1].name}</p>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{error}</p>
             </div>
-
-            {error && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Step 1: Property Information */}
           {currentStep === 1 && (
-            <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl p-8 mb-8">
-              <h2 className="text-xl font-bold text-foreground mb-6">Property Information</h2>
+            <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
+              {/* Section A: Content Body */}
+              <div className="bg-white p-8">
+                <h2 className="text-xl font-bold text-foreground mb-6">Property Information</h2>
 
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="propertyAddress" className="block text-sm font-medium text-foreground mb-3">
-                    Property Address <span className="text-red-500">*</span>
-                  </label>
-                  <AddressAutocomplete
-                    id="propertyAddress"
-                    value={propertyAddress}
-                    onChange={setPropertyAddress}
-                    placeholder="123 Main Street, Brisbane QLD 4000"
-                    className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
-                  />
+                <div className="space-y-6">
+                  <div>
+                    <label htmlFor="propertyAddress" className="block text-sm font-medium text-foreground mb-3">
+                      Property Address <span className="text-red-500">*</span>
+                    </label>
+                    <AddressAutocomplete
+                      id="propertyAddress"
+                      value={propertyAddress}
+                      onChange={setPropertyAddress}
+                      placeholder="123 Main Street, Brisbane QLD 4000"
+                      className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="numOwners" className="block text-sm font-medium text-foreground mb-3">
+                      Number of Registered Owners <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="numOwners"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={numOwners}
+                      onChange={(e) => handleNumOwnersChange(e.target.value)}
+                      className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section B: Unified Footer */}
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+                {/* Left Side: Motivation Text + Tip */}
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                    Your Seller Disclosure could be ready in hours!
+                  </p>
+                  <p className="text-slate-300 font-normal text-sm">
+                    💡 Enter the address exactly as it appears on the property title.
+                  </p>
                 </div>
 
-                <div>
-                  <label htmlFor="numOwners" className="block text-sm font-medium text-foreground mb-3">
-                    Number of Registered Owners <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="numOwners"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={numOwners}
-                    onChange={(e) => handleNumOwnersChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
-                  />
+                {/* Right Side: Next Step Button */}
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={handleNext}
+                    disabled={!isStepValid(currentStep)}
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                  >
+                    <span>Next Step</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -546,11 +666,13 @@ export default function DisclosureForm() {
 
           {/* Step 2: Seller Information */}
           {currentStep === 2 && (
-            <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl p-8 mb-8">
-              <h2 className="text-xl font-bold text-foreground mb-6">Seller Information</h2>
+            <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
+              {/* Section A: Content Body */}
+              <div className="bg-white p-8">
+                <h2 className="text-xl font-bold text-foreground mb-6">Seller Information</h2>
 
-              {/* Primary Seller */}
-              <div className="mb-10">
+                {/* Primary Seller */}
+                <div className="mb-10">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
                   <div className="w-6 h-6 flex items-center justify-center rounded-full bg-primary/30 text-primary text-sm font-medium">1</div>
                   <h3 className="text-lg font-semibold text-foreground">Primary Seller</h3>
@@ -725,13 +847,48 @@ export default function DisclosureForm() {
                   </div>
                 </div>
               ))}
+              </div>
+
+              {/* Section B: Unified Footer */}
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+                {/* Left Side: Motivation Text + Tip */}
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                    Your Seller Disclosure could be ready in hours!
+                  </p>
+                  <p className="text-slate-300 font-normal text-sm">
+                    💡 Each seller must have a valid email and mobile number. All emails and phone numbers must be unique.
+                  </p>
+                </div>
+
+                {/* Right Side: Back + Next Step Buttons */}
+                <div className="flex-shrink-0 flex items-center gap-3">
+                  <button
+                    onClick={handleBack}
+                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
+                  >
+                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <span>Back</span>
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!isStepValid(currentStep)}
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                  >
+                    <span>Next Step</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Step 3: Agency & Agent */}
           {currentStep === 3 && (
-            <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl p-8 mb-8">
-              <h2 className="text-xl font-bold text-foreground mb-6">Agency & Agent</h2>
+            <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
+              {/* Section A: Content Body */}
+              <div className="bg-white p-8">
+                <h2 className="text-xl font-bold text-foreground mb-6">Agency & Agent</h2>
 
               <div className="space-y-5">
                 <div>
@@ -804,42 +961,22 @@ export default function DisclosureForm() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Navigation Footer with Enhancements */}
-          <div className="relative bg-gradient-to-b from-white to-slate-50/30 backdrop-blur-xl border border-border rounded-3xl shadow-xl overflow-hidden">
-            {/* Progress Bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
-              <div
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${(currentStep / steps.length) * 100}%` }}
-              ></div>
-            </div>
-
-            <div className="p-8 pt-10">
-              {/* Contextual Help Text - Left aligned above buttons */}
-              <div className="mb-4 animate-fade-in">
-                {currentStep === 1 && (
-                  <p className="text-sm text-slate-500">
-                    💡 Enter the address exactly as it appears on the property title.
-                  </p>
-                )}
-                {currentStep === 2 && (
-                  <p className="text-sm text-slate-500">
-                    💡 Each seller must have a valid email and mobile number. All emails and phone numbers must be unique.
-                  </p>
-                )}
-                {currentStep === 3 && (
-                  <p className="text-sm text-slate-500">
-                    💡 You can search for your agents if they're registered with us, if not you can create one and they'll get notified to track your application progress with us.
-                  </p>
-                )}
               </div>
 
-              {/* Navigation Buttons */}
-              <div className="flex items-center justify-between gap-4">
-                {currentStep > 1 && (
+              {/* Section B: Unified Footer */}
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+                {/* Left Side: Motivation Text + Tip */}
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                    Your Seller Disclosure could be ready in hours!
+                  </p>
+                  <p className="text-slate-300 font-normal text-sm">
+                    💡 You can search for your agents if they're registered with us, if not you can create one and they'll get notified to track your application progress with us.
+                  </p>
+                </div>
+
+                {/* Right Side: Back + Submit Buttons */}
+                <div className="flex-shrink-0 flex items-center gap-3">
                   <button
                     onClick={handleBack}
                     className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
@@ -847,34 +984,35 @@ export default function DisclosureForm() {
                     <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     <span>Back</span>
                   </button>
-                )}
-
-                {currentStep < steps.length ? (
-                  <button
-                    onClick={handleNext}
-                    disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
-                  >
-                    <span>Next Step</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                ) : (
                   <button
                     onClick={handleSubmit}
                     disabled={!isStepValid(3) || isSubmitting}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none ml-auto"
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
                     <span>Request Disclosure Form</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
-                )}
+                </div>
               </div>
+            </div>
+          )}
+
+          {/* Progress Indicator Bar - Shows progress for all steps */}
+          <div className="relative bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden">
+            <div className="h-2 bg-muted">
+              <div
+                className="h-full bg-primary transition-all duration-500 ease-out"
+                style={{ width: `${(currentStep / steps.length) * 100}%` }}
+              ></div>
             </div>
           </div>
         </div>
       </main>
 
-      <Footer />
+      {/* Footer only on mobile */}
+      <div className="lg:hidden">
+        <Footer />
+      </div>
 
       <AgencySearchModal
         isOpen={showAgencySearch}

@@ -19,6 +19,7 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
   const [quoteAmount, setQuoteAmount] = useState(initialQuoteAmount || '0.00');
   const [loading, setLoading] = useState(!initialQuoteAmount);
   const [bankTransferRecorded, setBankTransferRecorded] = useState(false);
+  const [paymentBreakdown, setPaymentBreakdown] = useState(null);
 
   // Fetch quote if not provided
   useEffect(() => {
@@ -37,8 +38,25 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
       });
 
       if (response.data.success) {
-        setQuoteAmount(response.data.quote.grandTotal);
-        console.log(`[Payment Instructions] ✅ Quote loaded: $${response.data.quote.grandTotal}`);
+        const { quote, conveyancing } = response.data;
+
+        // Calculate total due now (searches + deposit)
+        const totalDueNow = quote.grandTotal + conveyancing.depositNow;
+
+        setQuoteAmount(totalDueNow);
+        setPaymentBreakdown({
+          searches: quote.grandTotal,
+          deposit: conveyancing.depositNow,
+          totalDueNow: totalDueNow,
+          settlementAmount: conveyancing.settlementAmount,
+          bodyCorporate: conveyancing.bodyCorporateStatus
+        });
+
+        console.log(`[Payment Instructions] ✅ Quote loaded:`);
+        console.log(`[Payment Instructions]   - Searches: $${quote.grandTotal}`);
+        console.log(`[Payment Instructions]   - Deposit: $${conveyancing.depositNow}`);
+        console.log(`[Payment Instructions]   - Total Due Now: $${totalDueNow}`);
+        console.log(`[Payment Instructions]   - Settlement: $${conveyancing.settlementAmount}`);
       }
     } catch (err) {
       console.error('[Payment Instructions] ❌ Error fetching quote:', err);
@@ -180,7 +198,7 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
         <div className="payment-complete-message">
           <div className="complete-icon">✓</div>
           <h2>{message}</h2>
-          <p>Amount: ${quoteAmount} AUD</p>
+          <p>Amount: ${parseFloat(quoteAmount).toFixed(2)} AUD</p>
           <div className="complete-details">
             <p>{description}</p>
             <p>A confirmation email has been sent to your registered email address.</p>
@@ -248,10 +266,33 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
             <span className="detail-label">Deal ID:</span>
             <span className="detail-value">{dealId}</span>
           </div>
+          {paymentBreakdown && (
+            <>
+              <div className="detail-row">
+                <span className="detail-label">Property Searches:</span>
+                <span className="detail-value">${parseFloat(paymentBreakdown.searches).toFixed(2)}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Conveyancing Deposit:</span>
+                <span className="detail-value">${parseFloat(paymentBreakdown.deposit).toFixed(2)}</span>
+              </div>
+            </>
+          )}
           <div className="detail-row total-row">
-            <span className="detail-label">Total Amount:</span>
-            <span className="detail-value total-amount">${quoteAmount} AUD</span>
+            <span className="detail-label">Total Due Now:</span>
+            <span className="detail-value total-amount">${parseFloat(quoteAmount).toFixed(2)} AUD</span>
           </div>
+          {paymentBreakdown && (
+            <div className="detail-row settlement-info" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e0e0e0' }}>
+              <span className="detail-label" style={{ fontSize: '13px', color: '#666' }}>
+                💡 Due at Settlement:
+              </span>
+              <span className="detail-value" style={{ fontSize: '14px', fontWeight: '600', color: '#10b981' }}>
+                ${parseFloat(paymentBreakdown.settlementAmount).toFixed(2)}
+                {paymentBreakdown.bodyCorporate === 'yes' && ' (includes body corp)'}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="payment-methods">
