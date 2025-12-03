@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, Mail, ArrowRight, Send, MapPin, ArrowLeft, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../services/api';
-import { AgencySearchModal } from './AgencySearchModal';
-import { AgentSelectionModal } from './AgentSelectionModal';
+import { AgentSearchModal } from './AgentSearchModal';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
 import AddressAutocomplete from '../../../../src/components/common/AddressAutocomplete';
@@ -20,16 +19,17 @@ export default function DisclosureForm() {
     email: ''
   });
   const [additionalSellers, setAdditionalSellers] = useState([]);
-  const [agencyInfo, setAgencyInfo] = useState({
-    businessName: '',
+  const [agentSearchInfo, setAgentSearchInfo] = useState({
+    agentName: '',
+    agencyName: '',
+    agentPhone: '',
     suburb: ''
   });
-  const [selectedAgency, setSelectedAgency] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [error, setError] = useState('');
-  const [showAgencySearch, setShowAgencySearch] = useState(false);
-  const [showAgentSelection, setShowAgentSelection] = useState(false);
+  const [showAgentSearch, setShowAgentSearch] = useState(false);
   const [validationErrors, setValidationErrors] = useState({
     primarySeller: {
       email: '',
@@ -45,45 +45,16 @@ export default function DisclosureForm() {
     { number: 3, name: 'Agency & Agent' }
   ];
 
-  // Handle agency selection from search modal
-  const handleAgencySelect = (agency) => {
-    let transformedAgency = {
-      id: agency.id,
-      name: agency.name,
-      email: agency.email,
-      address: agency.address
-    };
-
-    if (agency.agent && agency.agent.id) {
-      console.log('✅ Agent already created with agency, skipping selection modal');
-      transformedAgency.agentFirstName = agency.agent.firstname;
-      transformedAgency.agentLastName = agency.agent.lastname;
-      transformedAgency.agentEmail = agency.agent.email;
-      transformedAgency.agentPhone = agency.agent.phone;
-
-      setSelectedAgency(transformedAgency);
-      setShowAgencySearch(false);
-    } else {
-      console.log('🔍 Showing agent selection modal for existing agency');
-      setSelectedAgency(transformedAgency);
-      setShowAgencySearch(false);
-      setShowAgentSelection(true);
-    }
+  // Handle agent selection from search modal
+  const handleAgentSelect = (agent) => {
+    console.log('✅ Agent selected:', agent);
+    setSelectedAgent(agent);
+    setShowAgentSearch(false);
   };
 
-  const handleAgentSelect = (agencyWithAgent) => {
-    setSelectedAgency(agencyWithAgent);
-    setShowAgentSelection(false);
-  };
-
-  const handleBackFromAgent = () => {
-    setShowAgentSelection(false);
-    setShowAgencySearch(true);
-  };
-
-  const handleAgencySearch = () => {
-    if (agencyInfo.businessName.trim() && agencyInfo.suburb.trim()) {
-      setShowAgencySearch(true);
+  const handleAgentSearch = () => {
+    if (agentSearchInfo.agentName.trim() && agentSearchInfo.agencyName.trim()) {
+      setShowAgentSearch(true);
     }
   };
 
@@ -280,7 +251,19 @@ export default function DisclosureForm() {
         const { hasErrors } = validateSellerUniqueness();
         return !hasErrors;
       case 3:
-        return selectedAgency !== null;
+        // Validate that an agent is selected and has required data
+        if (!selectedAgent) {
+          return false;
+        }
+        // Ensure agent has required fields
+        if (!selectedAgent.id || !selectedAgent.firstname || !selectedAgent.lastname || !selectedAgent.email) {
+          return false;
+        }
+        // Ensure agent has associated agency
+        if (!selectedAgent.agency || !selectedAgent.agency.id || !selectedAgent.agency.name) {
+          return false;
+        }
+        return true;
       default:
         return false;
     }
@@ -303,9 +286,17 @@ export default function DisclosureForm() {
   };
 
   const handleSubmit = async () => {
-    // Validate step 3
+    // Validate step 3 - agent selection
     if (!isStepValid(3)) {
-      setError('Please complete all required fields.');
+      if (!selectedAgent) {
+        setError('Please search for and select an agent before submitting.');
+      } else if (!selectedAgent.id || !selectedAgent.firstname || !selectedAgent.lastname || !selectedAgent.email) {
+        setError('Selected agent is missing required information. Please select a different agent.');
+      } else if (!selectedAgent.agency || !selectedAgent.agency.id || !selectedAgent.agency.name) {
+        setError('Selected agent must have an associated agency. Please select a different agent.');
+      } else {
+        setError('Please complete all required fields.');
+      }
       return;
     }
     
@@ -314,6 +305,12 @@ export default function DisclosureForm() {
     if (hasErrors) {
       setValidationErrors(errors);
       setError('Please ensure all sellers have unique email addresses and phone numbers.');
+      return;
+    }
+    
+    // Final validation: Ensure agent and agency data are complete
+    if (!selectedAgent.id || !selectedAgent.agency?.id) {
+      setError('Agent and agency information is incomplete. Please search and select an agent again.');
       return;
     }
 
@@ -348,14 +345,16 @@ export default function DisclosureForm() {
           };
         }),
         agency: {
-          name: selectedAgency?.name || '',
-          email: selectedAgency?.email || ''
+          id: selectedAgent?.agency?.id || null,
+          name: selectedAgent?.agency?.name || '',
+          email: selectedAgent?.agency?.email || ''
         },
         agent: {
-          email: selectedAgency?.agentEmail || '',
-          firstname: selectedAgency?.agentFirstName || 'Agent',
-          lastname: selectedAgency?.agentLastName || 'Default',
-          phone: normalizePhoneToInternational(selectedAgency?.agentPhone || '')
+          id: selectedAgent?.id || null,
+          email: selectedAgent?.email || '',
+          firstname: selectedAgent?.firstname || '',
+          lastname: selectedAgent?.lastname || '',
+          phone: normalizePhoneToInternational(selectedAgent?.phone || '')
         },
         property: {
           address: propertyAddress
@@ -373,7 +372,7 @@ export default function DisclosureForm() {
       if (response.data.requiresConfirmation) {
         setSubmitProgress(100);
         console.log('⚠️ Multiple agencies found:', response.data.agencyMatches);
-        alert(`Multiple agencies found matching "${agencyInfo.businessName}". Please confirm which agency.`);
+        alert(`Multiple agencies found matching "${agentSearchInfo.agencyName}". Please confirm which agency.`);
         setIsSubmitting(false);
         return;
       }
@@ -560,9 +559,9 @@ export default function DisclosureForm() {
         </div>
 
         {/* Right Column: Action Area */}
-        <div className="bg-gray-50 p-6 lg:p-16 lg:px-16 xl:px-32 flex flex-col justify-start lg:overflow-y-auto">
+        <div className="bg-gray-50 p-6 lg:p-12 lg:px-12 xl:px-24 flex flex-col justify-start lg:overflow-y-auto">
           {/* Progress Indicator */}
-          <div className="mb-4 lg:mb-16">
+          <div className="mb-4 lg:mb-12">
             <div className="flex items-center justify-between mb-4">
               {steps.map((step, index) => (
                 <React.Fragment key={step.number}>
@@ -603,7 +602,7 @@ export default function DisclosureForm() {
           {currentStep === 1 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-8">
+              <div className="bg-white p-6 lg:p-7">
                 <h2 className="text-xl font-bold text-foreground mb-6">Property Information</h2>
 
                 <div className="space-y-6">
@@ -638,13 +637,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-sm">
+                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
                     💡 Enter the address exactly as it appears on the property title.
                   </p>
                 </div>
@@ -654,10 +653,10 @@ export default function DisclosureForm() {
                   <button
                     onClick={handleNext}
                     disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
                     <span>Next Step</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -668,7 +667,7 @@ export default function DisclosureForm() {
           {currentStep === 2 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-8">
+              <div className="bg-white p-6 lg:p-7">
                 <h2 className="text-xl font-bold text-foreground mb-6">Seller Information</h2>
 
                 {/* Primary Seller */}
@@ -850,13 +849,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-sm">
+                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
                     💡 Each seller must have a valid email and mobile number. All emails and phone numbers must be unique.
                   </p>
                 </div>
@@ -865,18 +864,18 @@ export default function DisclosureForm() {
                 <div className="flex-shrink-0 flex items-center gap-3">
                   <button
                     onClick={handleBack}
-                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold text-sm transition-all"
                   >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     <span>Back</span>
                   </button>
                   <button
                     onClick={handleNext}
                     disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
                     <span>Next Step</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -887,75 +886,106 @@ export default function DisclosureForm() {
           {currentStep === 3 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-8">
+              <div className="bg-white p-6 lg:p-7">
                 <h2 className="text-xl font-bold text-foreground mb-6">Agency & Agent</h2>
 
               <div className="space-y-5">
                 <div>
-                  <label htmlFor="agencyBusinessName" className="block text-sm font-medium text-foreground mb-3">
-                    Agency Business Name <span className="text-red-500">*</span>
+                  <label htmlFor="agentName" className="block text-sm font-medium text-foreground mb-3">
+                    Agent Name <span className="text-red-500">*</span>
                   </label>
                   <input
-                    id="agencyBusinessName"
+                    id="agentName"
                     type="text"
-                    value={agencyInfo.businessName}
-                    onChange={(e) => setAgencyInfo({ ...agencyInfo, businessName: e.target.value })}
-                    placeholder="ABC Real Estate"
+                    value={agentSearchInfo.agentName}
+                    onChange={(e) => setAgentSearchInfo({ ...agentSearchInfo, agentName: e.target.value })}
+                    placeholder="Your Agent Name Here"
+                    className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="agencyName" className="block text-sm font-medium text-foreground mb-3">
+                    Agency Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="agencyName"
+                    type="text"
+                    value={agentSearchInfo.agencyName}
+                    onChange={(e) => setAgentSearchInfo({ ...agentSearchInfo, agencyName: e.target.value })}
+                    placeholder="Your Agency Name Here"
+                    className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="agentPhone" className="block text-sm font-medium text-foreground mb-3">
+                    Agent Phone Number <span className="text-muted-foreground text-xs">(Optional)</span>
+                  </label>
+                  <input
+                    id="agentPhone"
+                    type="tel"
+                    value={agentSearchInfo.agentPhone}
+                    onChange={(e) => setAgentSearchInfo({ ...agentSearchInfo, agentPhone: e.target.value })}
+                    placeholder="0412345678/+61412345678"
                     className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="agencySuburb" className="block text-sm font-medium text-foreground mb-3">
-                    Agency Suburb <span className="text-red-500">*</span>
+                    Agency Suburb <span className="text-muted-foreground text-xs">(Optional)</span>
                   </label>
                   <div className="flex gap-3">
                     <div className="relative flex-1">
                       <input
                         id="agencySuburb"
                         type="text"
-                        value={agencyInfo.suburb}
-                        onChange={(e) => setAgencyInfo({ ...agencyInfo, suburb: e.target.value })}
-                        placeholder="Melbourne"
+                        value={agentSearchInfo.suburb}
+                        onChange={(e) => setAgentSearchInfo({ ...agentSearchInfo, suburb: e.target.value })}
+                        placeholder="Your Agency Suburb Here"
                         className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring outline-none transition-all"
                       />
                     </div>
                     <button
                       type="button"
-                      onClick={handleAgencySearch}
-                      disabled={!agencyInfo.businessName.trim() || !agencyInfo.suburb.trim()}
+                      onClick={handleAgentSearch}
+                      disabled={!agentSearchInfo.agentName.trim() || !agentSearchInfo.agencyName.trim()}
                       className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-lg"
                     >
                       Search
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">Enter details and click Search to find existing agencies</p>
+                  <p className="text-xs text-muted-foreground mt-2">Enter agent name and agency name, then click Search to find existing agents</p>
                 </div>
 
-                {selectedAgency && (
+                {selectedAgent && (
                   <div className="space-y-4 mt-6">
-                    <div className="p-5 bg-primary/10 border border-primary/30 rounded-2xl">
-                      <p className="text-xs font-semibold text-primary mb-2">SELECTED AGENCY</p>
-                      <p className="font-bold text-foreground text-lg">{selectedAgency.name}</p>
-                      {selectedAgency.email && (
-                        <p className="text-sm text-muted-foreground mt-1">{selectedAgency.email}</p>
-                      )}
+                    <div className="p-5 bg-green-50 border border-green-200 rounded-2xl">
+                      <p className="text-xs font-semibold text-green-700 mb-2">SELECTED AGENT</p>
+                      <p className="font-bold text-foreground text-lg">
+                        {selectedAgent.firstname} {selectedAgent.lastname}
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {selectedAgent.email && (
+                          <p className="text-sm text-muted-foreground">{selectedAgent.email}</p>
+                        )}
+                        {selectedAgent.phone && (
+                          <p className="text-sm text-muted-foreground">{selectedAgent.phone}</p>
+                        )}
+                      </div>
                     </div>
 
-                    {selectedAgency.agentFirstName && (
-                      <div className="p-5 bg-green-50 border border-green-200 rounded-2xl">
-                        <p className="text-xs font-semibold text-green-700 mb-2">SELECTED AGENT</p>
-                        <p className="font-bold text-foreground text-lg">
-                          {selectedAgency.agentFirstName} {selectedAgency.agentLastName}
-                        </p>
-                        <div className="mt-2 space-y-1">
-                          {selectedAgency.agentEmail && (
-                            <p className="text-sm text-muted-foreground">{selectedAgency.agentEmail}</p>
-                          )}
-                          {selectedAgency.agentPhone && (
-                            <p className="text-sm text-muted-foreground">{selectedAgency.agentPhone}</p>
-                          )}
-                        </div>
+                    {selectedAgent.agency && (
+                      <div className="p-5 bg-primary/10 border border-primary/30 rounded-2xl">
+                        <p className="text-xs font-semibold text-primary mb-2">AGENCY</p>
+                        <p className="font-bold text-foreground text-lg">{selectedAgent.agency.name}</p>
+                        {selectedAgent.agency.address && (
+                          <p className="text-sm text-muted-foreground mt-1">{selectedAgent.agency.address}</p>
+                        )}
+                        {selectedAgent.agency.email && (
+                          <p className="text-sm text-muted-foreground mt-1">{selectedAgent.agency.email}</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -964,13 +994,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
+              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-base sm:text-lg mb-2">
+                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-sm">
+                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
                     💡 You can search for your agents if they're registered with us, if not you can create one and they'll get notified to track your application progress with us.
                   </p>
                 </div>
@@ -979,18 +1009,18 @@ export default function DisclosureForm() {
                 <div className="flex-shrink-0 flex items-center gap-3">
                   <button
                     onClick={handleBack}
-                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold text-sm transition-all"
                   >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     <span>Back</span>
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={!isStepValid(3) || isSubmitting}
-                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none whitespace-nowrap"
                   >
-                    <span>Request Disclosure Form</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <span>Request Disclosure</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -1014,20 +1044,14 @@ export default function DisclosureForm() {
         <Footer />
       </div>
 
-      <AgencySearchModal
-        isOpen={showAgencySearch}
-        onOpenChange={setShowAgencySearch}
-        businessName={agencyInfo.businessName}
-        suburb={agencyInfo.suburb}
-        onSelectAgency={handleAgencySelect}
-      />
-
-      <AgentSelectionModal
-        isOpen={showAgentSelection}
-        onOpenChange={setShowAgentSelection}
-        agency={selectedAgency}
+      <AgentSearchModal
+        isOpen={showAgentSearch}
+        onOpenChange={setShowAgentSearch}
+        agentName={agentSearchInfo.agentName}
+        agencyName={agentSearchInfo.agencyName}
+        agentPhone={agentSearchInfo.agentPhone}
+        suburb={agentSearchInfo.suburb}
         onSelectAgent={handleAgentSelect}
-        onBack={handleBackFromAgent}
       />
 
       <style>{`
