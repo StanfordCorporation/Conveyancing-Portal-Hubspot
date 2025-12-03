@@ -58,9 +58,59 @@ export const createPrimarySellerTour = (onFieldConfirm) => {
           action: async function() {
             if (savingInProgress) return; // Prevent double-clicks
             
+            // Validate residential address field - must not be empty or placeholder
+            if (fieldName === 'residential-address') {
+              const inputElement = document.querySelector('[data-tour-target="residential-address"]');
+              if (inputElement) {
+                const addressValue = (inputElement.value || '').trim();
+                // List of invalid placeholder values
+                const invalidValues = ['', 'N/A', 'n/a', 'N/a', 'TBD', 'tbd', 'To Be Determined', 'to be determined'];
+                const isValid = addressValue && !invalidValues.includes(addressValue);
+                
+                if (!isValid) {
+                  // Show error message and prevent proceeding
+                  const step = tour.getCurrentStep();
+                  const stepContent = step.el.querySelector('.shepherd-text');
+                  if (stepContent) {
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'shepherd-validation-error';
+                    errorMessage.style.cssText = 'color: #ef4444; margin-top: 8px; font-size: 14px; font-weight: 500;';
+                    errorMessage.textContent = '⚠️ Residential address is required. Please enter your address before proceeding.';
+                    
+                    // Remove any existing error message
+                    const existingError = stepContent.querySelector('.shepherd-validation-error');
+                    if (existingError) {
+                      existingError.remove();
+                    }
+                    
+                    stepContent.appendChild(errorMessage);
+                    
+                    // Remove error message after 5 seconds
+                    setTimeout(() => {
+                      if (errorMessage.parentNode) {
+                        errorMessage.remove();
+                      }
+                    }, 5000);
+                  }
+                  return; // Don't proceed to next step
+                }
+              }
+            }
+            
             savingInProgress = true;
             const step = tour.getCurrentStep();
             const confirmButton = step.el.querySelector('.shepherd-button:not(.shepherd-button-secondary)');
+            
+            // Remove any validation error message before proceeding
+            if (fieldName === 'residential-address') {
+              const stepContent = step.el.querySelector('.shepherd-text');
+              if (stepContent) {
+                const existingError = stepContent.querySelector('.shepherd-validation-error');
+                if (existingError) {
+                  existingError.remove();
+                }
+              }
+            }
             
             if (confirmButton) {
               const originalText = confirmButton.textContent;
@@ -99,6 +149,7 @@ export const createPrimarySellerTour = (onFieldConfirm) => {
               }
             } else {
               // Fallback if button not found
+              // Note: Validation for residential-address already handled above
               savingInProgress = false;
               if (onFieldConfirm) {
                 try {

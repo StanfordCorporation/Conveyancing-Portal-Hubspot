@@ -193,6 +193,19 @@ export default function PropertyInformation({ dealId, initialData, readOnly = fa
         return;
       }
 
+      // Validate residential address - must not be empty or placeholder
+      if (fieldName === 'residential-address') {
+        const addressValue = Object.values(updatePayload)[0] || '';
+        const trimmedAddress = addressValue.trim();
+        const invalidValues = ['', 'N/A', 'n/a', 'N/a', 'TBD', 'tbd', 'To Be Determined', 'to be determined'];
+        
+        if (!trimmedAddress || invalidValues.includes(trimmedAddress)) {
+          console.warn(`[PropertyInfo] ⚠️ Invalid residential address value: "${addressValue}"`);
+          alert('Residential address is required. Please enter a valid address before proceeding.');
+          throw new Error('Residential address cannot be empty or a placeholder value');
+        }
+      }
+
       console.log(`[PropertyInfo] 📤 Saving payload for ${fieldName}:`, {
         payload: updatePayload,
         inputElementFound: !!inputElement,
