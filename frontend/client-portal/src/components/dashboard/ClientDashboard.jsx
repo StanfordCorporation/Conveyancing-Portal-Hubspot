@@ -617,9 +617,9 @@ export default function ClientDashboard() {
                       </div>
                       <div className="property-progress">
                         <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${prop.progressPercentage || 60}%` }}></div>
+                          <div className="progress-fill" style={{ width: `${prop.progressPercentage || 0}%` }}></div>
                         </div>
-                        <span className="progress-label">{prop.progressPercentage || 60}%</span>
+                        <span className="progress-label">{prop.progressPercentage || 0}%</span>
                       </div>
                     </div>
                     <svg className={`chevron-icon ${expandedProperty === idx ? 'open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
