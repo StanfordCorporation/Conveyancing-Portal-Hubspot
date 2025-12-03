@@ -167,7 +167,68 @@ export const createPrimarySellerTour = (onFieldConfirm) => {
       ],
       beforeShowPromise: function() {
         return new Promise((resolve) => {
-          setTimeout(resolve, 100);
+          setTimeout(() => {
+            // For residential address step, ensure Google Places autocomplete dropdown is accessible
+            if (fieldName === 'residential-address') {
+              // Set high z-index for Google Places autocomplete container
+              const style = document.createElement('style');
+              style.id = 'shepherd-pac-fix';
+              style.textContent = `
+                .pac-container {
+                  z-index: 10001 !important;
+                  position: fixed !important;
+                }
+                .pac-item {
+                  cursor: pointer;
+                  pointer-events: auto !important;
+                }
+              `;
+              // Remove existing style if present
+              const existingStyle = document.getElementById('shepherd-pac-fix');
+              if (existingStyle) {
+                existingStyle.remove();
+              }
+              document.head.appendChild(style);
+              
+              // Also ensure the overlay doesn't block the dropdown
+              const overlay = document.querySelector('.shepherd-modal-overlay-container');
+              if (overlay) {
+                overlay.style.pointerEvents = 'none';
+              }
+              
+              // Re-enable pointer events on the input and its container
+              const inputElement = document.querySelector('[data-tour-target="residential-address"]');
+              if (inputElement) {
+                inputElement.style.zIndex = '10002';
+                inputElement.style.position = 'relative';
+                const inputParent = inputElement.closest('.shepherd-element');
+                if (inputParent) {
+                  inputParent.style.zIndex = '10002';
+                  inputParent.style.pointerEvents = 'auto';
+                }
+              }
+              
+              // Monitor for pac-container creation and ensure it has correct z-index
+              const observer = new MutationObserver(() => {
+                const pacContainer = document.querySelector('.pac-container');
+                if (pacContainer) {
+                  pacContainer.style.zIndex = '10001';
+                  pacContainer.style.position = 'fixed';
+                }
+              });
+              
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true
+              });
+              
+              // Clean up observer after a delay
+              setTimeout(() => {
+                observer.disconnect();
+              }, 5000);
+            }
+            resolve();
+          }, 100);
         });
       }
     };
@@ -260,8 +321,59 @@ export const createPrimarySellerTour = (onFieldConfirm) => {
     ],
     beforeShowPromise: function() {
       return new Promise((resolve) => {
-        setTimeout(resolve, 100);
+        setTimeout(() => {
+          // Cleanup autocomplete fixes when leaving residential address step
+          const style = document.getElementById('shepherd-pac-fix');
+          if (style) {
+            style.remove();
+          }
+          const overlay = document.querySelector('.shepherd-modal-overlay-container');
+          if (overlay) {
+            overlay.style.pointerEvents = '';
+          }
+          resolve();
+        }, 100);
       });
+    }
+  });
+
+  // Add tour event listeners to handle cleanup
+  tour.on('show', (event) => {
+    const step = event.step;
+    // If leaving residential address step, cleanup
+    if (step.id !== 'residential-address') {
+      const style = document.getElementById('shepherd-pac-fix');
+      if (style) {
+        style.remove();
+      }
+      const overlay = document.querySelector('.shepherd-modal-overlay-container');
+      if (overlay) {
+        overlay.style.pointerEvents = '';
+      }
+    }
+  });
+
+  tour.on('complete', () => {
+    // Cleanup on tour completion
+    const style = document.getElementById('shepherd-pac-fix');
+    if (style) {
+      style.remove();
+    }
+    const overlay = document.querySelector('.shepherd-modal-overlay-container');
+    if (overlay) {
+      overlay.style.pointerEvents = '';
+    }
+  });
+
+  tour.on('cancel', () => {
+    // Cleanup on tour cancellation
+    const style = document.getElementById('shepherd-pac-fix');
+    if (style) {
+      style.remove();
+    }
+    const overlay = document.querySelector('.shepherd-modal-overlay-container');
+    if (overlay) {
+      overlay.style.pointerEvents = '';
     }
   });
 

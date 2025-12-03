@@ -108,3 +108,21 @@
   box-shadow: 0 4px 12px rgba(14, 109, 255, 0.2);
 }
 
+/* Ensure Google Places Autocomplete dropdown appears above Shepherd overlay */
+.pac-container {
+  z-index: 10001 !important;
+  position: fixed !important;
+}
+
+/* Ensure autocomplete suggestions are clickable */
+.pac-item {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Make sure the input field itself is accessible */
+.shepherd-element[data-shepherd-step] input[data-tour-target="residential-address"] {
+  z-index: 10002;
+  position: relative;
+}
+
