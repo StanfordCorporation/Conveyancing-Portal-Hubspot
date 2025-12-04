@@ -102,29 +102,50 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 export async function handlePaymentSuccess(paymentIntent) {
   console.log(`[Webhook] 🎉 Payment succeeded!`);
   console.log(`[Webhook] 💳 Payment Intent ID: ${paymentIntent.id}`);
-  console.log(`[Webhook] 💰 Amount: $${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`);
   console.log(`[Webhook] 📧 Customer: ${paymentIntent.customer}`);
 
   const dealId = paymentIntent.metadata?.deal_id;
 
   if (dealId) {
     try {
-      // Update deal: mark as pending (will be marked as paid when payout completes)
+      // Extract payment breakdown from metadata
+      const searchesAmount = parseFloat(paymentIntent.metadata?.searches_amount || '0');
+      const conveyancingDeposit = parseFloat(paymentIntent.metadata?.conveyancing_deposit || '0');
+      const totalBaseAmount = parseFloat(paymentIntent.metadata?.total_base_amount || '0');
+
+      // Calculate amounts: gross (what customer paid) vs net (what business receives)
+      const grossAmount = paymentIntent.amount / 100; // Total charged to customer (includes fees)
+      const netAmount = totalBaseAmount; // What business receives (after Stripe fees)
+      const stripeFee = grossAmount - netAmount; // Stripe processing fee
+
+      console.log(`[Webhook] 💰 Payment breakdown:`);
+      console.log(`[Webhook]   - Gross Amount (charged to customer): $${grossAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()}`);
+      console.log(`[Webhook]   - Stripe Fee: $${stripeFee.toFixed(2)}`);
+      console.log(`[Webhook]   - Net Amount (business receives): $${netAmount.toFixed(2)}`);
+      console.log(`[Webhook]   - Breakdown: Searches $${searchesAmount} + Deposit $${conveyancingDeposit}`);
+
+      // Update deal: mark as pending with NET amount (will be marked as paid when payout completes)
       await dealsIntegration.updateDeal(dealId, {
         payment_method: 'Stripe',
         payment_status: 'Pending',
-        payment_amount: (paymentIntent.amount / 100).toString(),
+        payment_amount: netAmount.toFixed(2), // ✅ NET amount (what you actually receive)
+        // Note: payment_amount_gross and stripe_fee properties don't exist in HubSpot
+        // Gross amount and fee are logged above for reference
         payment_date: new Date().toISOString().split('T')[0],
         stripe_payment_intent_id: paymentIntent.id,
         stripe_customer_id: paymentIntent.customer,
         dealstage: DEAL_STAGES.FUNDS_PROVIDED.id, // Progress to Step 6
+        // Save payment breakdown
+        searches_quote_amount: searchesAmount.toString(),
+        quote_amount: totalBaseAmount.toString(),
       });
 
       console.log(`[Webhook] ✅ Deal ${dealId} updated - marked as pending`);
       console.log(`[Webhook] 🎯 Deal stage progressed to: ${DEAL_STAGES.FUNDS_PROVIDED.label}`);
-      console.log(`[Webhook] 💰 Payment: $${(paymentIntent.amount / 100).toFixed(2)} AUD`);
+      console.log(`[Webhook] 💾 Stored net amount: $${netAmount.toFixed(2)} (after $${stripeFee.toFixed(2)} fee)`);
+      console.log(`[Webhook] 💾 Breakdown saved to HubSpot`);
       console.log(`[Webhook] 🔗 Stripe Payment Intent: ${paymentIntent.id}`);
-      
+
       // Note: Receipt automation will be triggered when payout.paid webhook sets payment_status to "Paid"
     } catch (error) {
       console.error(`[Webhook] ⚠️ Error updating HubSpot deal:`, error.message);
@@ -200,17 +221,79 @@ async function handlePayoutPaid(payout) {
 
         console.log(`[Webhook] ✅ Deal ${dealId} updated - payment_status set to 'Paid'`);
         
-        // Trigger receipt automation (checks feature flag internally)
+        // Trigger receipt automation via GitHub Actions
         try {
           console.log(`[Webhook] 🤖 Triggering receipt automation for deal ${dealId}...`);
-          const automationResult = await receiptAutomation.triggerReceiptAutomationForDeal(dealId);
           
-          if (automationResult.skipped) {
-            console.log(`[Webhook] ⚠️ Receipt automation skipped for deal ${dealId}: ${automationResult.message}`);
-          } else if (automationResult.success) {
-            console.log(`[Webhook] ✅ Receipt automation completed for deal ${dealId}`);
-          } else {
-            console.error(`[Webhook] ⚠️ Receipt automation failed for deal ${dealId}: ${automationResult.message || 'Unknown error'}`);
+          // Fetch deal details needed for GitHub Actions
+          const deal = await dealsIntegration.getDeal(dealId, [
+            'smokeball_lead_uid',
+            'stripe_payment_intent_id'
+          ]);
+          
+          // Get Lead UID - MUST use smokeball_lead_uid from HubSpot
+          const leadUid = deal.properties.smokeball_lead_uid;
+          if (!leadUid || leadUid.trim() === '') {
+            throw new Error('smokeball_lead_uid is required but not found in deal. Create lead first.');
+          }
+          
+          console.log(`[Webhook] 🔍 Using Lead UID from HubSpot: ${leadUid}`);
+          
+          // Get payment intent to extract net amount (base_amount after fees)
+          // Use paymentIntentId from the loop if available, otherwise fetch from deal
+          const intentId = paymentIntentId || deal.properties.stripe_payment_intent_id;
+          if (!intentId) {
+            throw new Error('Stripe payment intent ID not found');
+          }
+          
+          const stripePayments = await import('../integrations/stripe/payments.js');
+          const paymentIntent = await stripePayments.getPaymentIntent(intentId);
+          
+          const baseAmountCents = parseInt(paymentIntent.metadata?.base_amount);
+          if (!baseAmountCents || isNaN(baseAmountCents)) {
+            throw new Error('Could not extract base_amount from payment intent metadata');
+          }
+          
+          const amount = baseAmountCents / 100; // Convert cents to dollars
+          console.log(`[Webhook] 💳 Stripe payment - Net amount after fees: $${amount.toFixed(2)}`);
+          
+          // Get contact info from associations (Primary Seller)
+          const associationsIntegration = await import('../integrations/hubspot/associations.js');
+          const dealContacts = await associationsIntegration.getDealContacts(dealId);
+          
+          // Find primary seller
+          let primarySeller = null;
+          for (const contact of dealContacts) {
+            const associationTypes = contact.associationTypes || [];
+            const isPrimary = associationTypes.some(t => t.typeId === 1 || t.typeId === '1');
+            if (isPrimary && contact.properties.firstname && contact.properties.lastname) {
+              primarySeller = contact.properties;
+              break;
+            }
+          }
+          
+          if (!primarySeller) {
+            throw new Error('No primary seller found for deal');
+          }
+          
+          // Format date
+          const now = new Date();
+          const date = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          
+          // Trigger GitHub Action
+          const result = await githubActions.triggerReceiptAutomation({
+            deal_id: dealId,
+            matter_id: leadUid, // Using Lead_UID (smokeball_lead_uid) instead of matter_uid
+            amount: amount,
+            lastname: primarySeller.lastname || 'Unknown',
+            firstname: primarySeller.firstname || 'Unknown',
+            date: date,
+            test_mode: process.env.RECEIPT_AUTOMATION_TEST_MODE !== 'false' // Default to TRUE (test mode) unless explicitly set to 'false'
+          });
+          
+          if (result.success) {
+            console.log(`[Webhook] ✅ GitHub Action triggered successfully`);
+            console.log(`[Webhook] 📊 Check status: ${result.actions_url}`);
           }
         } catch (automationError) {
           console.error(`[Webhook] ⚠️ Receipt automation failed for deal ${dealId}:`, automationError.message);
@@ -388,12 +471,39 @@ router.post('/docusign', express.json(), async (req, res) => {
       // Form 2 CSA: Progress deal when FIRST signer (routing order 1) completes
       // This allows the business to request funds while waiting for additional signatures
       const firstSigner = signers.find(signer => signer.routingOrder === '1' || signer.routingOrder === 1);
-      
+
       if (firstSigner && firstSigner.status === 'completed') {
-        hubspotUpdateData.dealstage = DEAL_STAGES.FUNDS_REQUESTED.id; // Stage 5
-        console.log(`[DocuSign Webhook] 🎉 First signer completed - progressing deal to Funds Requested`);
-        console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email})`);
-        
+        // ✅ GUARD: Fetch current deal state to prevent backward progression
+        const currentDeal = await dealsIntegration.getDeal(dealId, ['dealstage', 'payment_status']);
+        const currentStage = currentDeal.properties.dealstage;
+        const paymentStatus = currentDeal.properties.payment_status;
+
+        console.log(`[DocuSign Webhook] 📊 Current deal state:`);
+        console.log(`[DocuSign Webhook]   - Stage: ${currentStage}`);
+        console.log(`[DocuSign Webhook]   - Payment Status: ${paymentStatus || 'Not set'}`);
+
+        // ✅ GUARD 1: Check if payment already made
+        const paymentAlreadyMade = (paymentStatus === 'Pending' || paymentStatus === 'Paid');
+
+        // ✅ GUARD 2: Check if stage already at or past Funds Provided
+        const alreadyAtFundsProvided = (currentStage === DEAL_STAGES.FUNDS_PROVIDED.id);
+
+        // Only move to FUNDS_REQUESTED if both guards pass
+        if (!paymentAlreadyMade && !alreadyAtFundsProvided) {
+          hubspotUpdateData.dealstage = DEAL_STAGES.FUNDS_REQUESTED.id; // Stage 5
+          console.log(`[DocuSign Webhook] ✅ Progressing deal to Funds Requested (first signer completed)`);
+          console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email})`);
+        } else {
+          console.log(`[DocuSign Webhook] ⚠️ Skipping stage update - preventing backward progression:`);
+          if (paymentAlreadyMade) {
+            console.log(`[DocuSign Webhook]    - Payment status is "${paymentStatus}" (funds already provided)`);
+          }
+          if (alreadyAtFundsProvided) {
+            console.log(`[DocuSign Webhook]    - Deal already at Funds Provided stage`);
+          }
+          console.log(`[DocuSign Webhook] 👤 First signer: ${firstSigner.name} (${firstSigner.email}) - acknowledged but not changing stage`);
+        }
+
         // Check if additional signers exist
         const additionalSigners = signers.filter(s => s.routingOrder !== '1' && s.routingOrder !== 1);
         if (additionalSigners.length > 0) {

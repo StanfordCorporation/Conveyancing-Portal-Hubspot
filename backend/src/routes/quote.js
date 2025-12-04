@@ -1,9 +1,6 @@
 import express from 'express';
-import { calculateQuote, getSearchDefinitions } from '../utils/dynamic-quotes-calculator.js';
-import { getDeal } from '../integrations/hubspot/deals.js';
-import { getContact } from '../integrations/hubspot/contacts.js';
-import { getAllMappings, getAllHubSpotProperties } from '../utils/questionnaireHelper.js';
-import { HUBSPOT } from '../config/constants.js';
+import { getSearchDefinitions } from '../utils/dynamic-quotes-calculator.js';
+import { calculateQuoteForDeal } from '../services/quoteService.js';
 
 const router = express.Router();
 
@@ -26,105 +23,22 @@ router.post('/calculate', async (req, res) => {
 
     console.log(`[Quote] 🔍 Calculating quote for deal: ${dealId}`);
 
-    // Build list of ALL HubSpot properties we need to fetch
-    const propertiesToFetch = [
-      'dealname',
-      'property_address',
-      'pipeline', // Verify deal is in Form 2s pipeline
-      'hs_contact_id',
-      'contact_id',
-      'agent_title_search', // Check if agent already did title search
-      ...getAllHubSpotProperties() // All questionnaire properties
-    ];
+    // Use shared quote service
+    const result = await calculateQuoteForDeal(dealId, true);
 
-    console.log(`[Quote] 📋 Requesting ${propertiesToFetch.length} properties from HubSpot`);
-
-    // Fetch deal data from HubSpot with ALL questionnaire properties
-    const deal = await getDeal(dealId, propertiesToFetch);
-    console.log(`[Quote] 📦 Fetched deal with ${Object.keys(deal.properties).length} properties from HubSpot`);
-
-    if (!deal) {
-      return res.status(404).json({
-        error: 'Deal not found',
-        message: `No deal found with ID: ${dealId}`
-      });
-    }
-
-    // Verify deal is in Form 2s pipeline
-    const pipeline = deal.properties?.pipeline;
-    if (pipeline !== HUBSPOT.PIPELINES.FORM_2S) {
-      console.log(`[Quote] 🚫 Deal ${dealId} not in Form 2s pipeline (pipeline: ${pipeline})`);
-      return res.status(404).json({
-        error: 'Deal not found',
-        message: 'This property is not eligible for quote calculation'
-      });
-    }
-
-    // Get field mappings for extraction
-    const mappings = getAllMappings();
-
-    // Extract questionnaire data from deal properties
-    const propertyData = {};
-    let extractedCount = 0;
-    Object.entries(mappings).forEach(([formField, config]) => {
-      const hsPropertyName = config.hsPropertyName;
-      const rawValue = deal.properties[hsPropertyName];
-
-      if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
-        // Normalize values: HubSpot returns capitalized values but calculator expects lowercase
-        const normalizedValue = typeof rawValue === 'string' ? rawValue.toLowerCase() : rawValue;
-        propertyData[formField] = normalizedValue;
-        extractedCount++;
-        console.log(`[Quote]   ✓ ${formField} = "${normalizedValue}" (from ${hsPropertyName})`);
-      }
-    });
-    console.log(`[Quote] 📋 Extracted ${extractedCount} questionnaire fields from deal properties`);
-
-    // Get client data (if contactId is associated with the deal)
-    const clientData = {};
-    const contactId = deal.properties.hs_contact_id || deal.properties.contact_id;
-
-    if (contactId) {
-      try {
-        const contact = await getContact(contactId);
-        if (contact && contact.properties.title_search_done) {
-          // Normalize contact data values to lowercase for consistent comparison
-          const value = contact.properties.title_search_done;
-          clientData.title_search_done = typeof value === 'string' ? value.toLowerCase() : value;
-        }
-      } catch (err) {
-        console.warn('[Quote] Could not fetch contact data:', err.message);
-      }
-    }
-
-    // Get deal-specific data (e.g., agent_title_search)
-    const dealData = {};
-    if (deal.properties.agent_title_search) {
-      dealData.agent_title_search = deal.properties.agent_title_search; // Keep original case (HubSpot returns "Yes"/"No")
-    }
-
-    // Calculate quote
-    console.log(`[Quote] 📊 Property data for calculation:`, JSON.stringify(propertyData, null, 2));
-    console.log(`[Quote] 👤 Client data for calculation:`, JSON.stringify(clientData, null, 2));
-    console.log(`[Quote] 📋 Deal data for calculation:`, JSON.stringify(dealData, null, 2));
-
-    const quote = calculateQuote(propertyData, clientData, dealData);
-
-    console.log(`[Quote] ✅ Quote calculated: $${quote.grandTotal}`);
-
-    res.json({
-      success: true,
-      dealId,
-      quote,
-      metadata: {
-        dealName: deal.properties.dealname,
-        propertyAddress: deal.properties.property_address,
-        calculatedAt: new Date().toISOString()
-      }
-    });
+    res.json(result);
 
   } catch (error) {
     console.error('[Quote] ❌ Error calculating quote:', error);
+    
+    // Handle specific error cases
+    if (error.message.includes('not eligible') || error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'Deal not found',
+        message: error.message
+      });
+    }
+
     res.status(500).json({
       error: 'Failed to calculate quote',
       message: error.message

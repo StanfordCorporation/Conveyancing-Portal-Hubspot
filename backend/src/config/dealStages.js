@@ -248,12 +248,29 @@ export const getAllStages = () => {
  * Get stage progress percentage (for progress bars)
  * @param {string} stageId - HubSpot deal stage ID
  * @returns {number} Progress percentage (0-100)
+ * 
+ * Progress calculation:
+ * - Steps 1-5 (workflow steps): Each step = 20% (0%, 20%, 40%, 60%, 80%)
+ * - Steps 6-12 (post-workflow): Progressively increase from 80% to 100%
  */
 export const getStageProgress = (stageId) => {
   const index = STAGE_ORDER.indexOf(stageId);
   if (index === -1) return 0;
 
-  return Math.round((index / (STAGE_ORDER.length - 1)) * 100);
+  // Steps 1-5 are workflow steps (indices 0-4)
+  // Each workflow step = 20% progress
+  if (index < 5) {
+    return index * 20; // 0%, 20%, 40%, 60%, 80%
+  }
+
+  // Steps 6-12 are post-workflow stages (indices 5-11)
+  // These progress from 80% to 100% (7 stages = 20% total, so ~2.86% per stage)
+  // Stage 6 (index 5) = 80%, Stage 12 (index 11) = 100%
+  const postWorkflowIndex = index - 5; // 0-6
+  const postWorkflowStages = 7; // Stages 6-12
+  const postWorkflowProgress = Math.round((postWorkflowIndex / postWorkflowStages) * 20); // 0-20%
+  
+  return 80 + postWorkflowProgress; // 80% to 100%
 };
 
 export default {

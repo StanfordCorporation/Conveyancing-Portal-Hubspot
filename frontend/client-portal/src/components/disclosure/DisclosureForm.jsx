@@ -476,7 +476,7 @@ export default function DisclosureForm() {
       <main className={`flex-1 grid grid-cols-1 lg:grid-cols-[45%_55%] lg:h-[calc(100vh-5rem)] lg:overflow-hidden transition-all duration-500 ${isSubmitting ? 'scale-98 blur-sm' : 'scale-100 blur-0'}`}>
 
         {/* Left Column: Marketing Sidebar */}
-        <div className="lg:sticky lg:top-0 lg:h-screen overflow-hidden" style={{ backgroundColor: '#273165' }}>
+        <div className="lg:h-full lg:overflow-hidden" style={{ backgroundColor: '#273165' }}>
           {/* Mobile: Always visible marketing content */}
           <div className="lg:hidden p-6">
             <div className="text-center mb-4">
@@ -505,7 +505,7 @@ export default function DisclosureForm() {
           </div>
 
           {/* Desktop: Full Marketing Content - Center aligned, larger text */}
-          <div className="hidden lg:flex lg:flex-col lg:h-full lg:justify-start p-12 lg:p-10 text-center overflow-y-auto">
+          <div className="hidden lg:flex lg:flex-col lg:h-full lg:justify-start p-12 lg:p-10 text-center lg:overflow-hidden">
             {/* Header */}
             <div className="mb-4">
               <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight mb-6">Sellers Disclosure Statement</h1>
@@ -559,9 +559,9 @@ export default function DisclosureForm() {
         </div>
 
         {/* Right Column: Action Area */}
-        <div className="bg-gray-50 p-6 lg:p-12 lg:px-12 xl:px-24 flex flex-col justify-start lg:overflow-y-auto">
+        <div className="bg-gray-50 p-6 lg:p-16 lg:px-16 xl:px-32 lg:min-h-0 lg:overflow-y-auto">
           {/* Progress Indicator */}
-          <div className="mb-4 lg:mb-12">
+          <div className="mb-4 lg:mb-16">
             <div className="flex items-center justify-between mb-4">
               {steps.map((step, index) => (
                 <React.Fragment key={step.number}>
@@ -602,7 +602,7 @@ export default function DisclosureForm() {
           {currentStep === 1 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-6 lg:p-7">
+              <div className="bg-white p-8">
                 <h2 className="text-xl font-bold text-foreground mb-6">Property Information</h2>
 
                 <div className="space-y-6">
@@ -637,13 +637,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
+                  <p className="text-slate-300 font-normal text-sm">
                     💡 Enter the address exactly as it appears on the property title.
                   </p>
                 </div>
@@ -653,10 +653,10 @@ export default function DisclosureForm() {
                   <button
                     onClick={handleNext}
                     disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
                     <span>Next Step</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -667,7 +667,7 @@ export default function DisclosureForm() {
           {currentStep === 2 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-6 lg:p-7">
+              <div className="bg-white p-8">
                 <h2 className="text-xl font-bold text-foreground mb-6">Seller Information</h2>
 
                 {/* Primary Seller */}
@@ -849,13 +849,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
+                  <p className="text-slate-300 font-normal text-sm">
                     💡 Each seller must have a valid email and mobile number. All emails and phone numbers must be unique.
                   </p>
                 </div>
@@ -864,18 +864,18 @@ export default function DisclosureForm() {
                 <div className="flex-shrink-0 flex items-center gap-3">
                   <button
                     onClick={handleBack}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold text-sm transition-all"
+                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
                   >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     <span>Back</span>
                   </button>
                   <button
                     onClick={handleNext}
                     disabled={!isStepValid(currentStep)}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
                     <span>Next Step</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -886,7 +886,7 @@ export default function DisclosureForm() {
           {currentStep === 3 && (
             <div className="bg-white border border-border rounded-xl shadow-lg mb-8 overflow-hidden p-0">
               {/* Section A: Content Body */}
-              <div className="bg-white p-6 lg:p-7">
+              <div className="bg-white p-8">
                 <h2 className="text-xl font-bold text-foreground mb-6">Agency & Agent</h2>
 
               <div className="space-y-5">
@@ -994,13 +994,13 @@ export default function DisclosureForm() {
               </div>
 
               {/* Section B: Unified Footer */}
-              <div className="p-5 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ backgroundColor: '#273165' }}>
+              <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ backgroundColor: '#273165' }}>
                 {/* Left Side: Motivation Text + Tip */}
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="font-bold text-white text-sm sm:text-base mb-1.5">
+                  <p className="font-bold text-white text-base sm:text-lg mb-2">
                     Your Seller Disclosure could be ready in hours!
                   </p>
-                  <p className="text-slate-300 font-normal text-xs sm:text-sm">
+                  <p className="text-slate-300 font-normal text-sm">
                     💡 You can search for your agents if they're registered with us, if not you can create one and they'll get notified to track your application progress with us.
                   </p>
                 </div>
@@ -1009,18 +1009,18 @@ export default function DisclosureForm() {
                 <div className="flex-shrink-0 flex items-center gap-3">
                   <button
                     onClick={handleBack}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold text-sm transition-all"
+                    className="group flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-all"
                   >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     <span>Back</span>
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={!isStepValid(3) || isSubmitting}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none whitespace-nowrap"
+                    className="group flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
                   >
-                    <span>Request Disclosure</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <span>Request Disclosure Form</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </div>

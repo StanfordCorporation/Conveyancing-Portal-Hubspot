@@ -21,7 +21,12 @@ export const normalizePhoneToInternational = (phone) => {
   // Remove all non-digit characters except leading +
   let cleaned = phone.replace(/[^\d+]/g, '');
 
-  // If already in international format, return as-is
+  // If already in international format with +61, return cleaned (spaces removed)
+  if (cleaned.startsWith('+61')) {
+    return cleaned;
+  }
+
+  // If starts with 61 (without +), add +
   if (cleaned.startsWith('61')) {
     return '+' + cleaned;
   }
@@ -37,8 +42,8 @@ export const normalizePhoneToInternational = (phone) => {
     return '+' + cleaned;
   }
 
-  // Return original if we can't parse it
-  return phone;
+  // Return cleaned version (spaces removed) if we can't parse it better
+  return cleaned || phone;
 };
 
 /**

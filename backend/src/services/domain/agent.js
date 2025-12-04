@@ -480,6 +480,50 @@ export const calculateMetrics = (deals) => {
   return metrics;
 };
 
+/**
+ * Search agents by name with optional agency name, phone, and suburb filtering
+ * Uses fuzzy matching (Sneesby algorithm) to find agents
+ * @param {string} agentName - Agent name to search (e.g., "Steve Athanates")
+ * @param {string} agencyName - Optional: Agency name to filter by
+ * @param {string} agentPhone - Optional: Agent phone number for exact matching bonus
+ * @param {string} suburb - Optional: Suburb to filter by
+ * @returns {Promise<Array>} Array of agents with agency info, sorted by relevance score
+ */
+export const searchAgents = async (agentName, agencyName = null, agentPhone = null, suburb = null) => {
+  console.log(`[Agent Service] 🔍 Searching agents:`);
+  console.log(`[Agent Service]    - Agent Name: "${agentName}"`);
+  if (agencyName) console.log(`[Agent Service]    - Agency Name: "${agencyName}"`);
+  if (agentPhone) console.log(`[Agent Service]    - Agent Phone: "${agentPhone}"`);
+  if (suburb) console.log(`[Agent Service]    - Suburb: "${suburb}"`);
+
+  try {
+    const results = await contactsIntegration.searchAgentsByTokens(agentName, agencyName, agentPhone, suburb);
+    
+    // Format results for API response
+    const formattedResults = results.map(agent => ({
+      id: agent.id,
+      firstname: agent.firstname,
+      lastname: agent.lastname,
+      email: agent.email,
+      phone: agent.phone,
+      agency: agent.agency ? {
+        id: agent.agency.id,
+        name: agent.agency.name,
+        address: agent.agency.address,
+        email: agent.agency.email,
+        phone: agent.agency.phone
+      } : null,
+      score: agent.score
+    }));
+
+    console.log(`[Agent Service] ✅ Returning ${formattedResults.length} agents`);
+    return formattedResults;
+  } catch (error) {
+    console.error(`[Agent Service] ❌ Error searching agents:`, error.message);
+    throw error;
+  }
+};
+
 export default {
   findByEmail,
   findByEmailOrPhone,
@@ -489,5 +533,6 @@ export default {
   update,
   getAgentWithAgency,
   getAgentDeals,
-  calculateMetrics
+  calculateMetrics,
+  searchAgents
 };

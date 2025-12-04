@@ -138,9 +138,25 @@ export const PAGINATION = {
   DEFAULT_OFFSET: 0,
 };
 
+export const CONVEYANCING = {
+  TOTAL_FEE_WITHOUT_BODY_CORP: 847,  // $737 settlement + $110 deposit
+  TOTAL_FEE_WITH_BODY_CORP: 968,     // $858 settlement + $110 deposit
+  DEPOSIT: 110,
+  SETTLEMENT_WITHOUT_BODY_CORP: 737,
+  SETTLEMENT_WITH_BODY_CORP: 858,
+};
+
+export const PAYMENT_COMPONENTS = {
+  SEARCHES: 'searches',
+  DEPOSIT: 'deposit',
+  SETTLEMENT: 'settlement',
+};
+
 export default {
   HUBSPOT,
   AUTH,
   VALIDATION,
   PAGINATION,
+  CONVEYANCING,
+  PAYMENT_COMPONENTS,
 };

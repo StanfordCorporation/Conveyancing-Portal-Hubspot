@@ -507,13 +507,38 @@ router.post('/envelope-status', async (req, res) => {
         // If signing is completed, progress deal to next stage
         if (envelopeData.status === 'completed') {
           const { DEAL_STAGES } = await import('../config/dealStages.js');
-          const { updateDeal } = await import('../integrations/hubspot/deals.js');
+          const { updateDeal, getDeal } = await import('../integrations/hubspot/deals.js');
 
-          await updateDeal(dealId, {
-            dealstage: DEAL_STAGES.FUNDS_REQUESTED.id  // Progress to Step 5: Payment
-          });
+          // ✅ GUARD: Fetch current deal state to prevent backward progression
+          const currentDeal = await getDeal(dealId, ['dealstage', 'payment_status']);
+          const currentStage = currentDeal.properties.dealstage;
+          const paymentStatus = currentDeal.properties.payment_status;
 
-          console.log(`[DocuSign Route] 🎯 Signing completed - Deal progressed to: ${DEAL_STAGES.FUNDS_REQUESTED.label}`);
+          console.log(`[DocuSign Route] 📊 Current deal state:`);
+          console.log(`[DocuSign Route]   - Stage: ${currentStage}`);
+          console.log(`[DocuSign Route]   - Payment Status: ${paymentStatus || 'Not set'}`);
+
+          // ✅ GUARD 1: Check if payment already made
+          const paymentAlreadyMade = (paymentStatus === 'Pending' || paymentStatus === 'Paid');
+
+          // ✅ GUARD 2: Check if stage already at or past Funds Provided
+          const alreadyAtFundsProvided = (currentStage === DEAL_STAGES.FUNDS_PROVIDED.id);
+
+          // Only move to FUNDS_REQUESTED if both guards pass
+          if (!paymentAlreadyMade && !alreadyAtFundsProvided) {
+            await updateDeal(dealId, {
+              dealstage: DEAL_STAGES.FUNDS_REQUESTED.id  // Progress to Step 5: Payment
+            });
+            console.log(`[DocuSign Route] ✅ Signing completed - Deal progressed to: ${DEAL_STAGES.FUNDS_REQUESTED.label}`);
+          } else {
+            console.log(`[DocuSign Route] ⚠️ Signing completed but skipping stage update - preventing backward progression:`);
+            if (paymentAlreadyMade) {
+              console.log(`[DocuSign Route]    - Payment status is "${paymentStatus}" (funds already provided)`);
+            }
+            if (alreadyAtFundsProvided) {
+              console.log(`[DocuSign Route]    - Deal already at Funds Provided stage`);
+            }
+          }
           
           // Clear cached signing URL (no longer needed)
           if (updatedData.signing_url || updatedData.signing_url_created_at) {

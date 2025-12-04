@@ -13,6 +13,7 @@ import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import * as filesIntegration from '../integrations/hubspot/files.js';
 import { getAllHubSpotProperties, getAllMappings, getFieldMapping } from '../utils/questionnaireHelper.js';
 import { shouldShowToClient, getStageName } from '../config/stageHelpers.js';
+import { getStageProgress } from '../config/dealStages.js';
 import { calculateQuote } from '../utils/dynamic-quotes-calculator.js';
 import * as smokeballMatters from '../integrations/smokeball/matters.js';
 import * as smokeballMatterTypes from '../integrations/smokeball/matter-types.js';
@@ -135,7 +136,7 @@ router.get('/dashboard-data', authenticateJWT, async (req, res) => {
           status: deal.properties.dealstage || 'Unknown',
           questionsAnswered: Object.keys(questionnaireData).length,
           totalQuestions: Object.keys(propertyMapping).length,
-          progressPercentage: Math.round((Object.keys(questionnaireData).length / Object.keys(propertyMapping).length) * 100),
+          progressPercentage: getStageProgress(deal.properties.dealstage || '1923713518'),
           questionnaire: questionnaireData  // Include questionnaire data here!
         };
       });
@@ -572,7 +573,7 @@ router.get('/dashboard-complete', authenticateJWT, async (req, res) => {
         paymentStatus: deal.properties.payment_status || 'Pending', // Payment status for read-only mode
         questionsAnswered: Object.keys(questionnaireData).length,
         totalQuestions: Object.keys(propertyMapping).length,
-        progressPercentage: Math.round((Object.keys(questionnaireData).length / Object.keys(propertyMapping).length) * 100),
+        progressPercentage: getStageProgress(dealstage || '1923713518'),
         questionnaire: questionnaireData,
         propertyDetails: propertyDetails,
         files: files,
@@ -1412,15 +1413,38 @@ router.post('/property/:dealId/bank-transfer', authenticateJWT, async (req, res)
       return res.status(403).json({ error: 'You do not have permission to update this deal' });
     }
 
+    // Fetch quote to get payment breakdown
+    console.log(`[Bank Transfer] 📊 Fetching quote for breakdown...`);
+    const axios = (await import('axios')).default;
+    const quoteResponse = await axios.post('http://localhost:3001/api/quote/calculate', { dealId });
+
+    let searchesAmount = amount;
+    let totalAmount = amount;
+
+    if (quoteResponse.data.success) {
+      const { quote, conveyancing } = quoteResponse.data;
+      searchesAmount = quote.grandTotal;
+      totalAmount = quote.grandTotal + conveyancing.depositNow;
+
+      console.log(`[Bank Transfer] 📋 Payment breakdown:`);
+      console.log(`[Bank Transfer]   - Searches: $${searchesAmount}`);
+      console.log(`[Bank Transfer]   - Conveyancing Deposit: $${conveyancing.depositNow}`);
+      console.log(`[Bank Transfer]   - Total: $${totalAmount}`);
+    }
+
     // Update HubSpot with bank transfer payment details
     await dealsIntegration.updateDeal(dealId, {
       payment_method: 'Bank Transfer',
       payment_status: 'Pending',
       payment_amount: amount.toString(),
       payment_date: new Date().toISOString().split('T')[0],
+      // Save payment breakdown
+      searches_quote_amount: searchesAmount.toString(),
+      quote_amount: totalAmount.toString(),
     });
 
     console.log(`[Bank Transfer] ✅ Deal ${dealId} marked for bank transfer - status: Pending`);
+    console.log(`[Bank Transfer] 💾 Breakdown saved to HubSpot`);
     
     res.json({ 
       success: true,

@@ -98,11 +98,17 @@ app.post('/api/auth/agent/verify-otp', async (req, res) => {
 /**
  * Agencies Routes
  */
+// Deprecated: Use /api/agents/search instead
 app.post('/api/agencies/search', agenciesRoutes.searchAgencies);
 app.post('/api/agencies/create', agenciesRoutes.createAgency);
 app.get('/api/agencies/:agencyId/agents', agenciesRoutes.getAgents);
 app.post('/api/agencies/:agencyId/agents/create', agenciesRoutes.createAgent);
 app.post('/api/agencies/search-agent', agenciesRoutes.searchAgent);
+
+/**
+ * Agents Routes
+ */
+app.post('/api/agents/search', agenciesRoutes.searchAgents);
 
 /**
  * Workflow Routes
@@ -205,11 +211,14 @@ app.get('/', (req, res) => {
         }
       },
       agencies: {
-        search: 'POST /api/agencies/search',
+        search: 'POST /api/agencies/search [DEPRECATED - Use /api/agents/search]',
         create: 'POST /api/agencies/create',
         getAgents: 'GET /api/agencies/:agencyId/agents',
         createAgent: 'POST /api/agencies/:agencyId/agents/create',
         searchAgent: 'POST /api/agencies/search-agent'
+      },
+      agents: {
+        search: 'POST /api/agents/search [NEW - Agent-first search with fuzzy matching]'
       },
       workflows: {
         clientDisclosure: 'POST /api/workflows/client-disclosure'

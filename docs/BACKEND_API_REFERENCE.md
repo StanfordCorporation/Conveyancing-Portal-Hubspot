@@ -92,8 +92,15 @@ verifyOTP (auth.js)
 
 ### 2. Agency Routes (`/api/agencies`)
 
-#### POST `/api/agencies/search`
+#### POST `/api/agencies/search` ⚠️ DEPRECATED
 **Description:** Search agencies by business name and suburb
+
+**⚠️ Deprecation Notice:** This endpoint is deprecated. Use `POST /api/agents/search` instead for improved agent-first search functionality. This endpoint is maintained for backward compatibility only.
+
+**Migration Guide:**
+- **Old:** `POST /api/agencies/search` with `{ businessName, suburb }`
+- **New:** `POST /api/agents/search` with `{ agentName, agencyName, suburb? }`
+- **Benefits:** Better matching (finds agents even with partial agency names), agent-first approach, enhanced scoring
 **Body:**
 ```json
 {
@@ -197,7 +204,130 @@ searchAgent (agencies.js)
 
 ---
 
-### 3. Client Routes (`/api/client`)
+### 3. Agent Routes (`/api/agents`)
+
+#### POST `/api/agents/search`
+**Description:** Search for agents by name with optional agency name and suburb filtering. Uses fuzzy matching (Sneesby algorithm) to find agents and their associated agencies.
+
+**Body:**
+```json
+{
+  "agentName": "Steve Athanates",
+  "agencyName": "NGU",
+  "suburb": "Logan"
+}
+```
+
+**Required Fields:**
+- `agentName` (string): Agent's full name or partial name (e.g., "Steve Athanates" or "Steve")
+- `agencyName` (string): Agency name to filter by (e.g., "NGU")
+
+**Optional Fields:**
+- `suburb` (string): Suburb to enhance search results (does not filter out results, only boosts scores)
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 2,
+  "agents": [
+    {
+      "id": "233850297821",
+      "firstname": "Steve",
+      "lastname": "Athanates",
+      "email": "steve@ngurealestate.com.au",
+      "phone": "+61414235933",
+      "agency": {
+        "id": "181867435472",
+        "name": "NGU Brassall - Steve Athanates Team",
+        "address": "",
+        "email": "steve@ngurealestate.com.au",
+        "phone": "+61 414 235 933"
+      },
+      "score": 0.84
+    }
+  ]
+}
+```
+
+**Function Flow:**
+```
+searchAgents (agencies.js)
+  → agentService.searchAgents(agentName, agencyName, suburb)
+    → contactsIntegration.searchAgentsByTokens()
+      → Extract tokens from agent name
+      → HubSpot: POST /crm/v3/objects/contacts/search
+        ↳ Filter: contact_type = 'Agent'
+        ↳ Filter: firstname/lastname CONTAINS tokens (OR logic)
+      → For each agent:
+        → GET /crm/v3/objects/contacts/{id}/associations/companies
+        → GET /crm/v3/objects/companies/{id}
+        → Filter by agency name if provided
+      → Score agents using scoreAgentWithAgency()
+        ↳ Agent name: 70% weight
+        ↳ Agency name: 20% weight
+        ↳ Suburb: 10% weight (enhancement only)
+      → Sort by score (descending)
+      → Filter results with score > 0.3
+    → Return ranked agents with agency info
+```
+
+**Scoring Algorithm (Sneesby Algorithm):**
+- **Agent Name (70%)**: Primary matching factor
+  - Perfect match: 1.0
+  - Exact substring: 0.9
+  - Word token matching: up to 0.85
+  - Levenshtein fuzzy matching: up to 0.6
+- **Agency Name (20%)**: Secondary matching factor
+  - Uses same scoring logic as agent name
+- **Suburb (10%)**: Enhancement factor only
+  - Checks suburb in both agency name and address
+  - Adds bonus points if suburb matches
+  - Does NOT penalize if suburb doesn't match
+  - Only enhances scores, never reduces them
+
+**Example Requests:**
+
+1. **Search with full agent name and agency:**
+```bash
+curl -X POST http://localhost:3001/api/agents/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentName": "Steve Athanates",
+    "agencyName": "NGU"
+  }'
+```
+
+2. **Search with suburb enhancement:**
+```bash
+curl -X POST http://localhost:3001/api/agents/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentName": "Steve",
+    "agencyName": "NGU",
+    "suburb": "Logan"
+  }'
+```
+
+**Notes:**
+- Suburb is optional and used only for scoring enhancement
+- Results are sorted by relevance score (highest first)
+- Only agents with score > 0.3 (30%) are returned
+- Agents without agency associations are included if no agency filter is applied
+- Fuzzy matching handles typos and partial matches
+
+---
+
+### 3. Agent Routes (`/api/agents`)
+
+**Summary:**
+- `POST /api/agents/search` - Search agents by name with agency filtering (fuzzy matching)
+
+See detailed documentation above in section 3.
+
+---
+
+### 4. Client Routes (`/api/client`)
 
 **Authentication Required:** All routes require JWT token
 
@@ -324,7 +454,7 @@ DELETE /api/client/property/:dealId/file/:fileId
 
 ---
 
-### 4. Questionnaire Routes
+### 5. Questionnaire Routes
 
 #### GET `/api/questionnaire/schema`
 **Description:** Get questionnaire schema (single source of truth)
@@ -396,7 +526,7 @@ POST /crm/v3/objects/property-questionnaire/:dealId/files/upload
 
 ---
 
-### 5. Workflow Routes (`/api/workflows`)
+### 6. Workflow Routes (`/api/workflows`)
 
 #### POST `/api/workflows/agent-client-creation`
 **Description:** Complete workflow for agent creating a new client deal
@@ -452,16 +582,174 @@ POST /api/workflows/agent-client-creation
   → Return: dealId, clientId, agentId, agencyId
 ```
 
+### Flow 4: Client Disclosure Form - Agent Search
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ CLIENT DISCLOSURE FORM - AGENT SEARCH                        │
+└──────────────────────────────────────────────────────────────┘
+
+1. CLIENT ENTERS SEARCH CRITERIA
+   ↓
+   Frontend: DisclosureForm Step 3
+   - Agent Name: "Steve Athanates" (required)
+   - Agency Name: "NGU" (required)
+   - Suburb: "Logan" (optional)
+   ↓
+   User clicks "Search" button
+
+2. SEARCH FOR AGENTS
+   ↓
+   POST /api/agents/search
+   Body: {
+     agentName: "Steve Athanates",
+     agencyName: "NGU",
+     suburb: "Logan"
+   }
+   ↓
+   Backend: agentService.searchAgents()
+     → contactsIntegration.searchAgentsByTokens()
+       → Extract tokens: ["steve", "athanates"]
+       → HubSpot: POST /crm/v3/objects/contacts/search
+         Filters:
+           - contact_type = 'Agent'
+           - firstname CONTAINS_TOKEN "steve" OR lastname CONTAINS_TOKEN "steve"
+           - firstname CONTAINS_TOKEN "athanates" OR lastname CONTAINS_TOKEN "athanates"
+       → Returns: [agent1, agent2, ...]
+   ↓
+   For each agent:
+     → GET /crm/v3/objects/contacts/{id}/associations/companies
+     → GET /crm/v3/objects/companies/{id}
+     → Filter by agency name if provided
+   ↓
+   Score agents using Sneesby algorithm:
+     - Agent name: 70% (primary)
+     - Agency name: 20% (secondary)
+     - Suburb: 10% (enhancement only)
+   ↓
+   Sort by score (descending)
+   ↓
+   Filter: score > 0.3
+   ↓
+   Return: [
+     {
+       id: "233850297821",
+       firstname: "Steve",
+       lastname: "Athanates",
+       email: "steve@ngu.com",
+       phone: "+61414235933",
+       agency: {
+         id: "181867435472",
+         name: "NGU Brassall - Steve Athanates Team",
+         address: "",
+         email: "steve@ngu.com"
+       },
+       score: 0.84
+     },
+     ...
+   ]
+
+3. CLIENT SELECTS AGENT
+   ↓
+   Frontend: AgentSearchModal
+   → User clicks on agent result
+   → Calls onSelectAgent(agent)
+   ↓
+   DisclosureForm: handleAgentSelect()
+   → Sets selectedAgent state
+   → Closes modal
+
+4. CLIENT SUBMITS DISCLOSURE FORM
+   ↓
+   POST /api/workflows/client-disclosure
+   Body: {
+     seller: { email, firstname, lastname, phone },
+     agent: { id: "233850297821", ... },
+     agency: { id: "181867435472", ... },
+     property: { address: "..." }
+   }
+   ↓
+   Workflow: processClientDisclosure()
+   → STEP 1: Find/create primary seller
+   → STEP 2: Find/create additional sellers
+   → STEP 3: Process agent (agent-first approach)
+     → If agent.id provided:
+       → GET /crm/v3/objects/contacts/{agentId}
+       → Verify contact_type = 'Agent'
+       → GET /crm/v3/objects/contacts/{agentId}/associations/companies
+       → GET /crm/v3/objects/companies/{agencyId}
+       → Verify agent-agency association
+   → STEP 4: Create deal with associations
+   → STEP 5: Create Smokeball lead (if enabled)
+   ↓
+   Return: dealId, primarySellerId, agencyId, agentId
+```
+
 #### POST `/api/workflows/client-disclosure`
-**Description:** Client disclosure workflow (legacy)
+**Description:** Client disclosure workflow - processes disclosure form submission with agent-first approach
+**Body:**
+```json
+{
+  "seller": {
+    "email": "seller@example.com",
+    "firstname": "John",
+    "lastname": "Doe",
+    "phone": "+61412345678"
+  },
+  "additionalSellers": [],
+  "agency": {
+    "id": "181867435472",
+    "name": "NGU Real Estate",
+    "email": "info@ngu.com"
+  },
+  "agent": {
+    "id": "233850297821",
+    "email": "steve@ngu.com",
+    "firstname": "Steve",
+    "lastname": "Athanates",
+    "phone": "+61414235933"
+  },
+  "property": {
+    "address": "123 Main St, Brisbane QLD 4000"
+  }
+}
+```
+
 **Function Flow:**
 ```
 POST /api/workflows/client-disclosure
-  → Find client by email
-  → Find or create deal
-  → Update deal with disclosure data
-  → Return deal ID
+  → STEP 1: Find or create PRIMARY SELLER
+    → searchContactByEmailOrPhone()
+    → If not found: findOrCreateContact()
+  
+  → STEP 2: Find or create ADDITIONAL SELLERS
+    → For each seller: searchContactByEmailOrPhone()
+  
+  → STEP 3: Process AGENT (Agent-first approach)
+    → If agent.id provided:
+      → GET /crm/v3/objects/contacts/{agentId}
+      → Verify contact_type = 'Agent'
+      → GET /crm/v3/objects/contacts/{agentId}/associations/companies
+      → GET /crm/v3/objects/companies/{agencyId}
+      → Verify agent-agency association
+    → Else (legacy flow):
+      → Search/create agency
+      → Search/create agent
+      → Associate agent to agency
+  
+  → STEP 4: Create DEAL with associations
+    → createDealWithAssociations()
+    → Add custom association labels (Primary Seller, Agent, Additional Sellers)
+  
+  → STEP 5: Create Smokeball lead (if enabled)
+  
+  → Return: dealId, primarySellerId, agencyId, agentId
 ```
+
+**Notes:**
+- Agent-first approach: If `agent.id` is provided, uses existing agent and agency directly
+- Backward compatible: Falls back to legacy flow if agent ID not provided
+- Validates agent-agency association exists
 
 #### POST `/api/workflows/property-intake`
 **Description:** Property intake workflow (legacy)
@@ -491,12 +779,16 @@ POST /api/workflows/property-intake
 
 | Function | Description | HubSpot Integration |
 |----------|-------------|---------------------|
+| `searchAgents(agentName, agencyName, suburb)` | Search agents with fuzzy matching (Sneesby algorithm) | `searchAgentsByTokens()` |
 | `findByEmail(email)` | Find agent by email | `searchContactByEmail()` |
 | `findByEmailOrPhone(email, phone)` | Find agent by email OR phone | `searchContactByEmailOrPhone()` |
 | `create(firstname, lastname, email, phone)` | Create standalone agent | `createAgentContact()` |
 | `createForAgency(agencyId, ...)` | Create agent linked to agency | `createAgentContact()`, `createAssociation()` |
 | `getById(agentId)` | Get agent details | `getContact()` |
 | `update(agentId, updates)` | Update agent properties | `updateContact()` |
+| `getAgentWithAgency(agentId)` | Get agent with associated agency | `getContact()`, `GET /crm/v3/objects/contacts/{id}/associations/companies` |
+| `getAgentDeals(agentId)` | Get all deals for agent | `POST /crm/v4/associations/contact/deal/batch/read` |
+| `calculateMetrics(deals)` | Calculate performance metrics | N/A (client-side calculation) |
 
 ### Client Service (`services/domain/client.js`)
 
@@ -555,6 +847,7 @@ POST /api/workflows/property-intake
 | `searchContactByEmailOrPhone(email, phone)` | `POST /crm/v3/objects/contacts/search` |
 | `searchContactsByCompany(companyId)` | `GET /crm/v3/objects/companies/{id}/associations/contacts` |
 | `createAgentContact(contactData)` | `POST /crm/v3/objects/contacts` (with contact_type=Agent) |
+| `searchAgentsByTokens(agentName, agencyName, suburb)` | `POST /crm/v3/objects/contacts/search` + associations (with scoring) |
 
 ### Deals (`integrations/hubspot/deals.js`)
 

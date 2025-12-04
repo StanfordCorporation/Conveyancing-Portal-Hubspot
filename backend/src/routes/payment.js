@@ -11,6 +11,7 @@ import * as dealsIntegration from '../integrations/hubspot/deals.js';
 import { STRIPE_CONFIG } from '../config/stripe.js';
 import { calculateAmountWithFees, getFeeBreakdown } from '../utils/stripe-fees.js';
 import { handlePaymentSuccess } from './webhook.js';
+import { calculateQuoteForDeal } from '../services/quoteService.js';
 
 const router = express.Router();
 
@@ -50,13 +51,34 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
       });
     }
 
-    const { dealId, amount } = req.body;
+    const { dealId } = req.body;
     const contactId = req.user.contactId;
     const userEmail = req.user.email;
 
-    if (!dealId || !amount) {
-      return res.status(400).json({ error: 'Missing required fields: dealId, amount' });
+    if (!dealId) {
+      return res.status(400).json({ error: 'Missing required field: dealId' });
     }
+
+    // Fetch quote + conveyancing data to calculate total with deposit
+    console.log(`[Payment] 📊 Fetching quote for deal ${dealId}...`);
+    const quoteResult = await calculateQuoteForDeal(dealId, true);
+
+    if (!quoteResult.success) {
+      return res.status(400).json({ error: 'Failed to calculate quote' });
+    }
+
+    const { quote, conveyancing } = quoteResult;
+
+    // Calculate total due now (searches + deposit)
+    const totalDueNow = quote.grandTotal + conveyancing.depositNow;
+    const amountInCents = Math.round(totalDueNow * 100);
+
+    console.log(`[Payment] 💰 Payment breakdown:`);
+    console.log(`[Payment]   - Property Searches: $${quote.grandTotal}`);
+    console.log(`[Payment]   - Conveyancing Deposit: $${conveyancing.depositNow}`);
+    console.log(`[Payment]   - Total Due Now: $${totalDueNow}`);
+    console.log(`[Payment]   - Settlement Outstanding: $${conveyancing.settlementAmount}`);
+
 
     const { useDynamicDetection, defaultCardType } = STRIPE_CONFIG.feeConfig;
 
@@ -64,8 +86,8 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
     // For static, use configured default
     const useDomestic = useDynamicDetection ? false : defaultCardType === 'domestic';
 
-    // Calculate gross amount including Stripe fees
-    const feeCalculation = calculateAmountWithFees(amount, { useDomestic });
+    // Calculate gross amount including Stripe fees (using total with deposit)
+    const feeCalculation = calculateAmountWithFees(amountInCents, { useDomestic });
 
     console.log(`[Payment] 💳 Creating payment intent for deal ${dealId}`);
     console.log(`[Payment] 🔧 Dynamic detection: ${useDynamicDetection ? 'ENABLED' : 'DISABLED'} (${useDomestic ? 'domestic' : 'international'} rates)`);
@@ -90,12 +112,18 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
     const paymentIntent = await stripePayments.createPaymentIntent({
       amount: feeCalculation.grossAmountInCents,
       customerId: customer.id,
-      description: `Conveyancing Fee for ${deal.properties.property_address || deal.properties.dealname} (includes card surcharge)`,
+      description: `Property Searches ($${quote.grandTotal}) + Conveyancing Deposit ($${conveyancing.depositNow}) for ${deal.properties.property_address || deal.properties.dealname}`,
       metadata: {
         deal_id: dealId,
         contact_id: contactId,
         deal_name: deal.properties.dealname || 'Property Purchase',
-        base_amount: amount,
+        // Payment breakdown
+        searches_amount: quote.grandTotal.toString(),
+        conveyancing_deposit: conveyancing.depositNow.toString(),
+        conveyancing_settlement_amount: conveyancing.settlementAmount.toString(),
+        body_corporate_status: conveyancing.bodyCorporateStatus,
+        total_base_amount: totalDueNow.toString(),
+        // Stripe fee details
         fee_percent: feeCalculation.feePercent,
         fixed_fee: feeCalculation.fixedFee,
         gross_amount: feeCalculation.grossAmountInCents,
@@ -112,7 +140,14 @@ router.post('/create-payment-intent', authenticateJWT, async (req, res) => {
       paymentIntentId: paymentIntent.id,
       customerId: customer.id,
       useDynamicDetection: useDynamicDetection,
-      baseAmount: amount, // Pass base amount for adjust-and-capture endpoint
+      baseAmount: amountInCents, // Pass base amount for adjust-and-capture endpoint
+      // Include payment breakdown for frontend display
+      paymentBreakdown: {
+        searches: quote.grandTotal,
+        deposit: conveyancing.depositNow,
+        settlementAmount: conveyancing.settlementAmount,
+        totalDueNow: totalDueNow,
+      },
       // Include fee breakdown for frontend display
       feeBreakdown: {
         baseAmount: feeCalculation.breakdown.netAmount,

@@ -4,6 +4,12 @@ import * as agentService from '../services/domain/agent.js';
 /**
  * POST /agencies/search
  * Search for agencies by business name and suburb
+ * 
+ * @deprecated This endpoint is deprecated. Use POST /api/agents/search instead for agent-first search.
+ * This endpoint is kept for backward compatibility but may be removed in a future version.
+ * 
+ * Migration: Use the new agent search endpoint which provides better matching:
+ * - POST /api/agents/search with agentName, agencyName, and optional suburb
  */
 export const searchAgencies = async (req, res) => {
   try {
@@ -221,10 +227,49 @@ export const searchAgent = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/agents/search
+ * Search for agents by name with optional agency name and suburb filtering
+ * Uses fuzzy matching (Sneesby algorithm)
+ */
+export const searchAgents = async (req, res) => {
+  try {
+    const { agentName, agencyName, agentPhone, suburb } = req.body;
+
+    // Validate required fields
+    if (!agentName || !agencyName) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'agentName and agencyName are required'
+      });
+    }
+
+    const phoneStr = agentPhone ? ` (Phone: ${agentPhone})` : '';
+    const suburbStr = suburb ? ` in "${suburb}"` : '';
+    console.log(`[Agents] 🔍 Searching for agents: "${agentName}" @ "${agencyName}"${phoneStr}${suburbStr}`);
+
+    const results = await agentService.searchAgents(agentName, agencyName, agentPhone, suburb);
+
+    return res.json({
+      success: true,
+      count: results.length,
+      agents: results
+    });
+  } catch (error) {
+    console.error('[Agents] ❌ Error searching agents:', error);
+
+    res.status(500).json({
+      error: 'Server Error',
+      message: error.message || 'Failed to search agents'
+    });
+  }
+};
+
 export default {
   searchAgencies,
   createAgency,
   getAgents,
   createAgent,
-  searchAgent
+  searchAgent,
+  searchAgents
 };

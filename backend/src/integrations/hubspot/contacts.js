@@ -1,5 +1,6 @@
 import hubspotClient from './client.js';
 import { normalizePhoneToInternational } from '../../utils/phone.js';
+import { extractTokens, scoreAgentWithAgency } from '../../utils/scoring.js';
 
 /**
  * Search for contact by email
@@ -348,6 +349,234 @@ export const searchContactByEmailOrPhone = async (email, phone, options = {}) =>
   }
 };
 
+/**
+ * Generate filter groups for agent name search
+ * Creates OR filter groups for firstname and lastname with tokens
+ * Each filter group requires contact_type='Agent' AND (name match)
+ * Filter groups use OR logic between them
+ * @param {Array<string>} tokens - Search tokens extracted from agent name
+ * @returns {Array} Filter groups for HubSpot search
+ */
+const generateAgentNameFilterGroups = (tokens) => {
+  if (!Array.isArray(tokens) || tokens.length === 0) {
+    return [];
+  }
+
+  const filterGroups = [];
+  
+  // For each token, create separate filter groups for firstname and lastname
+  // Each group requires contact_type='Agent' AND the name match
+  // Filter groups use OR logic between them (matches if ANY group matches)
+  for (const token of tokens) {
+    // Filter group 1: contact_type='Agent' AND firstname contains token
+    filterGroups.push({
+      filters: [
+        {
+          propertyName: 'contact_type',
+          operator: 'CONTAINS_TOKEN',
+          value: 'Agent'
+        },
+        {
+          propertyName: 'firstname',
+          operator: 'CONTAINS_TOKEN',
+          value: token.trim()
+        }
+      ]
+    });
+    
+    // Filter group 2: contact_type='Agent' AND lastname contains token
+    filterGroups.push({
+      filters: [
+        {
+          propertyName: 'contact_type',
+          operator: 'CONTAINS_TOKEN',
+          value: 'Agent'
+        },
+        {
+          propertyName: 'lastname',
+          operator: 'CONTAINS_TOKEN',
+          value: token.trim()
+        }
+      ]
+    });
+  }
+  
+  return filterGroups;
+};
+
+/**
+ * Search agents by name with optional agency name, phone, and suburb filtering
+ * Uses fuzzy matching (Sneesby algorithm) to find agents
+ * @param {string} agentName - Agent name to search (e.g., "Steve Athanates")
+ * @param {string} agencyName - Optional: Agency name to filter by
+ * @param {string} agentPhone - Optional: Agent phone number for exact matching bonus
+ * @param {string} suburb - Optional: Suburb to filter by
+ * @returns {Promise<Array>} Array of agents with agency info, sorted by relevance score
+ */
+export const searchAgentsByTokens = async (agentName, agencyName = null, agentPhone = null, suburb = null) => {
+  console.log(`[HubSpot Contacts] 🔍 Dynamic token search for agents:`);
+  console.log(`[HubSpot Contacts]    - Agent Name: "${agentName}"`);
+  if (agencyName) console.log(`[HubSpot Contacts]    - Agency Name: "${agencyName}"`);
+  if (agentPhone) console.log(`[HubSpot Contacts]    - Agent Phone: "${agentPhone}"`);
+  if (suburb) console.log(`[HubSpot Contacts]    - Suburb: "${suburb}"`);
+
+  // Extract tokens from agent name
+  const agentTokens = extractTokens(agentName);
+  
+  if (agentTokens.length === 0) {
+    console.log(`[HubSpot Contacts] ⚠️ No valid search tokens provided for agent name`);
+    return [];
+  }
+
+  console.log(`[HubSpot Contacts] 📋 Agent name tokens: ${agentTokens.join(', ')}`);
+
+  // Build filter groups
+  // Each group requires contact_type='Agent' AND name match
+  // Groups use OR logic (matches if ANY group matches)
+  const filterGroups = generateAgentNameFilterGroups(agentTokens);
+  
+  // If no tokens, still need to filter by contact_type
+  if (filterGroups.length === 0) {
+    filterGroups.push({
+      filters: [
+        {
+          propertyName: 'contact_type',
+          operator: 'CONTAINS_TOKEN',
+          value: 'Agent'
+        }
+      ]
+    });
+  }
+
+  try {
+    // Search contacts
+    const response = await hubspotClient.post('/crm/v3/objects/contacts/search', {
+      filterGroups,
+      properties: ['firstname', 'lastname', 'email', 'phone', 'contact_type'],
+      limit: 50 // Get more results for scoring and filtering
+    });
+
+    const agents = response.data.results || [];
+    console.log(`[HubSpot Contacts] 📊 Found ${agents.length} initial agent matches`);
+
+    if (agents.length === 0) {
+      return [];
+    }
+
+    // Get agency associations for all agents
+    const agentsWithAgencies = [];
+    
+    for (const agent of agents) {
+      try {
+        // Get agent's associated company
+        const assocResponse = await hubspotClient.get(
+          `/crm/v3/objects/contacts/${agent.id}/associations/companies`
+        );
+        
+        const companies = assocResponse.data.results || [];
+        
+        if (companies.length > 0) {
+          // Get company details for each associated company
+          for (const company of companies) {
+            try {
+              const companyResponse = await hubspotClient.get(
+                `/crm/v3/objects/companies/${company.id}?properties=name,address,email,phone`
+              );
+              
+              const agency = {
+                id: company.id,
+                name: companyResponse.data.properties.name || '',
+                address: companyResponse.data.properties.address || '',
+                email: companyResponse.data.properties.email || '',
+                phone: companyResponse.data.properties.phone || ''
+              };
+              
+              // Filter by agency name if provided
+              if (agencyName) {
+                const agencyTokens = extractTokens(agencyName);
+                const agencyNameLower = (agency.name || '').toLowerCase();
+                const agencySearchLower = agencyName.toLowerCase();
+                
+                // Check if any agency token appears in agency name
+                const matchesAgency = agencyTokens.some(token => 
+                  agencyNameLower.includes(token)
+                ) || agencyNameLower.includes(agencySearchLower);
+                
+                if (!matchesAgency) {
+                  continue; // Skip this agency if it doesn't match
+                }
+              }
+              
+              // Don't filter by suburb - suburb is only used for scoring enhancement
+              // Include all agents that match agency name, suburb will boost their score
+              
+              agentsWithAgencies.push({
+                id: agent.id,
+                firstname: agent.properties.firstname || '',
+                lastname: agent.properties.lastname || '',
+                email: agent.properties.email || '',
+                phone: agent.properties.phone || '',
+                agency: agency
+              });
+              
+              // Only use first agency if multiple exist
+              break;
+            } catch (error) {
+              console.error(`[HubSpot Contacts] ⚠️ Error fetching company ${company.id}:`, error.message);
+              // Continue with next company
+            }
+          }
+        } else {
+          // Agent has no agency association - include if no agency filter specified
+          if (!agencyName && !suburb) {
+            agentsWithAgencies.push({
+              id: agent.id,
+              firstname: agent.properties.firstname || '',
+              lastname: agent.properties.lastname || '',
+              email: agent.properties.email || '',
+              phone: agent.properties.phone || '',
+              agency: null
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`[HubSpot Contacts] ⚠️ Error fetching associations for agent ${agent.id}:`, error.message);
+        // Continue with next agent
+      }
+    }
+
+    console.log(`[HubSpot Contacts] 📊 Found ${agentsWithAgencies.length} agents with matching agencies`);
+
+    // Score and sort results
+    const scoredResults = agentsWithAgencies
+      .map((agent) => ({
+        ...agent,
+        score: scoreAgentWithAgency(
+          agent,
+          agent.agency,
+          agentName,
+          agencyName,
+          agentPhone,
+          suburb
+        )
+      }))
+      .sort((a, b) => b.score - a.score)
+      .filter((item) => item.score > 0.3); // Only return matches above threshold
+
+    console.log(`[HubSpot Contacts] ✅ Scored and filtered to ${scoredResults.length} relevant matches`);
+    scoredResults.slice(0, 5).forEach((agent, index) => {
+      const agentName = `${agent.firstname} ${agent.lastname}`.trim();
+      const agencyName = agent.agency?.name || 'No Agency';
+      console.log(`[HubSpot Contacts]    ${index + 1}. ${agentName} @ ${agencyName} (Score: ${(agent.score * 100).toFixed(1)}%)`);
+    });
+
+    return scoredResults;
+  } catch (error) {
+    console.error(`[HubSpot Contacts] ❌ Error searching agents:`, error.message);
+    throw error;
+  }
+};
+
 export default {
   searchContactByEmail,
   searchContactByEmailOrPhone,
@@ -356,5 +585,6 @@ export default {
   createAgentContact,
   getContact,
   updateContact,
-  findOrCreateContact
+  findOrCreateContact,
+  searchAgentsByTokens
 };
