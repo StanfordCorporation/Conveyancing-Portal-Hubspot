@@ -16,32 +16,71 @@ export const useAuth = () => {
   return context;
 };
 
+// Process URL token synchronously BEFORE React renders (prevents race condition)
+const processUrlToken = () => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+
+    if (urlToken) {
+      console.log('[Auth] Token found in URL, processing staff login...');
+
+      // Decode JWT payload (base64)
+      const payload = JSON.parse(atob(urlToken.split('.')[1]));
+
+      // Create user object from token payload
+      const userData = {
+        id: payload.contactId,
+        contactId: payload.contactId,
+        email: payload.email,
+        role: payload.role,
+        permissionLevel: payload.permissionLevel,
+        agencyId: payload.agencyId,
+        staffAccess: payload.staffAccess || false
+      };
+
+      // Store in localStorage SYNCHRONOUSLY (before any API calls)
+      localStorage.setItem('authToken', urlToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Clean URL (remove token param)
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      console.log('[Auth] Staff login processed, user:', userData.email);
+      return userData;
+    }
+  } catch (error) {
+    console.error('[Auth] Error processing URL token:', error);
+  }
+  return null;
+};
+
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on mount
+  // Process URL token FIRST (synchronous, before useState initializes)
+  const urlUser = processUrlToken();
+
+  // Initialize state - use URL user if available, otherwise load from localStorage
+  const [user, setUser] = useState(() => {
+    if (urlUser) return urlUser;
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false); // No async loading needed now
+
+  // Validate token still exists in localStorage (for edge cases)
   useEffect(() => {
-    const loadUser = () => {
-      try {
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('authToken');
-
-        if (storedUser && token) {
-          const parsed = JSON.parse(storedUser);
-          setUser(parsed);
-        }
-      } catch (error) {
-        console.error('[Auth] Error loading user from localStorage:', error);
-        logout();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUser();
-  }, []);
+    const token = localStorage.getItem('authToken');
+    if (user && !token) {
+      console.warn('[Auth] User exists but token missing, clearing state');
+      setUser(null);
+    }
+  }, [user]);
 
   const login = (userData, token) => {
     // Store token and user data

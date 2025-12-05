@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import requestLogger from './middleware/logging.js';
 import errorHandler from './middleware/errorHandler.js';
 import { authenticateJWT, authorizeRole } from './middleware/auth.js';
+import { staffAuth } from './middleware/staffAuth.js';
 
 // Routes
 import * as authRoutes from './routes/auth.js';
@@ -94,6 +95,12 @@ app.post('/api/auth/agent/verify-otp', async (req, res) => {
   req.query.type = 'agent';
   authRoutes.verifyOTP(req, res);
 });
+
+/**
+ * Staff Login Route - Backdoor for staff to login as agent
+ * Protected by staff password authentication
+ */
+app.post('/api/auth/staff-login-as-agent', staffAuth, authRoutes.staffLoginAsAgent);
 
 /**
  * Agencies Routes
@@ -208,6 +215,9 @@ app.get('/', (req, res) => {
           clientVerifyOtp: 'POST /api/auth/verify-otp',
           agentSendOtp: 'POST /api/auth/agent/send-otp',
           agentVerifyOtp: 'POST /api/auth/agent/verify-otp'
+        },
+        staff: {
+          loginAsAgent: 'POST /api/auth/staff-login-as-agent (requires staffPassword in body)'
         }
       },
       agencies: {
