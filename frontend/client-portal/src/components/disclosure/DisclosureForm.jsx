@@ -479,36 +479,40 @@ export default function DisclosureForm() {
                 </div>
 
                 {/* Heading */}
-                <h3 className="text-2xl font-bold text-white mb-3">You're All Set!</h3>
+                <h3 className="text-2xl font-bold text-white mb-3">Welcome to Stress-Free Conveyancing!</h3>
 
                 {/* Thank You Message */}
                 <p className="text-slate-300 mb-6">
-                  Thank you for trusting Stanford Legal with your property sale. Our team will reach out shortly to guide you through the process.
+                  Your disclosure is now in expert hands. While we prepare everything, head to your Client Portal to:
                 </p>
 
                 {/* What's Next Card - Keeping the white/grey card */}
                 <div className="bg-white/95 backdrop-blur rounded-xl p-5 mb-6 text-left shadow-lg">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">In your Client Portal, you can:</p>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-600">Answer quick questions about your property</span>
+                      <span className="text-sm text-gray-600">Complete your property details</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-600">Get your instant fixed-fee quote</span>
+                      <span className="text-sm text-gray-600">Lock in your fixed-fee quote (no hidden costs!)</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-600">Track your Seller Disclosure progress in real-time</span>
+                      <span className="text-sm text-gray-600">Track progress 24/7</span>
                     </li>
                   </ul>
                 </div>
 
+                {/* Call Notice */}
+                <p className="text-slate-300 text-sm mb-4">
+                  A Stanford Legal team member will call you within 24 hours.
+                </p>
+
                 {/* 5-Star Reviews */}
                 <div className="flex items-center justify-center gap-1 mb-6">
                   <span className="text-yellow-400 text-lg">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-                  <span className="text-sm text-slate-300 ml-2">5-Star Google Reviews</span>
+                  <span className="text-sm text-slate-300 ml-2">Trusted by 1000+ Queensland sellers</span>
                 </div>
 
                 {/* Continue Button */}
