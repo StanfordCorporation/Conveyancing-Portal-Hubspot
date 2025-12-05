@@ -28,6 +28,8 @@ export default function DisclosureForm() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
+  const [submissionComplete, setSubmissionComplete] = useState(false);
+  const [submissionData, setSubmissionData] = useState(null);
   const [error, setError] = useState('');
   const [showAgentSearch, setShowAgentSearch] = useState(false);
   const [validationErrors, setValidationErrors] = useState({
@@ -285,6 +287,17 @@ export default function DisclosureForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleContinueToPortal = () => {
+    navigate('/login', {
+      state: {
+        dealId: submissionData?.dealId,
+        message: 'Disclosure form submitted successfully! Please log in with your email or phone number to access the client portal.',
+        email: submissionData?.email,
+        phone: submissionData?.phone
+      }
+    });
+  };
+
   const handleSubmit = async () => {
     // Validate step 3 - agent selection
     if (!isStepValid(3)) {
@@ -316,7 +329,16 @@ export default function DisclosureForm() {
 
     setError('');
     setIsSubmitting(true);
-    setSubmitProgress(10);
+    setSubmitProgress(0);
+
+    // Timer-based progress: 10% every second, capping at 90%
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      currentProgress += 10;
+      if (currentProgress <= 90) {
+        setSubmitProgress(currentProgress);
+      }
+    }, 1000);
 
     try {
       const splitName = (fullName) => {
@@ -362,12 +384,13 @@ export default function DisclosureForm() {
       };
 
       console.log('📤 Submitting disclosure form:', formData);
-      setSubmitProgress(30);
 
       const response = await api.post('/workflows/client-disclosure', formData);
 
       console.log('✅ Disclosure form submitted successfully:', response.data);
-      setSubmitProgress(70);
+
+      // Stop the timer and jump to 100%
+      clearInterval(progressInterval);
 
       if (response.data.requiresConfirmation) {
         setSubmitProgress(100);
@@ -378,20 +401,15 @@ export default function DisclosureForm() {
       }
 
       setSubmitProgress(100);
-
-      setTimeout(() => {
-        console.log('✅ Redirecting to client portal login...');
-        navigate('/login', {
-          state: {
-            dealId: response.data.data.dealId,
-            message: 'Disclosure form submitted successfully! Please log in with your email or phone number to access the client portal.',
-            email: primarySeller.email,
-            phone: primarySeller.mobile
-          }
-        });
-      }, 1500);
+      setSubmissionComplete(true);
+      setSubmissionData({
+        dealId: response.data.data.dealId,
+        email: primarySeller.email,
+        phone: primarySeller.mobile
+      });
 
     } catch (err) {
+      clearInterval(progressInterval);
       console.error('❌ Disclosure form submission error:', err);
       setError(err.response?.data?.message || err.message || 'Failed to submit form. Please try again.');
       setIsSubmitting(false);
@@ -414,50 +432,93 @@ export default function DisclosureForm() {
 
       {/* Submission Animation Overlay */}
       {isSubmitting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-md animate-fade-in"></div>
-          <div className="relative z-10">
+
+          {/* Navy Blue Modal Background */}
+          <div className="relative z-10 rounded-2xl shadow-2xl p-10 max-w-xl w-full border border-white/20" style={{ backgroundColor: 'rgba(39, 49, 101, 0.92)' }}>
             {submitProgress < 100 ? (
               <>
                 <div className="flex items-center justify-center mb-8">
                   <div className="relative w-32 h-32">
-                    <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-ping-slow"></div>
-                    <div className="absolute inset-2 rounded-full border-4 border-primary/60 animate-pulse-slow"></div>
-                    <div className="absolute inset-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center animate-float">
-                      <Send className="w-12 h-12 text-primary-foreground" style={{ transform: `rotate(${submitProgress * 3.6}deg)` }} />
+                    <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping-slow"></div>
+                    <div className="absolute inset-2 rounded-full border-4 border-white/60 animate-pulse-slow"></div>
+                    <div className="absolute inset-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center animate-float">
+                      <Send className="w-12 h-12 text-white" style={{ transform: `rotate(${submitProgress * 3.6}deg)` }} />
                     </div>
                   </div>
                 </div>
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-foreground mb-2">Submitting Your Form</h3>
-                  <p className="text-muted-foreground">Please wait while we process your information...</p>
+                  <h3 className="text-2xl font-bold text-white mb-2">Submitting Your Form</h3>
+                  <p className="text-slate-300">Please wait while we process your information...</p>
                 </div>
-                <div className="w-96 max-w-full px-4">
-                  <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                <div className="w-full">
+                  <div className="relative h-3 bg-white/20 rounded-full overflow-hidden">
                     <div
-                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-300 ease-out"
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${submitProgress}%` }}
                     >
                       <div className="absolute inset-0 bg-white/30 animate-shimmer"></div>
                     </div>
                   </div>
-                  <div className="flex justify-between mt-2">
-                    <span className="text-sm text-muted-foreground">Processing</span>
-                    <span className="text-sm font-semibold text-primary">{submitProgress}%</span>
+                  <div className="flex justify-between mt-3">
+                    <span className="text-sm text-slate-300">Processing</span>
+                    <span className="text-sm font-semibold text-white">{submitProgress}%</span>
                   </div>
                 </div>
               </>
             ) : (
               <div className="text-center animate-scale-in">
+                {/* Success Checkmark */}
                 <div className="flex items-center justify-center mb-6">
-                  <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-white" viewBox="0 0 52 52">
+                  <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-white" viewBox="0 0 52 52">
                       <path className="check-path" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" d="M14 27l7 7 16-16"/>
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-2xl font-bold text-foreground mb-2">Submission Successful!</h3>
-                <p className="text-muted-foreground">Redirecting to login...</p>
+
+                {/* Heading */}
+                <h3 className="text-2xl font-bold text-white mb-3">You're All Set!</h3>
+
+                {/* Thank You Message */}
+                <p className="text-slate-300 mb-6">
+                  Thank you for trusting Stanford Legal with your property sale. Our team will reach out shortly to guide you through the process.
+                </p>
+
+                {/* What's Next Card - Keeping the white/grey card */}
+                <div className="bg-white/95 backdrop-blur rounded-xl p-5 mb-6 text-left shadow-lg">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">In your Client Portal, you can:</p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-600">Answer quick questions about your property</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-600">Get your instant fixed-fee quote</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-600">Track your Seller Disclosure progress in real-time</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* 5-Star Reviews */}
+                <div className="flex items-center justify-center gap-1 mb-6">
+                  <span className="text-yellow-400 text-lg">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+                  <span className="text-sm text-slate-300 ml-2">5-Star Google Reviews</span>
+                </div>
+
+                {/* Continue Button */}
+                <button
+                  onClick={handleContinueToPortal}
+                  className="group inline-flex items-center gap-2 px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold transition-all shadow-lg"
+                >
+                  <span>Continue to Client Portal</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             )}
           </div>
