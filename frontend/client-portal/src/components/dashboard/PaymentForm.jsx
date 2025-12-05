@@ -28,7 +28,7 @@ const getStripePromise = async () => {
 /**
  * Main Payment Form Container
  */
-export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
+export default function PaymentForm({ dealId, amount, paymentBreakdown, onSuccess, onCancel }) {
   const [stripePromiseState, setStripePromiseState] = useState(null);
   const [clientSecret, setClientSecret] = useState('');
   const [feeBreakdown, setFeeBreakdown] = useState(null);
@@ -139,6 +139,7 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
           dealId={dealId}
           amount={amount}
           feeBreakdown={feeBreakdown}
+          paymentBreakdown={paymentBreakdown}
           paymentIntentId={paymentIntentId}
           useDynamicDetection={useDynamicDetection}
           baseAmount={baseAmount}
@@ -153,7 +154,7 @@ export default function PaymentForm({ dealId, amount, onSuccess, onCancel }) {
 /**
  * Checkout Form with Stripe Elements
  */
-function CheckoutForm({ dealId, amount, feeBreakdown, paymentIntentId, useDynamicDetection, baseAmount, onSuccess, onCancel }) {
+function CheckoutForm({ dealId, amount, feeBreakdown, paymentBreakdown, paymentIntentId, useDynamicDetection, baseAmount, onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -243,10 +244,23 @@ function CheckoutForm({ dealId, amount, feeBreakdown, paymentIntentId, useDynami
 
         {feeBreakdown ? (
           <div className="payment-breakdown">
-            <div className="breakdown-row">
-              <span className="breakdown-label">Conveyancing Fee:</span>
-              <span className="breakdown-value">{feeBreakdown.baseAmount}</span>
-            </div>
+            {paymentBreakdown ? (
+              <>
+                <div className="breakdown-row">
+                  <span className="breakdown-label">Searches Fee:</span>
+                  <span className="breakdown-value">A${parseFloat(paymentBreakdown.searches).toFixed(2)}</span>
+                </div>
+                <div className="breakdown-row">
+                  <span className="breakdown-label">Conveyancing Deposit:</span>
+                  <span className="breakdown-value">A${parseFloat(paymentBreakdown.deposit).toFixed(2)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="breakdown-row">
+                <span className="breakdown-label">Conveyancing Fee:</span>
+                <span className="breakdown-value">{feeBreakdown.baseAmount}</span>
+              </div>
+            )}
             <div className="breakdown-row surcharge">
               <span className="breakdown-label">
                 Card Processing Surcharge ({feeBreakdown.feePercentage}):

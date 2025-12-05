@@ -230,6 +230,7 @@ export default function PaymentInstructions({ dealId, quoteAmount: initialQuoteA
         <PaymentForm
           dealId={dealId}
           amount={amountInCents}
+          paymentBreakdown={paymentBreakdown}
           onSuccess={handlePaymentSuccess}
           onCancel={handleCancelPayment}
         />
