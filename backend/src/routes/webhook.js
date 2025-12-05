@@ -181,22 +181,45 @@ async function handlePayoutPaid(payout) {
     console.log(`[Webhook] 📊 Found ${balanceTransactions.data.length} balance transaction(s) in payout`);
 
     const dealsToUpdate = [];
-    
+
     // Process each transaction to find charges and extract deal_id from metadata
     for (const transaction of balanceTransactions.data) {
-      // Only process charge transactions (skip payout transactions)
-      if (transaction.type === 'charge' && transaction.source && transaction.source.object === 'charge') {
+      // Debug: Log each transaction's details
+      console.log(`[Webhook] 📝 Transaction: id=${transaction.id}, type=${transaction.type}`);
+      console.log(`[Webhook]    source: ${typeof transaction.source === 'string' ? transaction.source : JSON.stringify({ id: transaction.source?.id, object: transaction.source?.object, metadata: transaction.source?.metadata })}`);
+
+      // Process payment/charge transactions (skip payout transactions)
+      // Note: Stripe returns type='payment' for card payments, not always 'charge'
+      if ((transaction.type === 'charge' || transaction.type === 'payment') && transaction.source && transaction.source.object === 'charge') {
         const charge = transaction.source;
         const dealId = charge.metadata?.deal_id;
 
         if (dealId) {
+          // Get base amount from charge metadata
+          // Handle two conventions:
+          // - OLD (base_amount): stored in CENTS (e.g., 4085 for $40.85)
+          // - NEW (total_base_amount): stored in DOLLARS (e.g., "40.85")
+          let baseAmountCents = null;
+          let amountSource = 'none';
+
+          if (charge.metadata?.base_amount) {
+            // OLD convention: value is in CENTS
+            baseAmountCents = parseInt(charge.metadata.base_amount);
+            amountSource = 'base_amount (cents)';
+          } else if (charge.metadata?.total_base_amount) {
+            // NEW convention: value is in DOLLARS, convert to cents
+            baseAmountCents = Math.round(parseFloat(charge.metadata.total_base_amount) * 100);
+            amountSource = 'total_base_amount (dollars→cents)';
+          }
+
           dealsToUpdate.push({
             dealId,
             chargeId: charge.id,
             paymentIntentId: charge.payment_intent,
             amount: charge.amount,
+            baseAmountCents: baseAmountCents,
           });
-          console.log(`[Webhook] 💳 Found deal ${dealId} in charge ${charge.id} (Payment Intent: ${charge.payment_intent})`);
+          console.log(`[Webhook] 💳 Found deal ${dealId} in charge ${charge.id} (Payment Intent: ${charge.payment_intent}, Base: ${baseAmountCents || 'N/A'} from ${amountSource})`);
         } else {
           console.warn(`[Webhook] ⚠️ Charge ${charge.id} has no deal_id in metadata`);
         }
@@ -212,7 +235,7 @@ async function handlePayoutPaid(payout) {
 
     // Update deals
     let updatedCount = 0;
-    for (const { dealId, chargeId, paymentIntentId } of dealsToUpdate) {
+    for (const { dealId, chargeId, paymentIntentId, baseAmountCents: storedBaseAmount } of dealsToUpdate) {
       try {
         // Update deal to mark payment as paid
         await dealsIntegration.updateDeal(dealId, {
@@ -220,40 +243,53 @@ async function handlePayoutPaid(payout) {
         });
 
         console.log(`[Webhook] ✅ Deal ${dealId} updated - payment_status set to 'Paid'`);
-        
+
         // Trigger receipt automation via GitHub Actions
         try {
           console.log(`[Webhook] 🤖 Triggering receipt automation for deal ${dealId}...`);
-          
+
           // Fetch deal details needed for GitHub Actions
           const deal = await dealsIntegration.getDeal(dealId, [
             'smokeball_lead_uid',
             'stripe_payment_intent_id'
           ]);
-          
+
           // Get Lead UID - MUST use smokeball_lead_uid from HubSpot
           const leadUid = deal.properties.smokeball_lead_uid;
           if (!leadUid || leadUid.trim() === '') {
             throw new Error('smokeball_lead_uid is required but not found in deal. Create lead first.');
           }
-          
+
           console.log(`[Webhook] 🔍 Using Lead UID from HubSpot: ${leadUid}`);
-          
-          // Get payment intent to extract net amount (base_amount after fees)
-          // Use paymentIntentId from the loop if available, otherwise fetch from deal
-          const intentId = paymentIntentId || deal.properties.stripe_payment_intent_id;
-          if (!intentId) {
-            throw new Error('Stripe payment intent ID not found');
-          }
-          
-          const stripePayments = await import('../integrations/stripe/payments.js');
-          const paymentIntent = await stripePayments.getPaymentIntent(intentId);
-          
-          const baseAmountCents = parseInt(paymentIntent.metadata?.base_amount);
+
+          // Get base amount - prefer stored value from charge metadata, fallback to payment intent
+          let baseAmountCents = storedBaseAmount;
+
           if (!baseAmountCents || isNaN(baseAmountCents)) {
-            throw new Error('Could not extract base_amount from payment intent metadata');
+            // Fallback: fetch from payment intent if not available in charge metadata
+            const intentId = paymentIntentId || deal.properties.stripe_payment_intent_id;
+            if (intentId) {
+              console.log(`[Webhook] 🔄 Base amount not in charge metadata, fetching from payment intent...`);
+              const stripePayments = await import('../integrations/stripe/payments.js');
+              const paymentIntent = await stripePayments.getPaymentIntent(intentId);
+
+              // Handle two conventions:
+              // - OLD (base_amount): stored in CENTS
+              // - NEW (total_base_amount): stored in DOLLARS
+              if (paymentIntent.metadata?.base_amount) {
+                baseAmountCents = parseInt(paymentIntent.metadata.base_amount);
+                console.log(`[Webhook] 📍 Using base_amount from payment intent (cents): ${baseAmountCents}`);
+              } else if (paymentIntent.metadata?.total_base_amount) {
+                baseAmountCents = Math.round(parseFloat(paymentIntent.metadata.total_base_amount) * 100);
+                console.log(`[Webhook] 📍 Using total_base_amount from payment intent (dollars→cents): ${baseAmountCents}`);
+              }
+            }
           }
-          
+
+          if (!baseAmountCents || isNaN(baseAmountCents)) {
+            throw new Error('Could not extract base_amount from charge or payment intent metadata');
+          }
+
           const amount = baseAmountCents / 100; // Convert cents to dollars
           console.log(`[Webhook] 💳 Stripe payment - Net amount after fees: $${amount.toFixed(2)}`);
           

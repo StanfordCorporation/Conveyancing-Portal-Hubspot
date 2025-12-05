@@ -6,6 +6,13 @@ on:
   repository_dispatch:
     types: [receipt-automation]
 
+# Ensure only ONE receipt automation runs at a time
+# This prevents Smokeball session conflicts when multiple payouts trigger simultaneously
+# Subsequent runs will be QUEUED (not cancelled) and run after the current one finishes
+concurrency:
+  group: smokeball-receipt-automation
+  cancel-in-progress: false  # Queue subsequent runs instead of cancelling them
+
 jobs:
   create-receipt:
     runs-on: ubuntu-latest

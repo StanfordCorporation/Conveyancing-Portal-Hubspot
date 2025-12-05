@@ -1202,7 +1202,7 @@ router.post('/property/:dealId/questionnaire/submit', authenticateJWT, async (re
           .filter(search => search.included)
           .map(search => search.name);
         
-        const quoteAmount = quote.grandTotal.toFixed(2);
+        const quoteAmount = (quote.grandTotal + 110).toFixed(2); // Add $110 for additional fees
         const searchesQuoteSms = `Quote Amount : $${quoteAmount}\n\nRequired Searches :\n\n${requiredSearches.map(search => `- ${search}`).join('\n')}`;
         
         properties.searches_quote_sms = searchesQuoteSms;
